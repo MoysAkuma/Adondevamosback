@@ -10,8 +10,15 @@ const app = express();
 // Initialize Supabase client
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey, {
-   db: { schema: 'trips, catalogues' }
+const supabaseServiceKey = process.env.SERVICE_KEY;
+
+
+const tripsclient = createClient(supabaseUrl, supabaseKey, {
+   db: { schema: 'trips' }
+});
+
+const adminCataloguesclient = createClient(supabaseUrl,supabaseServiceKey , {
+   db: { schema: 'catalogues' }
 });
 
 //Configuraciones
@@ -47,7 +54,7 @@ app.get('/',(req,res)=>{
 app.get("/GetTrip/:id", async (req, res, next) => {
     const {id} = req.params;
     const message = req.body.message;
-    const { data, error } = await supabase
+    const { data, error } = await tripsclient
     .from('trips')
     .select('*')
     .eq("id",id)
@@ -77,7 +84,7 @@ app.get("/GetTrip/:id", async (req, res, next) => {
 */
 
 app.get("/GetCountries/", async (req, res, next) => {
-    const { data, error } = await supabase
+    const { data, error } = await adminCataloguesclient
     .from('countries')
     .select('*')
     .eq("id",id)
@@ -106,29 +113,30 @@ app.get("/GetCountries/", async (req, res, next) => {
     Date: 13/05/2025
 */
 app.post("/Country/Create", async(req, res, next) => {
-    //GetrqBody
-    const { name, originalname, acronym } = req.body;
-    const message = req.body.message;
-    const { data, error } = await supabase
-    .from('countries')
-    .insert(
-        { name: name, 
-        originalname : originalname,
-        acronym: acronym
-        })
-    .select();
+    try{
+        //GetrqBody
+        const { name, originalname, acronym } = req.body;
+        const message = req.body.message;
 
-    if(data != null){
-        res.status(200).json(
-        {
-            "Message":"Process of creation success!",
-            "Info":data
-        });
-    } else {
-        res.status(500).json(
-        {
-            "Message":"Process of creation failed!"
-        });
+        const { data, error } = await adminCataloguesclient.from('countries')
+        .insert(
+            {
+                name: name, 
+                originalname : originalname,
+                acronym : acronym,
+                enabled : true,
+                hide : false
+            })
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(201).json({
+                "Message": "Creation process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
     }
 });
 
