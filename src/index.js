@@ -77,42 +77,12 @@ app.get("/GetTrip/:id", async (req, res, next) => {
 });
 
 /*
-    Method: GetCountries
-    Type: GET
-    In : NONE - Out : Json
-    Date: 13/05/2025
-*/
-
-app.get("/GetCountries/", async (req, res, next) => {
-    const { data, error } = await adminCataloguesclient
-    .from('countries')
-    .select('*')
-    .eq("id",id)
-    .maybeSingle();
-  
-    if (error) return res.status(400).json({ error: error.message });
-    if(data != null){
-        res.status(200).json(
-        {
-            "Message":"Process of Reading success!",
-            "Info":data
-        });
-    } else {
-        res.status(404).json(
-        {
-            "Message":"Process of Reading failed!"
-        });
-    }
-    
-});
-
-/*
     Method: Create country
     Type: POST
     In : Json - Out : Json
     Date: 13/05/2025
 */
-app.post("/Country/Create", async(req, res, next) => {
+app.post("/Country", async(req, res, next) => {
     try{
         //GetrqBody
         const { name, originalname, acronym } = req.body;
@@ -139,321 +109,624 @@ app.post("/Country/Create", async(req, res, next) => {
         next(err);
     }
 });
-
 /*
-    Method: Get all trips created by user
-    Type: Get
-    In : int - Out : Json
-    Date: 16:02:2025
-*/
-app.get("/GetTripsByOwner/:UserID",async (req, res, next) => {
-    /*const {UserID} = req.params;
-    const message = req.body.message;
-    pool.query('SELECT Name, Description, InitialDate, FinalDate,UbicationID, isInternational FROM trips Where OwnerID = ?',
-        [id], 
-        (err, results) => {
-        if (err) {
-            console.error('Error fetching data:', err);
-            return res.status(500).json({ error: 'Process of Reading failed!' });
-        }
-        res.status(200).json(
-            {
-                "Message":"Process of get all trips for a user success!",
-                "Info": results
-            }
-        );
-    });*/
-});
-
-/*
-    Method: Get all trips
-    Type: Get
-    In : int - Out : Json
-    Date: 16:02:2025
-*/
-
-app.get("/all", async (req, res, next) => {
-    const message = req.body.message;
-    /*pool.query('SELECT TripID, Name, Description, InitialDate, FinalDate,UbicationID, isInternational FROM trips',
-        (err, results) => {
-        if (err) {
-            console.error('Error get all:', err);
-            return res.status(500).json({ error: 'Process of Reading failed!' });
-        }
-        res.status(200).json(
-            {
-                "Message":"Process of Reading success!",
-                "Info": results
-            }
-        );
-    });*/
-});
-
-/*
-    SubMethod Grop: POST
-    Date: 17:03:2025
-*/
-/*
-    Method: Create trip
+    Method: Read country
     Type: POST
     In : Json - Out : Json
-    Date: 16:02:2025
+    Date: 15/05/2025
 */
-app.post("/CreateTrip", async (req, res, next) => {
-    //GetrqBody
-    const { Name, Desc, IniDat, FinDat,ubiID, isint, OwnerID } = req.body;
-    const message = req.body.message;
-    /*
-    const[resp] = pool.query(
-        'INSERT INTO trips (Name, Description, InitialDate, FinalDate,UbicationID, isInternational, OwnerID) VALUES (?, ?, ?, ?, ?, ?)',
-        [Name, Desc, IniDat, FinDat,ubiID, isint, OwnerID],
-        (err, results) => {
-            if (err) {
-                console.error('Error inserting data:', err);
-                return res.status(500).json({ error: 'Failed to insert data' });
-            }
-            res.status(201).json({            
-                "Message":"Process of Creation success"
-                ,"Result":"New Trip Created"
-                ,"UniqueKey":results.insertId
-                ,"CompleteUrl":"TBD"
+app.get("/Country/:CountryID", async(req, res, next) => {
+    try{
+        //Get country id to search
+        const { CountryID } = req.params;
+
+        const { data, error } = await adminCataloguesclient
+        .from('countries')
+        .select("name, originalname, acronym, enabled, hide")
+        .eq('id',CountryID);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
             });
         }
-    );
-    */
-});
-/*
-    SubMethod Grop: PUT
-    Date: 27:03:2025
-*/
-/*
-    Method: Update trip
-    Type: Put
-    In : Json Out : Json
-*/
-
-app.put("/UpdateTrip", async (req, res, next) => {
-    /*
-    //GetrqBody
-    const { TripID, Name, Desc, IniDat, FinDat,ubiID, isint } = req.body;
-    const message = req.body.message;
-    
-    pool.query(
-        'UPDATE trips SET Name = ?, Description = ? , InitialDate = ?, FinalDate= ?,UbicationID= ?, isInternational = ? WHERE TripID = ?',
-        [Name, Desc, IniDat, FinDat,ubiID, isint, TripID],
-        (err, results) => {
-            if (err) {
-                console.error('Process of Creation failed:', err);
-                return res.status(500).json({ error: 'Process of Creation failed' });
-            }
-            res.status(200).json({            
-                "Message":"Process of Edition Success"
-                ,"Result":"Data edited"
-            });
-        }
-    );*/
-});
-/*
-    SubMethod Grop: DELETE
-    Date: 27:03:2025
-*/
-/*
-    Method: Delete trip
-    Type: delete
-    In : Json  Out : Json
-*/
-
-app.delete("/DeleteTrip/:TripID", (req, res, next) => {
-/*    
-    const { TripID } = req.params;
-
-    pool.query('DELETE FROM trips WHERE TripID = ?', [TripID], (err, results) => {
-        if (err) {
-            console.error('Error deleting data:', err);
-            return res.status(500).json({ error: 'Failed to delete data' });
-        }
-        res.status(200).json({ message: 'Trip deleted successfully' });
-    });*/
-});
-
-/*
-    Method Gruop: Places
-    Date: 17:03:2025
-*/
-
-/*
-    SubMethod Grop: GET
-    Date: 27:03:2025
-*/
-
-/*
-    Method: Get all info of a places
-    Type: POST
-    In : int - Out : Json
-    Date: 16:02:2025
-*/
-
-app.get("/GetPlace/:PlaceID", (req, res, next) => {
-   /* try{
-        const {PlaceID} = req.params;
-        
-        const [placeinfo] = pool.promise().query('SELECT Name, Description, CountryID,CityID, StateID, Address FROM places Where PlaceID = ?',
-            [id], 
-            (err, results) => {
-            if (err) {
-                console.error('Error fetching data:', err);
-                return res.status(500).json({ error: 'Process of Reading failed!' });
-            }
-            
-        });
-
-        const [resultfacilities] = pool.promise().query('SELECT logo, name, value FROM facilities Where PlaceID = ?',
-            [id], 
-            (err, results) => {
-            if (err) {
-                console.error('Error fetching data:', err);
-                return res.status(500).json({ error: 'Process of Reading failed!' });
-            }
-            
-        });
-
-        const resp = placeinfo.map( place => ({
-            ...place,
-            "facilities": resultfacilities
-        }));
-        
-        res.status(200).json(
-            {
-                "Message":"Process of Reading success!",
-                "Info": resp
-            }
-        );
     } catch (err){
-        res.status(500).send('Server Error');
-    }*/
+        next(err);
+    }
 });
-
 /*
-    SubMethod Grop: POST
-    Date: 27:03:2025
-*/
-
-/*
-    Method: Create place
+    Method: Update country
     Type: POST
     In : Json - Out : Json
-    Date: 16:02:2025
+    Date: 15/05/2025
 */
-app.post("/CreatePlace", (req, res, next) => {
-    //GetrqBody
-    const { Name, Description, CountryID,CityID, StateID, Address, Facilities } = req.body;
-    const message = req.body.message;
-    
-    /*const [place] =pool.query(
-        'INSERT INTO places (Name, Description, CountryID,CityID, StateID, Address) VALUES (?, ?, ?, ?, ?, ?)',
-        [Name, Description, CountryID,CityID, StateID, Address],
-        (err, results) => {
-            if (err) {
-                console.error('Error inserting data:', err);
-                return res.status(500).json({ error: 'Failed to insert place' });
-            }
+app.put("/Country/Update/:CountryID", async(req, res, next) => {
+    try{
+        //Get country id to search
+        const { CountryID } = req.params;
+        //GetrqBody
+        const { name, originalname, acronym, enabled, hide } = req.body;
+        const message = req.body.message;
+
+        const { data, error } = await adminCataloguesclient.from('countries')
+        .update(
+            {
+                name: name, 
+                originalname : originalname,
+                acronym : acronym,
+                enabled : enabled,
+                hide : hide
+            })
+        .eq('id',CountryID)
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Edition process sucess", "info":data
+            });
         }
-    );
-
-    if(Array.isArray(Facilities)){
-        const placeHolder = Facilities.map(Facility => '(?,?,?)').join(',') ;
-        const values = Facilities.flatMap(Facility => [Facility.logo, Facility.name,Facility.value]);
-        pool.query(
-            'INSERT INTO facilities (logo, name, value) VALUES ${placeHolder}',
-            values,
-            (err, results) => {
-                if (err) {
-                    console.error('Error inserting data:', err);
-                    return res.status(500).json({ error: 'Failed to insert facilities' });
-                }
-            }
-        );    
-    }*/
+    } catch (err){
+        next(err);
+    }
 });
-
 /*
-    Method: ConfirmationEmail
+    Method: Delete country
     Type: POST
     In : Json - Out : Json
-    Date: 23:03:2025
+    Date: 15/05/2025
 */
-app.get("/ConfirmationEmail/:token", (req, res, next) => {
-    const {token} = req.params;
-    
-    /*pool.query('UPDATE EmailConfirmation SET value = true Where token = :token',
-        [token], 
-        (err, results) => {
-        if (err) {
-            console.error('Error fetching data:', err);
-            return res.status(500).json({ error: 'Process of Reading failed!' });
+app.delete("/Country/:CountryID", async(req, res, next) => {
+    try{
+        //Get country id to search
+        const { CountryID } = req.params;
+
+        const { data, error } = await adminCataloguesclient
+        .from('countries')
+        .delete()
+        .eq('id', CountryID);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(data.status);
         }
-        res.status(200);
-    });*/
+    } catch (err){
+        next(err);
+    }
+});
+/*
+    Method: get all countries
+    Type: POST
+    In : Json - Out : Json
+    Date: 15/05/2025
+*/
+app.get("/Countries", async(req, res, next) => {
+    try{
+        const { data, error } = await adminCataloguesclient
+        .from('countries')
+        .select("name, originalname, acronym, enabled, hide");
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
 });
 
 /*
-    Method Gruop: User
-    Date: DD:MM:AAAA
-*/
-
-/*
-    Method: METHOD_NAME
+    Method: Create State
     Type: POST
-    In : IN - Out : OUT
-    Date: DD:MM:AAAA
+    In : Json - Out : Json
+    Date: 15/05/2025
 */
+app.post("/State", async(req, res, next) => {
+    try{
+        //GetrqBody
+        const { name, originalname, countryid, enabled, hide } = req.body;
+        const message = req.body.message;
 
-/*
-    SubMethod Grop: GET
-    Date: DD:MM:AAAA
-*/
+        const { data, error } = await adminCataloguesclient
+        .from('states')
+        .insert(
+            {
+                name: name, 
+                originalname : originalname,
+                countryid : countryid,
+                enabled : enabled,
+                hide : hide
+            })
+        .select();
 
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(201).json({
+                "Message": "Creation process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
 /*
-    SubMethod Grop: POST
-    Date: DD:MM:AAAA
-*/
-
-/*
-    SubMethod Grop: PUT
-    Date: DD:MM:AAAA
-*/
-
-/*
-    SubMethod Grop: DELETE
-    Date: DD:MM:AAAA
-*/
-
-/*
-    Method Gruop: METHOD_GROUP_NAME
-    Date: DD:MM:AAAA
-*/
-
-/*
-    Method: METHOD_NAME
+    Method: Read state
     Type: POST
-    In : IN - Out : OUT
-    Date: DD:MM:AAAA
+    In : Json - Out : Json
+    Date: 15/05/2025
 */
+app.get("/State/:StateID", async(req, res, next) => {
+    try{
+        //Get state id to search
+        const { StateID } = req.params;
+
+        const { data, error } = await adminCataloguesclient
+        .from('states')
+        .select("name, originalname, countryid, enabled, hide")
+        .eq('id',StateID);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+/*
+    Method: Update state
+    Type: POST
+    In : Json - Out : Json
+    Date: 15/05/2025
+*/
+app.put("/State/:stateID", async(req, res, next) => {
+    try{
+        //Get state id to search
+        const { stateID } = req.params;
+        //GetrqBody
+        const { name, originalname, countryid, enabled, hide } = req.body;
+        const message = req.body.message;
+
+        const { data, error } = await adminCataloguesclient.from('states')
+        .update(
+            {
+                name: name, 
+                originalname : originalname,
+                countryid : countryid,
+                enabled : enabled,
+                hide : hide
+            })
+        .eq('id',stateID)
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Edition process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+/*
+    Method: Delete state
+    Type: POST
+    In : Json - Out : Json
+    Date: 15/05/2025
+*/
+app.delete("/State/:stateID", async(req, res, next) => {
+    try{
+        //Get state id to search
+        const { stateID } = req.params;
+
+        const { data, error } = await adminCataloguesclient
+        .from('states')
+        .delete()
+        .eq('id', stateID);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(data.status);
+        }
+    } catch (err){
+        next(err);
+    }
+});
+/*
+    Method: Read all states
+    Type: POST
+    In : Json - Out : Json
+    Date: 15/05/2025
+*/
+app.get("/States", async(req, res, next) => {
+    try{
+        const { data, error } = await adminCataloguesclient
+        .from('states')
+        .select("name, originalname, countryid, enabled, hide");
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
 
 /*
-    SubMethod Grop: GET
-    Date: DD:MM:AAAA
+    Method: Read all states by countryid
+    Type: POST
+    In : Json - Out : Json
+    Date: 15/05/2025
 */
+app.get("/States/:countryid", async(req, res, next) => {
+    try{
+        //Get state id to search
+        const { countryid } = req.params;
+        const { data, error } = await adminCataloguesclient
+        .from('states')
+        .select("name, originalname, countryid, enabled, hide")
+        .eq('countryid',countryid);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
 
 /*
-    SubMethod Grop: POST
-    Date: DD:MM:AAAA
+    Method: Create city
+    Type: POST
+    In : Json - Out : Json
+    Date: 15/05/2025
 */
+app.post("/City", async(req, res, next) => {
+    try{
+        //GetrqBody
+        const { name, originalname, countryid,stateid, enabled, hide } = req.body;
+
+        const { data, error } = await adminCataloguesclient
+        .from('cities')
+        .insert(
+            {
+                name: name, 
+                originalname : originalname,
+                countryid : countryid,
+                stateid:stateid,
+                enabled : enabled,
+                hide : hide
+            })
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(201).json({
+                "Message": "Creation process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
 
 /*
-    SubMethod Grop: PUT
-    Date: DD:MM:AAAA
+    Method: Read city
+    Type: POST
+    In : Json - Out : Json
+    Date: 15/05/2025
 */
+app.get("/City/:cityID", async(req, res, next) => {
+    try{
+        //Get state id to search
+        const { cityID } = req.params;
+
+        const { data, error } = await adminCataloguesclient
+        .from('cities')
+        .select("name, originalname, countryid,stateid, enabled, hide")
+        .eq('id',cityID);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+/*
+    Method: Update city
+    Type: POST
+    In : Json - Out : Json
+    Date: 15/05/2025
+*/
+app.put("/City/:cityID", async(req, res, next) => {
+    try{
+        //Get state id to search
+        const { cityID } = req.params;
+        //GetrqBody
+        const { name, originalname, countryid,stateid, enabled, hide } = req.body;
+
+        const { data, error } = await adminCataloguesclient
+        .from('cities')
+        .update(
+            {
+                name: name, 
+                originalname : originalname,
+                countryid : countryid,
+                stateid:stateid,
+                enabled : enabled,
+                hide : hide
+            })
+        .eq('id',cityID)
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Edition process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+/*
+    Method: Delete city
+    Type: POST
+    In : Json - Out : Json
+    Date: 15/05/2025
+*/
+app.delete("/City/:cityID", async(req, res, next) => {
+    try{
+        //Get state id to search
+        const { cityID } = req.params;
+
+        const { data, error } = await adminCataloguesclient
+        .from('cities')
+        .delete()
+        .eq('id', cityID);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(data.status);
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Read all cities
+    Type: POST
+    In : Json - Out : Json
+    Date: 15/05/2025
+*/
+app.get("/Cities", async(req, res, next) => {
+    try{
+        const { data, error } = await adminCataloguesclient
+        .from('cities')
+        .select("name, originalname, countryid, stateid, enabled, hide");
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Read all cities by stateid
+    Type: POST
+    In : Json - Out : Json
+    Date: 15/05/2025
+*/
+app.get("/Cities/:stateid", async(req, res, next) => {
+    try{
+        //Get state and country ids to search
+        const { stateid } = req.params;
+        const { data, error } = await adminCataloguesclient
+        .from('cities')
+        .select("name, originalname, countryid, stateid, enabled, hide")
+        .eq('stateid',stateid);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Read all cities by countryid
+    Type: POST
+    In : Json - Out : Json
+    Date: 15/05/2025
+*/
+app.get("/Cities/:countryid", async(req, res, next) => {
+    try{
+        //Get state and country ids to search
+        const { countryid } = req.params;
+        const { data, error } = await adminCataloguesclient
+        .from('cities')
+        .select("name, originalname, countryid, stateid, enabled, hide")
+        .eq('countryid',countryid);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Create facilities
+    Type: POST
+    In : Json - Out : Json
+    Date: 15/05/2025
+*/
+app.post("/Facility", async(req, res, next) => {
+    try{
+        //GetrqBody
+        const { name,code, enabled, hide } = req.body;
+
+        const { data, error } = await adminCataloguesclient
+        .from('facilities')
+        .insert(
+            {
+                name: name, 
+                code:code,
+                enabled : enabled,
+                hide : hide
+            })
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(201).json({
+                "Message": "Creation process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Read facility
+    Type: POST
+    In : Json - Out : Json
+    Date: 15/05/2025
+*/
+app.get("/Facility/:facilityID", async(req, res, next) => {
+    try{
+        //Get facilityID to search
+        const { facilityID } = req.params;
+
+        const { data, error } = await adminCataloguesclient
+        .from('facilities')
+        .select("name,code, enabled, hide")
+        .eq('id',facilityID);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+/*
+    Method: Update facility
+    Type: POST
+    In : Json - Out : Json
+    Date: 15/05/2025
+*/
+app.put("/Facility/:facilityID", async(req, res, next) => {
+    try{
+        //Get state id to search
+        const { facilityID } = req.params;
+        //GetrqBody
+        const { name,code, enabled, hide } = req.body;
+
+        const { data, error } = await adminCataloguesclient
+        .from('facilities')
+        .update(
+            {
+                name: name, 
+                code:code,
+                enabled : enabled,
+                hide : hide
+            })
+        .eq('id',facilityID)
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Edition process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+/*
+    Method: Delete city
+    Type: POST
+    In : Json - Out : Json
+    Date: 15/05/2025
+*/
+app.delete("/Facility/:facilityID", async(req, res, next) => {
+    try{
+        //Get facility id to search
+        const { facilityID } = req.params;
+
+        const { data, error } = await adminCataloguesclient
+        .from('facilities')
+        .delete()
+        .eq('id', facilityID);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(data.status);
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Read all facilities
+    Type: POST
+    In : Json - Out : Json
+    Date: 15/05/2025
+*/
+app.get("/Facilities", async(req, res, next) => {
+    try{
+        const { data, error } = await adminCataloguesclient
+        .from('facilities')
+        .select("name, code, enabled, hide");
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
 
 /*
     SubMethod Grop: DELETE
