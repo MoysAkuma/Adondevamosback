@@ -679,6 +679,7 @@ app.put("/Facility/:facilityID", async(req, res, next) => {
         next(err);
     }
 });
+
 /*
     Method: Delete city
     Type: POST
@@ -715,6 +716,290 @@ app.get("/Facilities", async(req, res, next) => {
         const { data, error } = await adminCataloguesclient
         .from('facilities')
         .select("name, code, enabled, hide");
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Create roles
+    Type: POST
+    In : Json - Out : Json
+    Date: 18/05/2025
+*/
+app.post("/Role", async(req, res, next) => {
+    try{
+        //GetrqBody
+        const { name, enabled, hide } = req.body;
+
+        const { data, error } = await adminCataloguesclient
+        .from('roles')
+        .insert(
+            {
+                name: name,
+                enabled : enabled,
+                hide : hide
+            })
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(201).json({
+                "Message": "Creation process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Read role
+    Type: GET
+    In : ID - Out : Json
+    Date: 18/05/2025
+*/
+app.get("/Role/:roleID", async(req, res, next) => {
+    try{
+        //Get roleID to search
+        const { roleID } = req.params;
+
+        const { data, error } = await adminCataloguesclient
+        .from('roles')
+        .select("name, enabled, hide")
+        .eq('id',roleID);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Update role
+    Type: POST
+    In : Json - Out : Json
+    Date: 18/05/2025
+*/
+app.put("/Role/:roleID", async(req, res, next) => {
+    try{
+        //Get role id to search
+        const { roleID } = req.params;
+        //GetrqBody
+        const { name, enabled, hide } = req.body;
+
+        const { data, error } = await adminCataloguesclient
+        .from('roles')
+        .update(
+            {
+                name: name,
+                enabled : enabled,
+                hide : hide
+            })
+        .eq('id',roleID)
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Edition process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Delete role
+    Type: Delete
+    In : Json - Out : Json
+    Date: 18/05/2025
+*/
+app.delete("/Role/:RoleID", async(req, res, next) => {
+    try{
+        //Get Role id to search
+        const { RoleID } = req.params;
+
+        const { data, error } = await adminCataloguesclient
+        .from('roles')
+        .delete()
+        .eq('id', RoleID);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(data.status);
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Read all roles
+    Type: GET
+    In : Json - Out : Json
+    Date: 18/05/2025
+*/
+app.get("/Roles", async(req, res, next) => {
+    try{
+        const { data, error } = await adminCataloguesclient
+        .from('roles')
+        .select("name, enabled, hide");
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Create usertype
+    Type: POST
+    In : Json - Out : Json
+    Date: 18/05/2025
+*/
+app.post("/UserType", async(req, res, next) => {
+    try{
+        //GetrqBody
+        const { name, enabled, hide } = req.body;
+
+        const { data, error } = await adminCataloguesclient
+        .from('usertypes')
+        .insert(
+            {
+                name: name,
+                enabled : enabled,
+                hide : hide
+            })
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(201).json({
+                "Message": "Creation process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Read usertype
+    Type: GET
+    In : ID - Out : Json
+    Date: 18/05/2025
+*/
+app.get("/UserType/:UserTypeID", async(req, res, next) => {
+    try{
+        //Get UserTypeID to search
+        const { UserTypeID } = req.params;
+
+        const { data, error } = await adminCataloguesclient
+        .from('usertypes')
+        .select("name, enabled, hide")
+        .eq('id',UserTypeID);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Update user type
+    Type: PUT
+    In : Json - Out : Json
+    Date: 18/05/2025
+*/
+app.put("/UserType/:UserTypeID", async(req, res, next) => {
+    try{
+        //Get UserType id to search
+        const { UserTypeID } = req.params;
+        //GetrqBody
+        const { name, enabled, hide } = req.body;
+
+        const { data, error } = await adminCataloguesclient
+        .from('usertypes')
+        .update(
+            {
+                name: name,
+                enabled : enabled,
+                hide : hide
+            })
+        .eq('id',UserTypeID)
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Edition process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Delete UserTypeID
+    Type: Delete
+    In : Json - Out : Json
+    Date: 18/05/2025
+*/
+app.delete("/UserType/:UserTypeID", async(req, res, next) => {
+    try{
+        //Get Role id to search
+        const { UserTypeID } = req.params;
+
+        const { data, error } = await adminCataloguesclient
+        .from('usertypes')
+        .delete()
+        .eq('id', UserTypeID);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(data.status);
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Read all user types
+    Type: GET
+    In : Json - Out : Json
+    Date: 18/05/2025
+*/
+app.get("/UserTypes", async(req, res, next) => {
+    try{
+        const { data, error } = await adminCataloguesclient
+        .from('usertypes')
+        .select("name, enabled, hide");
 
         if (error) throw res.status(500).json(error);
         if (data != null) {
