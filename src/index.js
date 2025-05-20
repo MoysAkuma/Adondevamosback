@@ -17,6 +17,14 @@ const tripsclient = createClient(supabaseUrl, supabaseKey, {
    db: { schema: 'trips' }
 });
 
+const anonclientuser = createClient(supabaseUrl, supabaseKey, {
+   db: { schema: 'users' }
+});
+
+const userclient = createClient(supabaseUrl,supabaseServiceKey , {
+   db: { schema: 'users' }
+});
+
 const adminCataloguesclient = createClient(supabaseUrl,supabaseServiceKey , {
    db: { schema: 'catalogues' }
 });
@@ -1012,7 +1020,152 @@ app.get("/UserTypes", async(req, res, next) => {
     }
 });
 
+/*
+    Method: Create user
+    Type: POST
+    In : Json - Out : Json
+    Date: 18/05/2025
+*/
+app.post("/User", async(req, res, next) => {
+    try{
+        //GetrqBody
+        const { name, tag, lastname, secondlastname,password, email, enabled, hide } = req.body;
 
+        const { data, error } = await anonclientuser
+        .from('users')
+        .insert(
+            {
+                tag : tag, 
+                lastname : lastname, 
+                secondlastname: secondlastname, 
+                password : password, 
+                email : email,
+                name: name,
+                enabled : enabled,
+                hide : hide
+            })
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(201).json({
+                "Message": "Creation process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Read User
+    Type: GET
+    In : ID - Out : Json
+    Date: 18/05/2025
+*/
+app.get("/User/:UserID", async(req, res, next) => {
+    try{
+        //Get UserID to search
+        const { UserID } = req.params;
+
+        const { data, error } = await adminCataloguesclient
+        .from('users')
+        .select('name, tag, lastname, secondlastname,password, email, enabled, hide')
+        .eq('id',UserID);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Update user type
+    Type: PUT
+    In : Json - Out : Json
+    Date: 18/05/2025
+*/
+app.put("/UserType/:UserTypeID", async(req, res, next) => {
+    try{
+        //Get UserType id to search
+        const { UserTypeID } = req.params;
+        //GetrqBody
+        const { name, enabled, hide } = req.body;
+
+        const { data, error } = await adminCataloguesclient
+        .from('usertypes')
+        .update(
+            {
+                name: name,
+                enabled : enabled,
+                hide : hide
+            })
+        .eq('id',UserTypeID)
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Edition process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Delete UserTypeID
+    Type: Delete
+    In : Json - Out : Json
+    Date: 18/05/2025
+*/
+app.delete("/UserType/:UserTypeID", async(req, res, next) => {
+    try{
+        //Get Role id to search
+        const { UserTypeID } = req.params;
+
+        const { data, error } = await adminCataloguesclient
+        .from('usertypes')
+        .delete()
+        .eq('id', UserTypeID);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(data.status);
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Read all user types
+    Type: GET
+    In : Json - Out : Json
+    Date: 18/05/2025
+*/
+app.get("/UserTypes", async(req, res, next) => {
+    try{
+        const { data, error } = await adminCataloguesclient
+        .from('usertypes')
+        .select("name, enabled, hide");
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
 /*
     SubMethod Grop: DELETE
     Date: DD:MM:AAAA
