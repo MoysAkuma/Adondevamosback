@@ -1029,18 +1029,22 @@ app.get("/UserTypes", async(req, res, next) => {
 app.post("/User", async(req, res, next) => {
     try{
         //GetrqBody
-        const { name, tag, lastname, secondlastname,password, email, enabled, hide } = req.body;
+        const { name, tag, lastName, secondName,password, email, countryID, stateID, cityID, enabled, hide } = req.body;
 
         const { data, error } = await anonclientuser
         .from('users')
         .insert(
             {
-                tag : tag, 
-                lastname : lastname, 
-                secondlastname: secondlastname, 
-                password : password, 
-                email : email,
                 name: name,
+                tag : tag, 
+                lastname : lastName, 
+                secondname: secondName, 
+                password : password, 
+                countryid: countryID,
+                stateid : stateID,
+                cityid : cityID,
+                description : description,
+                email : email,         
                 enabled : enabled,
                 hide : hide
             })
@@ -1061,16 +1065,16 @@ app.post("/User", async(req, res, next) => {
     Method: Read User
     Type: GET
     In : ID - Out : Json
-    Date: 18/05/2025
+    Date: 21/05/2025
 */
 app.get("/User/:UserID", async(req, res, next) => {
     try{
         //Get UserID to search
         const { UserID } = req.params;
 
-        const { data, error } = await adminCataloguesclient
+        const { data, error } = await userclient
         .from('users')
-        .select('name, tag, lastname, secondlastname,password, email, enabled, hide')
+        .select('name, tag, lastname, password, email, countryid, stateid, cityid, enabled, hide')
         .eq('id',UserID);
 
         if (error) throw res.status(500).json(error);
@@ -1085,27 +1089,36 @@ app.get("/User/:UserID", async(req, res, next) => {
 });
 
 /*
-    Method: Update user type
+    Method: Update user
     Type: PUT
     In : Json - Out : Json
-    Date: 18/05/2025
+    Date: 21/05/2025
 */
-app.put("/UserType/:UserTypeID", async(req, res, next) => {
+app.put("/User/:UserID", async(req, res, next) => {
     try{
-        //Get UserType id to search
-        const { UserTypeID } = req.params;
+        //Get User id to search
+        const { UserID } = req.params;
         //GetrqBody
-        const { name, enabled, hide } = req.body;
+        const { name, tag, lastName, password, email, countryID, stateID, cityID, enabled, hide } = req.body;
 
-        const { data, error } = await adminCataloguesclient
-        .from('usertypes')
+        const { data, error } = await userclient
+        .from('users')
         .update(
             {
                 name: name,
+                tag : tag, 
+                lastname : lastName, 
+                secondname: secondName, 
+                password : password, 
+                countryid: countryID,
+                stateid : stateID,
+                cityid : cityID,
+                description : description,
+                email : email,  
                 enabled : enabled,
                 hide : hide
             })
-        .eq('id',UserTypeID)
+        .eq('id',UserID)
         .select();
 
         if (error) throw res.status(500).json(error);
@@ -1120,20 +1133,20 @@ app.put("/UserType/:UserTypeID", async(req, res, next) => {
 });
 
 /*
-    Method: Delete UserTypeID
+    Method: Delete User
     Type: Delete
     In : Json - Out : Json
-    Date: 18/05/2025
+    Date: 21/05/2025
 */
-app.delete("/UserType/:UserTypeID", async(req, res, next) => {
+app.delete("/User/:UserID", async(req, res, next) => {
     try{
-        //Get Role id to search
-        const { UserTypeID } = req.params;
+        //Get User id to search
+        const { UserID } = req.params;
 
-        const { data, error } = await adminCataloguesclient
-        .from('usertypes')
+        const { data, error } = await userclient
+        .from('users')
         .delete()
-        .eq('id', UserTypeID);
+        .eq('id', UserID);
 
         if (error) throw res.status(500).json(error);
         if (data != null) {
@@ -1145,16 +1158,22 @@ app.delete("/UserType/:UserTypeID", async(req, res, next) => {
 });
 
 /*
-    Method: Read all user types
-    Type: GET
+    Method: change password
+    Type: PATCH
     In : Json - Out : Json
-    Date: 18/05/2025
+    Date: 22/05/2025
 */
-app.get("/UserTypes", async(req, res, next) => {
+app.patch("/Users/Password/Change", async(req, res, next) => {
     try{
-        const { data, error } = await adminCataloguesclient
-        .from('usertypes')
-        .select("name, enabled, hide");
+        //GetrqBody
+        const { UserID, password } = req.body;
+        
+        const { data, error } = await userclient
+        .from('users')
+        .update({
+            password : password
+        })
+        .eq('id', UserID);
 
         if (error) throw res.status(500).json(error);
         if (data != null) {
@@ -1166,18 +1185,62 @@ app.get("/UserTypes", async(req, res, next) => {
         next(err);
     }
 });
-/*
-    SubMethod Grop: DELETE
-    Date: DD:MM:AAAA
-*/
 
-class Message {
-    constructor(content) {
-      this.content = content;
+/*
+    Method: show user
+    Type: PATCH
+    In : Json - Out : Json
+    Date: 22/05/2025
+*/
+app.patch("/Users/:UserID/Show", async(req, res, next) => {
+    try{
+        //GetrqBody
+        const { UserID } = req.params;
+        
+        const { data, error } = await userclient
+        .from('users')
+        .update({
+            hide : true
+        })
+        .eq('id', UserID);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
     }
-   
-    getContent() {
-      return this.content;
+});
+
+/*
+    Method: hide user
+    Type: PATCH
+    In : Json - Out : Json
+    Date: 22/05/2025
+*/
+app.patch("/Users/:UserID/Hide", async(req, res, next) => {
+    try{
+        //GetrqBody
+        const { UserID } = req.params;
+        
+        const { data, error } = await userclient
+        .from('users')
+        .update({
+            hide : false
+        })
+        .eq('id', UserID);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
     }
-}
+});
 
