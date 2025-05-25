@@ -1,6 +1,6 @@
 {
   "name": "adondevamosback",
-  "version": "1.0.0",
+  "version": "Alpha",
   "description": "a backend project in nodejs to manage a website",
   "main": "src/index.tsx",
   "scripts": {

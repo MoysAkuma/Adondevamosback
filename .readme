@@ -1,0 +1,432 @@
+# A donde.vamos.back VAlpha
+
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D%2014.16-brightgreen)](https://nodejs.org/)
+[![Express Version](https://img.shields.io/badge/express-%5E4.21.2-lightgrey)](https://expressjs.com/)
+
+A donde vamos backed project to interact to Adondevamos.web project made by @MoysAkuma
+
+## Features
+
+- Site managment
+- User managment
+- Place managment
+- Trip managment
+
+## Prerequisites
+
+- Node.js (version X.X or higher)
+- npm (version X.X or higher) or yarn
+- @supabase/supabase-js (version ^2.49.4)
+- dotenv (version ^16.5.0)
+
+## Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/MoysAkuma/Adondevamosback
+   cd adondevamosback
+## EndPoints
+- POST  Create country
+    
+    Request
+    
+    ```bash
+    curl --location 'localhost:3000/Country' \
+    --data '{
+        "name": "Peru", 
+        "originalname":"Peru", 
+        "acronym":"PER"
+    }'
+    ```
+
+    Response
+
+    ```bash
+    {
+        "Message": "Creation process sucess",
+        "info": [
+            {
+                "id": 4,
+                "createddate": "2025-05-25T19:20:08.278003+00:00",
+                "name": "Peru",
+                "originalname": "Peru",
+                "hide": false,
+                "enabled": true,
+                "acronym": "PER"
+            }
+        ]
+    }
+- GET Country
+    
+    Request
+    ```bash
+    curl --location 'localhost:3000/Country/1'
+    ```
+    Response
+    ```bash
+    {
+        "Message": "Reading process sucess",
+        "info": [
+            {
+                "name": "Mexico",
+                "originalname": "Mexico",
+                "acronym": "MX",
+                "enabled": true,
+                "hide": false
+            }
+        ]
+    }
+    ```
+- Update country
+    
+    Request
+    ```bash
+    curl --location --request PUT 'localhost:3000/Country/Update/2' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "name": "Japan", 
+        "originalname":"Nihon", 
+        "acronym":"JP",
+        "hide":false,
+        "enabled":true
+    }'
+    ```
+    Response
+    ```bash
+    {
+        "Message": "Edition process sucess",
+        "info": [
+        {
+            "id": 2,
+            "createddate": "2025-05-16T02:11:31.173921+00:00",
+            "name": "Japan",
+            "originalname": "Nihon",
+            "hide": false,
+            "enabled": true,
+            "acronym": "JP"
+        }
+        ]
+    }
+    ```
+- DELETE NAME
+    
+    Request
+    ```bash
+    curl --location --request DELETE 'localhost:3000/Country/4'
+    ```
+
+- GET ALL Countries
+    
+    Request
+    
+    ```bash
+    curl --location 'localhost:3000/Countries'
+    ```
+    
+    Response
+    
+    ```bash
+    {
+        "Message": "Reading process sucess",
+        "info": [
+        {
+            "name": "Mexico",
+            "originalname": "Mexico",
+            "acronym": "MX",
+            "enabled": true,
+            "hide": false
+        },
+        {
+            "name": "Japan",
+            "originalname": "Nihon",
+            "acronym": "JP",
+            "enabled": true,
+            "hide": false
+        }
+        ]
+    }
+    ```
+
+- POST STATE
+    
+    Request
+    ```bash
+    curl --location 'localhost:3000/State' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "name": "Sinaloa", 
+        "originalname":"Sinaloa", 
+        "countryid":1,
+        "enabled":true,
+        "hide":true
+    }'
+    ```
+    Response
+    ```bash
+    {
+    "Message": "Creation process sucess",
+    "info": [
+        {
+            "id": 1,
+            "createddate": "2025-05-25T20:02:32.937454+00:00",
+            "name": "Sinaloa",
+            "originalname": "Sinaloa",
+            "countryid": 1,
+            "enabled": true,
+            "hide": true
+        }
+    ]
+    }
+    ```
+
+- GET State
+    
+    Request
+    ```bash
+    curl --location 'localhost:3000/State/1'
+    ```
+    Response
+    ```bash
+    {
+    "Message": "Reading process sucess",
+    "info": [
+        {
+            "name": "Sinaloa",
+            "originalname": "Sinaloa",
+            "countryid": 1,
+            "enabled": true,
+            "hide": true
+        }
+    ]
+    }
+    ```
+- PUT State
+    
+    Request
+    ```bash
+    curl --location --request PUT 'localhost:3000/State/2' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "name": "Ciudad de Mexico", 
+        "originalname":"Ciudad de Mexico", 
+        "countryid":1,
+        "enabled":true,
+        "hide":true
+    }'
+    ```
+    Response
+    ```bash
+    {
+    "Message": "Edition process sucess",
+    "info": [
+        {
+            "id": 2,
+            "createddate": "2025-05-25T20:05:09.290674+00:00",
+            "name": "Ciudad de Mexico",
+            "originalname": "Ciudad de Mexico",
+            "countryid": 1,
+            "enabled": true,
+            "hide": true
+        }
+    ]
+    }
+    ```
+- Delete state
+    
+    Request
+    ```bash
+    curl --location --request DELETE 'localhost:3000/State/2'
+    ```
+    Response
+    ```bash
+    
+    ```
+- Get All States
+    
+    Request
+    ```bash
+    curl --location 'localhost:3000/States'
+    ```
+    Response
+    ```bash
+    curl --location 'localhost:3000/Country/1'
+    ```
+
+- GET STATES by CountryID
+    
+    Request
+    ```bash
+    curl --location 'localhost:3000/States/ByCountryID/1'
+    ```
+    Response
+    ```bash
+    {
+    "Message": "Reading process sucess",
+    "info": [
+        {
+            "name": "Sinaloa",
+            "originalname": "Sinaloa",
+            "countryid": 1,
+            "enabled": true,
+            "hide": true
+        }
+    ]
+    }
+    ```
+
+- Create CITY
+    
+    Request
+    ```bash
+    curl --location 'localhost:3000/City' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "name":"Mazatlan", 
+        "originalname":"Mazatlan", 
+        "countryid":1,
+        "stateid":1, 
+        "enabled":true, 
+        "hide":false
+    }'
+    ```
+    Response
+    ```bash
+    {
+    "Message": "Creation process sucess",
+    "info": [
+        {
+            "id": 2,
+            "createddate": "2025-05-25T21:05:31.286448+00:00",
+            "countryid": 1,
+            "stateid": 1,
+            "name": "Mazatlan",
+            "originalname": "Mazatlan",
+            "enabled": true,
+            "hide": false
+        }
+    ]
+    }
+    ```
+
+- READ CITY
+    
+    Request
+    ```bash
+    curl --location 'localhost:3000/City/2'
+    ```
+    Response
+    ```bash
+    {
+    "Message": "Reading process sucess",
+    "info": [
+        {
+            "name": "Mazatlan",
+            "originalname": "Mazatlan",
+            "countryid": 1,
+            "stateid": 1,
+            "enabled": true,
+            "hide": false
+        }
+    ]
+    }
+    ```
+
+- PUT City
+    
+    Request
+    ```bash
+    curl --location --request PUT 'localhost:3000/City/1' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "name":"Culiacan", 
+        "originalname":"Culiacan", 
+        "countryid":1,
+        "stateid":1, 
+        "enabled":true, 
+        "hide":false
+    }'
+    ```
+    Response
+    ```bash
+    {
+    "Message": "Edition process sucess",
+    "info": [
+        {
+            "id": 1,
+            "createddate": "2025-05-25T21:05:07.586292+00:00",
+            "countryid": 1,
+            "stateid": 1,
+            "name": "Culiacan",
+            "originalname": "Culiacan",
+            "enabled": true,
+            "hide": false
+        }
+    ]
+    }
+    ```
+- GET Cities
+    
+    Request
+    ```bash
+    curl --location 'localhost:3000/Cities'
+    ```
+    Response
+    ```bash
+    {
+    "Message": "Reading process sucess",
+    "info": [
+        {
+            "name": "Culiacan",
+            "originalname": "Culiacan",
+            "countryid": 1,
+            "stateid": 1,
+            "enabled": true,
+            "hide": false
+        }
+    ]
+    }
+    ```
+- METHOD NAME
+    
+    Request
+    ```bash
+    
+    ```
+    Response
+    ```bash
+    
+    ```
+
+- METHOD NAME
+    
+    Request
+    ```bash
+    
+    ```
+    Response
+    ```bash
+    
+    ```
+
+- METHOD NAME
+    
+    Request
+    ```bash
+    
+    ```
+    Response
+    ```bash
+    
+    ```
+
+- METHOD NAME
+    
+    Request
+    ```bash
+    
+    ```
+    Response
+    ```bash
+    
+    ```

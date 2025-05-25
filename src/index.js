@@ -41,8 +41,7 @@ app.listen(3000, () => {
 });
 
 /*
-    Method: Welcome
-    Type: GET
+    Method: Welcome Type: GET
     In : Json - Out : Json
     Date: 01:01:2025
 */
@@ -53,40 +52,7 @@ app.get('/',(req,res)=>{
 });
 
 /*
-    Method: Get all info of a trip
-    Type: POST
-    In : int - Out : Json
-    Date: 16:02:2025
-*/
-
-app.get("/GetTrip/:id", async (req, res, next) => {
-    const {id} = req.params;
-    const message = req.body.message;
-    const { data, error } = await tripsclient
-    .from('trips')
-    .select('*')
-    .eq("id",id)
-    .maybeSingle();
-  
-    if (error) return res.status(400).json({ error: error.message });
-    if(data != null){
-        res.status(200).json(
-        {
-            "Message":"Process of Reading success!",
-            "Info":data
-        });
-    } else {
-        res.status(404).json(
-        {
-            "Message":"Process of Reading failed!"
-        });
-    }
-    
-});
-
-/*
-    Method: Create country
-    Type: POST
+    Method: Create country Type: POST
     In : Json - Out : Json
     Date: 13/05/2025
 */
@@ -118,8 +84,7 @@ app.post("/Country", async(req, res, next) => {
     }
 });
 /*
-    Method: Read country
-    Type: POST
+    Method: Read country Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -144,8 +109,7 @@ app.get("/Country/:CountryID", async(req, res, next) => {
     }
 });
 /*
-    Method: Update country
-    Type: POST
+    Method: Update country Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -180,8 +144,7 @@ app.put("/Country/Update/:CountryID", async(req, res, next) => {
     }
 });
 /*
-    Method: Delete country
-    Type: POST
+    Method: Delete country Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -197,15 +160,14 @@ app.delete("/Country/:CountryID", async(req, res, next) => {
 
         if (error) throw res.status(500).json(error);
         if (data != null) {
-            res.status(data.status);
+            res.status(200);
         }
     } catch (err){
         next(err);
     }
 });
 /*
-    Method: get all countries
-    Type: POST
+    Method: get all countries Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -227,8 +189,7 @@ app.get("/Countries", async(req, res, next) => {
 });
 
 /*
-    Method: Create State
-    Type: POST
+    Method: Create State Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -261,8 +222,7 @@ app.post("/State", async(req, res, next) => {
     }
 });
 /*
-    Method: Read state
-    Type: POST
+    Method: Read state Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -287,8 +247,7 @@ app.get("/State/:StateID", async(req, res, next) => {
     }
 });
 /*
-    Method: Update state
-    Type: POST
+    Method: Update state Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -323,8 +282,7 @@ app.put("/State/:stateID", async(req, res, next) => {
     }
 });
 /*
-    Method: Delete state
-    Type: POST
+    Method: Delete state Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -333,22 +291,19 @@ app.delete("/State/:stateID", async(req, res, next) => {
         //Get state id to search
         const { stateID } = req.params;
 
-        const { data, error } = await adminCataloguesclient
+        const resp = await adminCataloguesclient
         .from('states')
         .delete()
         .eq('id', stateID);
 
-        if (error) throw res.status(500).json(error);
-        if (data != null) {
-            res.status(data.status);
-        }
+        if (resp.status == 500) throw res.status(500).json(error);
+        res.status(resp.status);
     } catch (err){
         next(err);
     }
 });
 /*
-    Method: Read all states
-    Type: POST
+    Method: Read all states Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -370,12 +325,11 @@ app.get("/States", async(req, res, next) => {
 });
 
 /*
-    Method: Read all states by countryid
-    Type: POST
+    Method: Read all states by countryid Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
-app.get("/States/:countryid", async(req, res, next) => {
+app.get("/States/ByCountryID/:countryid", async(req, res, next) => {
     try{
         //Get state id to search
         const { countryid } = req.params;
@@ -396,8 +350,7 @@ app.get("/States/:countryid", async(req, res, next) => {
 });
 
 /*
-    Method: Create city
-    Type: POST
+    Method: Create city Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -431,8 +384,7 @@ app.post("/City", async(req, res, next) => {
 });
 
 /*
-    Method: Read city
-    Type: POST
+    Method: Read city Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -457,8 +409,7 @@ app.get("/City/:cityID", async(req, res, next) => {
     }
 });
 /*
-    Method: Update city
-    Type: POST
+    Method: Update city Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -494,8 +445,7 @@ app.put("/City/:cityID", async(req, res, next) => {
     }
 });
 /*
-    Method: Delete city
-    Type: POST
+    Method: Delete city Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -504,23 +454,19 @@ app.delete("/City/:cityID", async(req, res, next) => {
         //Get state id to search
         const { cityID } = req.params;
 
-        const { data, error } = await adminCataloguesclient
+        const resp = await adminCataloguesclient
         .from('cities')
         .delete()
         .eq('id', cityID);
 
-        if (error) throw res.status(500).json(error);
-        if (data != null) {
-            res.status(data.status);
-        }
+        res.status(resp);
     } catch (err){
         next(err);
     }
 });
 
 /*
-    Method: Read all cities
-    Type: POST
+    Method: Read all cities Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -542,8 +488,7 @@ app.get("/Cities", async(req, res, next) => {
 });
 
 /*
-    Method: Read all cities by stateid
-    Type: POST
+    Method: Read all cities by stateid Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -568,8 +513,7 @@ app.get("/Cities/:stateid", async(req, res, next) => {
 });
 
 /*
-    Method: Read all cities by countryid
-    Type: POST
+    Method: Read all cities by countryid Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -594,8 +538,7 @@ app.get("/Cities/:countryid", async(req, res, next) => {
 });
 
 /*
-    Method: Create facilities
-    Type: POST
+    Method: Create facilities Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -627,8 +570,7 @@ app.post("/Facility", async(req, res, next) => {
 });
 
 /*
-    Method: Read facility
-    Type: POST
+    Method: Read facility Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -653,8 +595,7 @@ app.get("/Facility/:facilityID", async(req, res, next) => {
     }
 });
 /*
-    Method: Update facility
-    Type: POST
+    Method: Update facility Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -689,8 +630,7 @@ app.put("/Facility/:facilityID", async(req, res, next) => {
 });
 
 /*
-    Method: Delete city
-    Type: POST
+    Method: Delete city Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -714,8 +654,7 @@ app.delete("/Facility/:facilityID", async(req, res, next) => {
 });
 
 /*
-    Method: Read all facilities
-    Type: POST
+    Method: Read all facilities Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -737,8 +676,7 @@ app.get("/Facilities", async(req, res, next) => {
 });
 
 /*
-    Method: Create roles
-    Type: POST
+    Method: Create roles Type: POST
     In : Json - Out : Json
     Date: 18/05/2025
 */
@@ -769,8 +707,7 @@ app.post("/Role", async(req, res, next) => {
 });
 
 /*
-    Method: Read role
-    Type: GET
+    Method: Read role Type: GET
     In : ID - Out : Json
     Date: 18/05/2025
 */
@@ -796,8 +733,7 @@ app.get("/Role/:roleID", async(req, res, next) => {
 });
 
 /*
-    Method: Update role
-    Type: POST
+    Method: Update role Type: POST
     In : Json - Out : Json
     Date: 18/05/2025
 */
@@ -831,8 +767,7 @@ app.put("/Role/:roleID", async(req, res, next) => {
 });
 
 /*
-    Method: Delete role
-    Type: Delete
+    Method: Delete role Type: Delete
     In : Json - Out : Json
     Date: 18/05/2025
 */
@@ -856,8 +791,7 @@ app.delete("/Role/:RoleID", async(req, res, next) => {
 });
 
 /*
-    Method: Read all roles
-    Type: GET
+    Method: Read all roles Type: GET
     In : Json - Out : Json
     Date: 18/05/2025
 */
@@ -879,8 +813,7 @@ app.get("/Roles", async(req, res, next) => {
 });
 
 /*
-    Method: Create usertype
-    Type: POST
+    Method: Create usertype Type: POST
     In : Json - Out : Json
     Date: 18/05/2025
 */
@@ -911,8 +844,7 @@ app.post("/UserType", async(req, res, next) => {
 });
 
 /*
-    Method: Read usertype
-    Type: GET
+    Method: Read usertype Type: GET
     In : ID - Out : Json
     Date: 18/05/2025
 */
@@ -938,8 +870,7 @@ app.get("/UserType/:UserTypeID", async(req, res, next) => {
 });
 
 /*
-    Method: Update user type
-    Type: PUT
+    Method: Update user type Type: PUT
     In : Json - Out : Json
     Date: 18/05/2025
 */
@@ -973,8 +904,7 @@ app.put("/UserType/:UserTypeID", async(req, res, next) => {
 });
 
 /*
-    Method: Delete UserTypeID
-    Type: Delete
+    Method: Delete UserTypeID Type: Delete
     In : Json - Out : Json
     Date: 18/05/2025
 */
@@ -998,8 +928,7 @@ app.delete("/UserType/:UserTypeID", async(req, res, next) => {
 });
 
 /*
-    Method: Read all user types
-    Type: GET
+    Method: Read all user types Type: GET
     In : Json - Out : Json
     Date: 18/05/2025
 */
@@ -1021,8 +950,7 @@ app.get("/UserTypes", async(req, res, next) => {
 });
 
 /*
-    Method: Create user
-    Type: POST
+    Method: Create user Type: POST
     In : Json - Out : Json
     Date: 18/05/2025
 */
@@ -1062,8 +990,7 @@ app.post("/User", async(req, res, next) => {
 });
 
 /*
-    Method: Read User
-    Type: GET
+    Method: Read User Type: GET
     In : ID - Out : Json
     Date: 21/05/2025
 */
@@ -1089,8 +1016,7 @@ app.get("/User/:UserID", async(req, res, next) => {
 });
 
 /*
-    Method: Update user
-    Type: PUT
+    Method: Update user Type: PUT
     In : Json - Out : Json
     Date: 21/05/2025
 */
@@ -1133,8 +1059,7 @@ app.put("/User/:UserID", async(req, res, next) => {
 });
 
 /*
-    Method: Delete User
-    Type: Delete
+    Method: Delete User Type: Delete
     In : Json - Out : Json
     Date: 21/05/2025
 */
@@ -1158,8 +1083,7 @@ app.delete("/User/:UserID", async(req, res, next) => {
 });
 
 /*
-    Method: change password
-    Type: PATCH
+    Method: change password Type: PATCH
     In : Json - Out : Json
     Date: 22/05/2025
 */
@@ -1187,8 +1111,7 @@ app.patch("/Users/Password/Change", async(req, res, next) => {
 });
 
 /*
-    Method: show user
-    Type: PATCH
+    Method: show user Type: PATCH
     In : Json - Out : Json
     Date: 22/05/2025
 */
@@ -1216,8 +1139,7 @@ app.patch("/Users/:UserID/Show", async(req, res, next) => {
 });
 
 /*
-    Method: hide user
-    Type: PATCH
+    Method: hide user Type: PATCH
     In : Json - Out : Json
     Date: 22/05/2025
 */
