@@ -1,5 +1,6 @@
 const express = require('express');
 const dotenv = require('dotenv');
+const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 
 // Load environment variables
@@ -30,13 +31,20 @@ const adminCataloguesclient = createClient(supabaseUrl,supabaseServiceKey , {
 });
 
 //Configuraciones
-app.set('port', process.env.PORT || 3000);
+app.set('port', process.env.PORT || 3001);
 app.set('json spaces', 2)
 
 // Middleware to parse JSON bodies
 app.use(express.json());
 
-app.listen(3000, () => {
+// Or configure specific origins
+app.use(cors({
+  origin: 'http://localhost:3000', // Allow only your React app
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+app.listen(process.env.PORT, () => {
  console.log("Adondevamos.back is running at 3000");
 });
 
@@ -479,7 +487,7 @@ app.get("/Cities", async(req, res, next) => {
         if (error) throw res.status(500).json(error);
         if (data != null) {
             res.status(200).json({
-                "Message": "Reading process sucess", "info":data
+                "Message" : "Reading process sucess", "info" : data
             });
         }
     } catch (err){
@@ -581,7 +589,7 @@ app.get("/Facility/:facilityID", async(req, res, next) => {
 
         const { data, error } = await adminCataloguesclient
         .from('facilities')
-        .select("name,code, enabled, hide")
+        .select("name, code, enabled, hide")
         .eq('id',facilityID);
 
         if (error) throw res.status(500).json(error);
@@ -654,7 +662,7 @@ app.delete("/Facility/:facilityID", async(req, res, next) => {
 });
 
 /*
-    Method: Read all facilities Type: POST
+    Method: Read all facilities Type: GET
     In : Json - Out : Json
     Date: 15/05/2025
 */
@@ -667,7 +675,8 @@ app.get("/Facilities", async(req, res, next) => {
         if (error) throw res.status(500).json(error);
         if (data != null) {
             res.status(200).json({
-                "Message": "Reading process sucess", "info":data
+                "Message": "Reading process sucess", 
+                "info":data
             });
         }
     } catch (err){

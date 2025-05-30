@@ -1,0 +1,1619 @@
+{
+	"info": {
+		"_postman_id": "9aa7f44d-667f-4908-8215-aea9d5ad78b0",
+		"name": "Adondevamos",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "45009769"
+	},
+	"item": [
+		{
+			"name": "Adondevamosback",
+			"item": [
+				{
+					"name": "SiteManagment",
+					"item": [
+						{
+							"name": "Country",
+							"item": [
+								{
+									"name": "POST Country",
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"name\": \"Canada\", \r\n    \"originalname\":\"Canada\", \r\n    \"acronym\":\"CAN\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "localhost:3000/Country/Create",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Country",
+												"Create"
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Create Country 200 resp",
+											"originalRequest": {
+												"method": "POST",
+												"header": [],
+												"body": {
+													"mode": "raw",
+													"raw": "{\r\n    \"name\": \"Peru\", \r\n    \"originalname\":\"Peru\", \r\n    \"acronym\":\"PER\"\r\n}",
+													"options": {
+														"raw": {
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "localhost:3000/Country",
+													"host": [
+														"localhost"
+													],
+													"port": "3000",
+													"path": [
+														"Country"
+													]
+												}
+											},
+											"status": "Created",
+											"code": 201,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "X-Powered-By",
+													"value": "Express"
+												},
+												{
+													"key": "Content-Type",
+													"value": "application/json; charset=utf-8"
+												},
+												{
+													"key": "Content-Length",
+													"value": "262"
+												},
+												{
+													"key": "ETag",
+													"value": "W/\"106-xylB16ubaoJlL/UUa/DqU/OtxCA\""
+												},
+												{
+													"key": "Date",
+													"value": "Sun, 25 May 2025 19:20:07 GMT"
+												},
+												{
+													"key": "Connection",
+													"value": "keep-alive"
+												},
+												{
+													"key": "Keep-Alive",
+													"value": "timeout=5"
+												}
+											],
+											"cookie": [],
+											"body": "{\n    \"Message\": \"Creation process sucess\",\n    \"info\": [\n        {\n            \"id\": 4,\n            \"createddate\": \"2025-05-25T19:20:08.278003+00:00\",\n            \"name\": \"Peru\",\n            \"originalname\": \"Peru\",\n            \"hide\": false,\n            \"enabled\": true,\n            \"acronym\": \"PER\"\n        }\n    ]\n}"
+										}
+									]
+								},
+								{
+									"name": "Get Country",
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "localhost:3000/Country/1",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Country",
+												"1"
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Response 200",
+											"originalRequest": {
+												"method": "GET",
+												"header": [],
+												"url": {
+													"raw": "localhost:3000/Country/1",
+													"host": [
+														"localhost"
+													],
+													"port": "3000",
+													"path": [
+														"Country",
+														"1"
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "X-Powered-By",
+													"value": "Express"
+												},
+												{
+													"key": "Content-Type",
+													"value": "application/json; charset=utf-8"
+												},
+												{
+													"key": "Content-Length",
+													"value": "192"
+												},
+												{
+													"key": "ETag",
+													"value": "W/\"c0-LdhwSlYPVfjOfxjcgkoV3keWV88\""
+												},
+												{
+													"key": "Date",
+													"value": "Fri, 16 May 2025 03:02:15 GMT"
+												},
+												{
+													"key": "Connection",
+													"value": "keep-alive"
+												},
+												{
+													"key": "Keep-Alive",
+													"value": "timeout=5"
+												}
+											],
+											"cookie": [],
+											"body": "{\n    \"Message\": \"Edition process sucess\",\n    \"info\": [\n        {\n            \"name\": \"Mexico\",\n            \"originalname\": \"Mexico\",\n            \"acronym\": \"MX\",\n            \"enabled\": true,\n            \"hide\": false\n        }\n    ]\n}"
+										}
+									]
+								},
+								{
+									"name": "Get All Countries",
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "localhost:3000/Country/1",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Country",
+												"1"
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Response 200",
+											"originalRequest": {
+												"method": "GET",
+												"header": [],
+												"url": {
+													"raw": "localhost:3000/Country/1",
+													"host": [
+														"localhost"
+													],
+													"port": "3000",
+													"path": [
+														"Country",
+														"1"
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "X-Powered-By",
+													"value": "Express"
+												},
+												{
+													"key": "Content-Type",
+													"value": "application/json; charset=utf-8"
+												},
+												{
+													"key": "Content-Length",
+													"value": "192"
+												},
+												{
+													"key": "ETag",
+													"value": "W/\"c0-LdhwSlYPVfjOfxjcgkoV3keWV88\""
+												},
+												{
+													"key": "Date",
+													"value": "Fri, 16 May 2025 03:02:15 GMT"
+												},
+												{
+													"key": "Connection",
+													"value": "keep-alive"
+												},
+												{
+													"key": "Keep-Alive",
+													"value": "timeout=5"
+												}
+											],
+											"cookie": [],
+											"body": "{\n    \"Message\": \"Edition process sucess\",\n    \"info\": [\n        {\n            \"name\": \"Mexico\",\n            \"originalname\": \"Mexico\",\n            \"acronym\": \"MX\",\n            \"enabled\": true,\n            \"hide\": false\n        }\n    ]\n}"
+										}
+									]
+								},
+								{
+									"name": "PUT Update Country",
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"name\": \"Japan\", \r\n    \"originalname\":\"Nihon\", \r\n    \"acronym\":\"JP\",\r\n    \"hide\":false,\r\n    \"enabled\":true\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "localhost:3000/Country/Update/2",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Country",
+												"Update",
+												"2"
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Response 200",
+											"originalRequest": {
+												"method": "PUT",
+												"header": [],
+												"body": {
+													"mode": "raw",
+													"raw": "{\r\n    \"name\": \"Japan\", \r\n    \"originalname\":\"Nihon\", \r\n    \"acronym\":\"JP\",\r\n    \"hide\":false,\r\n    \"enabled\":true\r\n}",
+													"options": {
+														"raw": {
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "localhost:3000/Country/Update/2",
+													"host": [
+														"localhost"
+													],
+													"port": "3000",
+													"path": [
+														"Country",
+														"Update",
+														"2"
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "X-Powered-By",
+													"value": "Express"
+												},
+												{
+													"key": "Content-Type",
+													"value": "application/json; charset=utf-8"
+												},
+												{
+													"key": "Content-Length",
+													"value": "262"
+												},
+												{
+													"key": "ETag",
+													"value": "W/\"106-dljPYlmzFAR4XUMpv0IxbLTPMBM\""
+												},
+												{
+													"key": "Date",
+													"value": "Sun, 25 May 2025 19:48:47 GMT"
+												},
+												{
+													"key": "Connection",
+													"value": "keep-alive"
+												},
+												{
+													"key": "Keep-Alive",
+													"value": "timeout=5"
+												}
+											],
+											"cookie": [],
+											"body": "{\n    \"Message\": \"Edition process sucess\",\n    \"info\": [\n        {\n            \"id\": 2,\n            \"createddate\": \"2025-05-16T02:11:31.173921+00:00\",\n            \"name\": \"Japan\",\n            \"originalname\": \"Nihon\",\n            \"hide\": false,\n            \"enabled\": true,\n            \"acronym\": \"JP\"\n        }\n    ]\n}"
+										}
+									]
+								},
+								{
+									"name": "Delete Country",
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "localhost:3000/Country/4",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Country",
+												"4"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "State",
+							"item": [
+								{
+									"name": "POST State",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"name\": \"Sinaloa\", \r\n    \"originalname\":\"Sinaloa\", \r\n    \"countryid\":1,\r\n    \"enabled\":true,\r\n    \"hide\":true\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "localhost:3000/State",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"State"
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "201 response",
+											"originalRequest": {
+												"method": "POST",
+												"header": [],
+												"body": {
+													"mode": "raw",
+													"raw": "{\r\n    \"name\": \"Mochis\", \r\n    \"originalname\":\"Los mochis\", \r\n    \"countryid\":1,\r\n    \"enabled\":true,\r\n    \"hide\":true\r\n}",
+													"options": {
+														"raw": {
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "localhost:3000/State",
+													"host": [
+														"localhost"
+													],
+													"port": "3000",
+													"path": [
+														"State"
+													]
+												}
+											},
+											"status": "Created",
+											"code": 201,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "X-Powered-By",
+													"value": "Express"
+												},
+												{
+													"key": "Content-Type",
+													"value": "application/json; charset=utf-8"
+												},
+												{
+													"key": "Content-Length",
+													"value": "267"
+												},
+												{
+													"key": "ETag",
+													"value": "W/\"10b-0VN5LX2AlceffpF4+iz8ymoBHJg\""
+												},
+												{
+													"key": "Date",
+													"value": "Sun, 25 May 2025 20:05:08 GMT"
+												},
+												{
+													"key": "Connection",
+													"value": "keep-alive"
+												},
+												{
+													"key": "Keep-Alive",
+													"value": "timeout=5"
+												}
+											],
+											"cookie": [],
+											"body": "{\n    \"Message\": \"Creation process sucess\",\n    \"info\": [\n        {\n            \"id\": 2,\n            \"createddate\": \"2025-05-25T20:05:09.290674+00:00\",\n            \"name\": \"Mochis\",\n            \"originalname\": \"Los mochis\",\n            \"countryid\": 1,\n            \"enabled\": true,\n            \"hide\": true\n        }\n    ]\n}"
+										}
+									]
+								},
+								{
+									"name": "Get States",
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "localhost:3000/Country/1",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Country",
+												"1"
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Response 200",
+											"originalRequest": {
+												"method": "GET",
+												"header": [],
+												"url": {
+													"raw": "localhost:3000/Country/1",
+													"host": [
+														"localhost"
+													],
+													"port": "3000",
+													"path": [
+														"Country",
+														"1"
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "X-Powered-By",
+													"value": "Express"
+												},
+												{
+													"key": "Content-Type",
+													"value": "application/json; charset=utf-8"
+												},
+												{
+													"key": "Content-Length",
+													"value": "192"
+												},
+												{
+													"key": "ETag",
+													"value": "W/\"c0-LdhwSlYPVfjOfxjcgkoV3keWV88\""
+												},
+												{
+													"key": "Date",
+													"value": "Fri, 16 May 2025 03:02:15 GMT"
+												},
+												{
+													"key": "Connection",
+													"value": "keep-alive"
+												},
+												{
+													"key": "Keep-Alive",
+													"value": "timeout=5"
+												}
+											],
+											"cookie": [],
+											"body": "{\n    \"Message\": \"Edition process sucess\",\n    \"info\": [\n        {\n            \"name\": \"Mexico\",\n            \"originalname\": \"Mexico\",\n            \"acronym\": \"MX\",\n            \"enabled\": true,\n            \"hide\": false\n        }\n    ]\n}"
+										}
+									]
+								},
+								{
+									"name": "Get States By Country",
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "localhost:3000/Country/1",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Country",
+												"1"
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Response 200",
+											"originalRequest": {
+												"method": "GET",
+												"header": [],
+												"url": {
+													"raw": "localhost:3000/Country/1",
+													"host": [
+														"localhost"
+													],
+													"port": "3000",
+													"path": [
+														"Country",
+														"1"
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "X-Powered-By",
+													"value": "Express"
+												},
+												{
+													"key": "Content-Type",
+													"value": "application/json; charset=utf-8"
+												},
+												{
+													"key": "Content-Length",
+													"value": "192"
+												},
+												{
+													"key": "ETag",
+													"value": "W/\"c0-LdhwSlYPVfjOfxjcgkoV3keWV88\""
+												},
+												{
+													"key": "Date",
+													"value": "Fri, 16 May 2025 03:02:15 GMT"
+												},
+												{
+													"key": "Connection",
+													"value": "keep-alive"
+												},
+												{
+													"key": "Keep-Alive",
+													"value": "timeout=5"
+												}
+											],
+											"cookie": [],
+											"body": "{\n    \"Message\": \"Edition process sucess\",\n    \"info\": [\n        {\n            \"name\": \"Mexico\",\n            \"originalname\": \"Mexico\",\n            \"acronym\": \"MX\",\n            \"enabled\": true,\n            \"hide\": false\n        }\n    ]\n}"
+										}
+									]
+								},
+								{
+									"name": "PUT States",
+									"request": {
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"name\": \"Ciudad de Mexico\", \r\n    \"originalname\":\"Ciudad de Mexico\", \r\n    \"countryid\":1,\r\n    \"enabled\":true,\r\n    \"hide\":true\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "localhost:3000/State/2",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"State",
+												"2"
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "200",
+											"originalRequest": {
+												"method": "PUT",
+												"header": [],
+												"body": {
+													"mode": "raw",
+													"raw": "{\r\n    \"name\": \"Ciudad de Mexico\", \r\n    \"originalname\":\"Ciudad de Mexico\", \r\n    \"countryid\":1,\r\n    \"enabled\":true,\r\n    \"hide\":true\r\n}",
+													"options": {
+														"raw": {
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "localhost:3000/State/2",
+													"host": [
+														"localhost"
+													],
+													"port": "3000",
+													"path": [
+														"State",
+														"2"
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "X-Powered-By",
+													"value": "Express"
+												},
+												{
+													"key": "Content-Type",
+													"value": "application/json; charset=utf-8"
+												},
+												{
+													"key": "Content-Length",
+													"value": "282"
+												},
+												{
+													"key": "ETag",
+													"value": "W/\"11a-XnM2irgdzkwJsJ3L5X0LFC0SfPY\""
+												},
+												{
+													"key": "Date",
+													"value": "Sun, 25 May 2025 20:07:03 GMT"
+												},
+												{
+													"key": "Connection",
+													"value": "keep-alive"
+												},
+												{
+													"key": "Keep-Alive",
+													"value": "timeout=5"
+												}
+											],
+											"cookie": [],
+											"body": "{\n    \"Message\": \"Edition process sucess\",\n    \"info\": [\n        {\n            \"id\": 2,\n            \"createddate\": \"2025-05-25T20:05:09.290674+00:00\",\n            \"name\": \"Ciudad de Mexico\",\n            \"originalname\": \"Ciudad de Mexico\",\n            \"countryid\": 1,\n            \"enabled\": true,\n            \"hide\": true\n        }\n    ]\n}"
+										}
+									]
+								},
+								{
+									"name": "Get All States",
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "localhost:3000/Country/1",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Country",
+												"1"
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "200",
+											"originalRequest": {
+												"method": "GET",
+												"header": [],
+												"url": {
+													"raw": "localhost:3000/States",
+													"host": [
+														"localhost"
+													],
+													"port": "3000",
+													"path": [
+														"States"
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "X-Powered-By",
+													"value": "Express"
+												},
+												{
+													"key": "Content-Type",
+													"value": "application/json; charset=utf-8"
+												},
+												{
+													"key": "Content-Length",
+													"value": "192"
+												},
+												{
+													"key": "ETag",
+													"value": "W/\"c0-pllAZs5Q0aLEqyTuUu67CJlFET0\""
+												},
+												{
+													"key": "Date",
+													"value": "Sun, 25 May 2025 20:50:51 GMT"
+												},
+												{
+													"key": "Connection",
+													"value": "keep-alive"
+												},
+												{
+													"key": "Keep-Alive",
+													"value": "timeout=5"
+												}
+											],
+											"cookie": [],
+											"body": "{\n    \"Message\": \"Reading process sucess\",\n    \"info\": [\n        {\n            \"name\": \"Sinaloa\",\n            \"originalname\": \"Sinaloa\",\n            \"countryid\": 1,\n            \"enabled\": true,\n            \"hide\": true\n        }\n    ]\n}"
+										}
+									]
+								},
+								{
+									"name": "Delete States",
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "localhost:3000/State/3",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"State",
+												"3"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "City",
+							"item": [
+								{
+									"name": "POST City",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"name\":\"\", \r\n    \"originalname\":\"\", \r\n    \"countryid\":1,\r\n    \"stateid\":1, \r\n    \"enabled\":true, \r\n    \"hide\":false\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "localhost:3000/City",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"City"
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "CREATE 201",
+											"originalRequest": {
+												"method": "POST",
+												"header": [],
+												"body": {
+													"mode": "raw",
+													"raw": "{\r\n    \"name\":\"Mazatlan\", \r\n    \"originalname\":\"Mazatlan\", \r\n    \"countryid\":1,\r\n    \"stateid\":1, \r\n    \"enabled\":true, \r\n    \"hide\":false\r\n}",
+													"options": {
+														"raw": {
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "localhost:3000/City",
+													"host": [
+														"localhost"
+													],
+													"port": "3000",
+													"path": [
+														"City"
+													]
+												}
+											},
+											"status": "Created",
+											"code": 201,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "X-Powered-By",
+													"value": "Express"
+												},
+												{
+													"key": "Content-Type",
+													"value": "application/json; charset=utf-8"
+												},
+												{
+													"key": "Content-Length",
+													"value": "288"
+												},
+												{
+													"key": "ETag",
+													"value": "W/\"120-YJYnxK62irC/4mTx/keLlerZtJg\""
+												},
+												{
+													"key": "Date",
+													"value": "Sun, 25 May 2025 21:05:30 GMT"
+												},
+												{
+													"key": "Connection",
+													"value": "keep-alive"
+												},
+												{
+													"key": "Keep-Alive",
+													"value": "timeout=5"
+												}
+											],
+											"cookie": [],
+											"body": "{\n    \"Message\": \"Creation process sucess\",\n    \"info\": [\n        {\n            \"id\": 2,\n            \"createddate\": \"2025-05-25T21:05:31.286448+00:00\",\n            \"countryid\": 1,\n            \"stateid\": 1,\n            \"name\": \"Mazatlan\",\n            \"originalname\": \"Mazatlan\",\n            \"enabled\": true,\n            \"hide\": false\n        }\n    ]\n}"
+										}
+									]
+								},
+								{
+									"name": "GET City",
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "localhost:3000/Entity/1",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Entity",
+												"1"
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "200",
+											"originalRequest": {
+												"method": "GET",
+												"header": [],
+												"url": {
+													"raw": "localhost:3000/City/2",
+													"host": [
+														"localhost"
+													],
+													"port": "3000",
+													"path": [
+														"City",
+														"2"
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "X-Powered-By",
+													"value": "Express"
+												},
+												{
+													"key": "Content-Type",
+													"value": "application/json; charset=utf-8"
+												},
+												{
+													"key": "Content-Length",
+													"value": "215"
+												},
+												{
+													"key": "ETag",
+													"value": "W/\"d7-fF9jqyYoc3JLiFZVd4mvRe5z0bc\""
+												},
+												{
+													"key": "Date",
+													"value": "Sun, 25 May 2025 21:08:33 GMT"
+												},
+												{
+													"key": "Connection",
+													"value": "keep-alive"
+												},
+												{
+													"key": "Keep-Alive",
+													"value": "timeout=5"
+												}
+											],
+											"cookie": [],
+											"body": "{\n    \"Message\": \"Reading process sucess\",\n    \"info\": [\n        {\n            \"name\": \"Mazatlan\",\n            \"originalname\": \"Mazatlan\",\n            \"countryid\": 1,\n            \"stateid\": 1,\n            \"enabled\": true,\n            \"hide\": false\n        }\n    ]\n}"
+										}
+									]
+								},
+								{
+									"name": "PUT City",
+									"request": {
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"name\": \"Ciudad de Mexico\", \r\n    \"originalname\":\"Ciudad de Mexico\", \r\n    \"countryid\":1,\r\n    \"enabled\":true,\r\n    \"hide\":true\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "localhost:3000/Entity/2",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Entity",
+												"2"
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "200",
+											"originalRequest": {
+												"method": "PUT",
+												"header": [],
+												"body": {
+													"mode": "raw",
+													"raw": "{\r\n    \"name\": \"Ciudad de Mexico\", \r\n    \"originalname\":\"Ciudad de Mexico\", \r\n    \"countryid\":1,\r\n    \"enabled\":true,\r\n    \"hide\":true\r\n}",
+													"options": {
+														"raw": {
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "localhost:3000/State/2",
+													"host": [
+														"localhost"
+													],
+													"port": "3000",
+													"path": [
+														"State",
+														"2"
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "X-Powered-By",
+													"value": "Express"
+												},
+												{
+													"key": "Content-Type",
+													"value": "application/json; charset=utf-8"
+												},
+												{
+													"key": "Content-Length",
+													"value": "282"
+												},
+												{
+													"key": "ETag",
+													"value": "W/\"11a-XnM2irgdzkwJsJ3L5X0LFC0SfPY\""
+												},
+												{
+													"key": "Date",
+													"value": "Sun, 25 May 2025 20:07:03 GMT"
+												},
+												{
+													"key": "Connection",
+													"value": "keep-alive"
+												},
+												{
+													"key": "Keep-Alive",
+													"value": "timeout=5"
+												}
+											],
+											"cookie": [],
+											"body": "{\n    \"Message\": \"Edition process sucess\",\n    \"info\": [\n        {\n            \"id\": 2,\n            \"createddate\": \"2025-05-25T20:05:09.290674+00:00\",\n            \"name\": \"Ciudad de Mexico\",\n            \"originalname\": \"Ciudad de Mexico\",\n            \"countryid\": 1,\n            \"enabled\": true,\n            \"hide\": true\n        }\n    ]\n}"
+										},
+										{
+											"name": "200",
+											"originalRequest": {
+												"method": "PUT",
+												"header": [],
+												"body": {
+													"mode": "raw",
+													"raw": "{\r\n    \"name\":\"Culiacan\", \r\n    \"originalname\":\"Culiacan\", \r\n    \"countryid\":1,\r\n    \"stateid\":1, \r\n    \"enabled\":true, \r\n    \"hide\":false\r\n}",
+													"options": {
+														"raw": {
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "localhost:3000/City/1",
+													"host": [
+														"localhost"
+													],
+													"port": "3000",
+													"path": [
+														"City",
+														"1"
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "X-Powered-By",
+													"value": "Express"
+												},
+												{
+													"key": "Content-Type",
+													"value": "application/json; charset=utf-8"
+												},
+												{
+													"key": "Content-Length",
+													"value": "287"
+												},
+												{
+													"key": "ETag",
+													"value": "W/\"11f-Vk6GSDdTg0w50rBn2XUsV8da/3M\""
+												},
+												{
+													"key": "Date",
+													"value": "Sun, 25 May 2025 21:11:13 GMT"
+												},
+												{
+													"key": "Connection",
+													"value": "keep-alive"
+												},
+												{
+													"key": "Keep-Alive",
+													"value": "timeout=5"
+												}
+											],
+											"cookie": [],
+											"body": "{\n    \"Message\": \"Edition process sucess\",\n    \"info\": [\n        {\n            \"id\": 1,\n            \"createddate\": \"2025-05-25T21:05:07.586292+00:00\",\n            \"countryid\": 1,\n            \"stateid\": 1,\n            \"name\": \"Culiacan\",\n            \"originalname\": \"Culiacan\",\n            \"enabled\": true,\n            \"hide\": false\n        }\n    ]\n}"
+										}
+									]
+								},
+								{
+									"name": "Delete City",
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "localhost:3000/State/3",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"State",
+												"3"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get All Cities",
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "localhost:3000/Cities",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Cities"
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "200",
+											"originalRequest": {
+												"method": "GET",
+												"header": [],
+												"url": {
+													"raw": "localhost:3000/Cities",
+													"host": [
+														"localhost"
+													],
+													"port": "3000",
+													"path": [
+														"Cities"
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "X-Powered-By",
+													"value": "Express"
+												},
+												{
+													"key": "Content-Type",
+													"value": "application/json; charset=utf-8"
+												},
+												{
+													"key": "Content-Length",
+													"value": "215"
+												},
+												{
+													"key": "ETag",
+													"value": "W/\"d7-J/Jwyw38xgEf25/WkKgtvQuagPs\""
+												},
+												{
+													"key": "Date",
+													"value": "Sun, 25 May 2025 21:15:19 GMT"
+												},
+												{
+													"key": "Connection",
+													"value": "keep-alive"
+												},
+												{
+													"key": "Keep-Alive",
+													"value": "timeout=5"
+												}
+											],
+											"cookie": [],
+											"body": "{\n    \"Message\": \"Reading process sucess\",\n    \"info\": [\n        {\n            \"name\": \"Culiacan\",\n            \"originalname\": \"Culiacan\",\n            \"countryid\": 1,\n            \"stateid\": 1,\n            \"enabled\": true,\n            \"hide\": false\n        }\n    ]\n}"
+										}
+									]
+								}
+							]
+						},
+						{
+							"name": "Facilities",
+							"item": [
+								{
+									"name": "POST CREATE",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"name\": \"WC\", \r\n    \"code\":\"WC\",\r\n    \"enabled\":true,\r\n    \"hide\":true\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "localhost:3001/Facilities",
+											"host": [
+												"localhost"
+											],
+											"port": "3001",
+											"path": [
+												"Facilities"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "GET READ",
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "localhost:3000/Entity/1",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Entity",
+												"1"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "PUT Update",
+									"request": {
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"name\": \"Ciudad de Mexico\", \r\n    \"originalname\":\"Ciudad de Mexico\", \r\n    \"countryid\":1,\r\n    \"enabled\":true,\r\n    \"hide\":true\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "localhost:3000/Entity/2",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Entity",
+												"2"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete Delete",
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "localhost:3000/State/3",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"State",
+												"3"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get All Entities",
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "localhost:3000/Entity/1",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Entity",
+												"1"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "Example CRUD Copy",
+							"item": [
+								{
+									"name": "POST CREATE",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"name\": \"Sinaloa\", \r\n    \"originalname\":\"Sinaloa\", \r\n    \"countryid\":1,\r\n    \"enabled\":true,\r\n    \"hide\":true\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "localhost:3000/Entity",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Entity"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "GET READ",
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "localhost:3000/Entity/1",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Entity",
+												"1"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "PUT Update",
+									"request": {
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"name\": \"Ciudad de Mexico\", \r\n    \"originalname\":\"Ciudad de Mexico\", \r\n    \"countryid\":1,\r\n    \"enabled\":true,\r\n    \"hide\":true\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "localhost:3000/Entity/2",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Entity",
+												"2"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete Delete",
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "localhost:3000/State/3",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"State",
+												"3"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get All Entities",
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "localhost:3000/Entity/1",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Entity",
+												"1"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "Roles",
+							"item": [
+								{
+									"name": "POST CREATE",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"name\": \"Sinaloa\", \r\n    \"originalname\":\"Sinaloa\", \r\n    \"countryid\":1,\r\n    \"enabled\":true,\r\n    \"hide\":true\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "localhost:3000/Entity",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Entity"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "GET READ",
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "localhost:3000/Entity/1",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Entity",
+												"1"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "PUT Update",
+									"request": {
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"name\": \"Ciudad de Mexico\", \r\n    \"originalname\":\"Ciudad de Mexico\", \r\n    \"countryid\":1,\r\n    \"enabled\":true,\r\n    \"hide\":true\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "localhost:3000/Entity/2",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Entity",
+												"2"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete Delete",
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "localhost:3000/State/3",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"State",
+												"3"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get All Entities",
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "localhost:3000/Entity/1",
+											"host": [
+												"localhost"
+											],
+											"port": "3000",
+											"path": [
+												"Entity",
+												"1"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					]
+				}
+			]
+		}
+	]
+}
