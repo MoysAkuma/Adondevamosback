@@ -670,7 +670,7 @@ app.get("/Facilities", async(req, res, next) => {
     try{
         const { data, error } = await adminCataloguesclient
         .from('facilities')
-        .select("name, code, enabled, hide");
+        .select("id, name, code, enabled, hide");
 
         if (error) throw res.status(500).json(error);
         if (data != null) {
