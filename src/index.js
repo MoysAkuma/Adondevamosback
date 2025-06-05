@@ -67,7 +67,7 @@ app.get('/',(req,res)=>{
 app.post("/Country", async(req, res, next) => {
     try{
         //GetrqBody
-        const { name, originalname, acronym } = req.body;
+        const { name, originalname, acronym, hide } = req.body;
         const message = req.body.message;
 
         const { data, error } = await adminCataloguesclient.from('countries')
@@ -77,7 +77,7 @@ app.post("/Country", async(req, res, next) => {
                 originalname : originalname,
                 acronym : acronym,
                 enabled : true,
-                hide : false
+                hide : hide
             })
         .select();
 
@@ -97,6 +97,32 @@ app.post("/Country", async(req, res, next) => {
     Date: 15/05/2025
 */
 app.get("/Country/:CountryID", async(req, res, next) => {
+    try{
+        //Get country id to search
+        const { CountryID } = req.params;
+
+        const { data, error } = await adminCataloguesclient
+        .from('countries')
+        .select("name, originalname, acronym, enabled, hide")
+        .eq('id',CountryID);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: GetCountryNames Type: GET
+    In : Json - Out : Json
+    Date: 03/06/2025
+*/
+app.get("/Country/:CountryID/", async(req, res, next) => {
     try{
         //Get country id to search
         const { CountryID } = req.params;
@@ -183,7 +209,7 @@ app.get("/Countries", async(req, res, next) => {
     try{
         const { data, error } = await adminCataloguesclient
         .from('countries')
-        .select("name, originalname, acronym, enabled, hide");
+        .select("id,name, originalname, acronym, enabled, hide");
 
         if (error) throw res.status(500).json(error);
         if (data != null) {
@@ -243,6 +269,7 @@ app.get("/State/:StateID", async(req, res, next) => {
         .from('states')
         .select("name, originalname, countryid, enabled, hide")
         .eq('id',StateID);
+        
 
         if (error) throw res.status(500).json(error);
         if (data != null) {
@@ -500,13 +527,13 @@ app.get("/Cities", async(req, res, next) => {
     In : Json - Out : Json
     Date: 15/05/2025
 */
-app.get("/Cities/:stateid", async(req, res, next) => {
+app.get("/Cities/ByState/:stateid", async(req, res, next) => {
     try{
         //Get state and country ids to search
         const { stateid } = req.params;
         const { data, error } = await adminCataloguesclient
         .from('cities')
-        .select("name, originalname, countryid, stateid, enabled, hide")
+        .select("id, name, originalname, countryid, stateid, enabled, hide")
         .eq('stateid',stateid);
 
         if (error) throw res.status(500).json(error);
