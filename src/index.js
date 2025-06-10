@@ -3,6 +3,7 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 
+
 // Load environment variables
 dotenv.config(); 
 
@@ -1197,6 +1198,31 @@ app.patch("/Users/:UserID/Hide", async(req, res, next) => {
                 "Message": "Reading process sucess", "info":data
             });
         }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method:VerifyTag Type: POST
+    In : Json - Out : Json
+    Date: 08/06/2025
+*/
+app.get("/User/Verify/Tag/:Tagid", async(req, res, next) => {
+    try{
+        const { Tagid } = req.params;
+        const { data, error } = await userclient
+        .from('users')
+        .select("name")
+        .eq('tag', Tagid);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(400);    
+        } else {
+            res.status(200);
+        }
+        
     } catch (err){
         next(err);
     }
