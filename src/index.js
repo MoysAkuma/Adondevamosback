@@ -13,6 +13,9 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabaseServiceKey = process.env.SERVICE_KEY;
 
+//Swagger 
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsDoc = require('swagger-jsdoc');
 
 const tripsclient = createClient(supabaseUrl, supabaseKey, {
    db: { schema: 'trips' }
@@ -30,6 +33,10 @@ const adminCataloguesclient = createClient(supabaseUrl,supabaseServiceKey , {
    db: { schema: 'catalogues' }
 });
 
+const CataloguesAnonclient = createClient(supabaseUrl,supabaseKey , {
+   db: { schema: 'catalogues' }
+});
+
 //Configuraciones
 app.set('port', process.env.PORT || 3001);
 app.set('json spaces', 2)
@@ -39,24 +46,34 @@ app.use(express.json());
 
 // Or configure specific origins
 app.use(cors({
-  origin: 'http://localhost:3000', // Allow only your React app
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  origin: 'http://localhost:3000', 
+  methods: ['GET', 'POST', 'PUT','PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// Swagger setup
+const swaggerOptions = {
+  swaggerDefinition: {
+    myapi: '3.0.0',
+    info: {
+      title: 'Adondevamos.back',
+      version: 'Alpha',
+      description: 'Restful api to manage adondeveamos.web part of Adondevamos.io website',
+    },
+    servers: [
+      {
+        url: 'http://localhost:3001',
+      },
+    ],
+  },
+  apis: ['routes/*.js'], // files containing annotations as above
+};
+
+const swaggerDocs = swaggerJsDoc(swaggerOptions);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+
 app.listen(process.env.PORT, () => {
  console.log("Adondevamos.back is running at 3000");
-});
-
-/*
-    Method: Welcome Type: GET
-    In : Json - Out : Json
-    Date: 01:01:2025
-*/
-app.get('/',(req,res)=>{
-    res.json(
-        {"msg":"Welcome"}
-    );
 });
 
 /*
@@ -103,7 +120,7 @@ app.get("/Country/:CountryID", async(req, res, next) => {
 
         const { data, error } = await adminCataloguesclient
         .from('countries')
-        .select("name, originalname, acronym, enabled, hide")
+        .select("id, name, originalname, acronym, enabled, hide")
         .eq('id',CountryID);
 
         if (error) throw res.status(500).json(error);
@@ -122,7 +139,7 @@ app.get("/Country/:CountryID", async(req, res, next) => {
     In : Json - Out : Json
     Date: 03/06/2025
 */
-app.get("/Country/:CountryID/", async(req, res, next) => {
+app.get("/Country/:CountryID", async(req, res, next) => {
     try{
         //Get country id to search
         const { CountryID } = req.params;
@@ -147,7 +164,7 @@ app.get("/Country/:CountryID/", async(req, res, next) => {
     In : Json - Out : Json
     Date: 15/05/2025
 */
-app.put("/Country/Update/:CountryID", async(req, res, next) => {
+app.put("/Country/:CountryID", async(req, res, next) => {
     try{
         //Get country id to search
         const { CountryID } = req.params;
@@ -193,13 +210,61 @@ app.delete("/Country/:CountryID", async(req, res, next) => {
         .eq('id', CountryID);
 
         if (error) throw res.status(500).json(error);
-        if (data != null) {
-            res.status(200);
-        }
+        res.status(200);
     } catch (err){
         next(err);
     }
 });
+
+/*
+    Method: Hide a Country form system
+    In : Json - Out : Json
+    Date: 11/06/2025
+*/
+app.patch("/Country/:CountryID/Hide", async(req, res, next) =>{
+    try{
+        //Get country id to search
+        const { CountryID } = req.params;
+
+        const { data, error } = await adminCataloguesclient
+        .from('countries')
+        .update( { hide : true})
+        .eq('id', CountryID)
+        .select("hide");
+
+        if (error) throw res.status(500).json(error);
+        res.status(200).json(data);
+    } catch (err){
+        next(err);
+    }
+}
+);
+
+/*
+    Method: Show a Country that is hidden
+    In : Json - Out : Json
+    Date: 11/06/2025
+*/
+app.patch("/Country/:CountryID/Show", async(req, res, next) =>{
+    try{
+        //Get country id to search
+        const { CountryID } = req.params;
+
+        const { data, error } = await adminCataloguesclient
+        .from('countries')
+        .update({
+            hide : false
+        })
+        .eq('id', CountryID).select("hide");
+
+        if (error) throw res.status(500).json(error);
+        res.status(200).json(data);
+    } catch (err){
+        next(err);
+    }
+}
+);
+
 /*
     Method: get all countries Type: POST
     In : Json - Out : Json
@@ -209,7 +274,7 @@ app.get("/Countries", async(req, res, next) => {
     try{
         const { data, error } = await adminCataloguesclient
         .from('countries')
-        .select("id,name, originalname, acronym, enabled, hide");
+        .select();
 
         if (error) throw res.status(500).json(error);
         if (data != null) {
@@ -218,6 +283,7 @@ app.get("/Countries", async(req, res, next) => {
             });
         }
     } catch (err){
+        console.log(err);
         next(err);
     }
 });
