@@ -755,6 +755,68 @@ app.delete("/Facility/:facilityID", async(req, res, next) => {
 });
 
 /*
+    Method: Hide facility
+    In : Json - Out : Json
+    Date: 13/06/2025
+*/
+app.patch("/Facility/:facilityID/Hide", async(req, res, next) => {
+    try{
+        //Get state id to search
+        const { facilityID } = req.params;
+
+        const { data, error } = await adminCataloguesclient
+        .from('facilities')
+        .update( { hide : true })
+        .eq('id',facilityID)
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Edition process sucess", "info":data
+            });
+        } else {
+            res.status(400).json({
+                "Message": "Not success"
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Show facility
+    In : Json - Out : Json
+    Date: 13/06/2025
+*/
+app.patch("/Facility/:facilityID/Show", async(req, res, next) => {
+    try{
+        //Get state id to search
+        const { facilityID } = req.params;
+
+        const { data, error } = await adminCataloguesclient
+        .from('facilities')
+        .update( { hide : false })
+        .eq('id',facilityID)
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Edition process sucess", "info":data
+            });
+        } else {
+            res.status(400).json({
+                "Message": "Not success"
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
     Method: Read all facilities Type: GET
     In : Json - Out : Json
     Date: 15/05/2025
