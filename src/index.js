@@ -436,7 +436,7 @@ app.get("/States/ByCountryID/:countryid", async(req, res, next) => {
         const { countryid } = req.params;
         const { data, error } = await adminCataloguesclient
         .from('states')
-        .select("name, originalname, countryid, enabled, hide")
+        .select()
         .eq('countryid',countryid);
 
         if (error) throw res.status(500).json(error);
@@ -1121,7 +1121,7 @@ app.get("/UserTypes", async(req, res, next) => {
 app.post("/User", async(req, res, next) => {
     try{
         //GetrqBody
-        const { name, tag, lastName, secondName,password, email, countryID, stateID, cityID, enabled, hide } = req.body;
+        const { name, tag, description, lastName, secondName,password, email, countryID, stateID, cityID, enabled, hide } = req.body;
 
         const { data, error } = await anonclientuser
         .from('users')
@@ -1165,7 +1165,7 @@ app.get("/User/:UserID", async(req, res, next) => {
 
         const { data, error } = await userclient
         .from('users')
-        .select('name, tag, lastname, password, email, countryid, stateid, cityid, enabled, hide')
+        .select()
         .eq('id',UserID);
 
         if (error) throw res.status(500).json(error);
@@ -1238,9 +1238,7 @@ app.delete("/User/:UserID", async(req, res, next) => {
         .eq('id', UserID);
 
         if (error) throw res.status(500).json(error);
-        if (data != null) {
-            res.status(data.status);
-        }
+        res.status(data.status);
     } catch (err){
         next(err);
     }
@@ -1330,3 +1328,27 @@ app.patch("/Users/:UserID/Hide", async(req, res, next) => {
     }
 });
 
+app.get("/User/Verify/Tag/:newtag", async(req, res, next) => {
+    try{
+        //Get tag to search
+        const { newtag } = req.params;
+        const tagExists = await checkTagExists(newtag);
+    
+        if (tagExists) {
+            res.status(409).json({ message:"Tag is taken"});
+        }
+        res.status(200).json({ message:"Tag is available"});
+        
+    } catch (err){
+        next(err);
+    }
+});
+
+async function checkTagExists(tag){
+    const { data, error } = await anonclientuser
+        .from('users')
+        .select('tag')
+        .eq("tag", tag)
+        .single();
+    return !!data;
+}
