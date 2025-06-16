@@ -74,7 +74,7 @@ const swaggerDocs = swaggerJsDoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 app.listen(process.env.PORT, () => {
- console.log("Adondevamos.back is running at 3000");
+ console.log("Adondevamos.back is running at ",process.env.PORT);
 });
 
 /*
@@ -1329,27 +1329,11 @@ app.patch("/Users/:UserID/Hide", async(req, res, next) => {
     }
 });
 
-<<<<<<< HEAD
 /*
-    Method:VerifyTag Type: POST
-    In : Json - Out : Json
-    Date: 08/06/2025
+    Method: Verify if tag is available Type: GET
+    In : String - Out : Json
+    Date: 15/06/2025
 */
-app.get("/User/Verify/Tag/:Tagid", async(req, res, next) => {
-    try{
-        const { Tagid } = req.params;
-        const { data, error } = await userclient
-        .from('users')
-        .select("name")
-        .eq('tag', Tagid);
-
-        if (error) throw res.status(500).json(error);
-        if (data != null) {
-            res.status(400);    
-        } else {
-            res.status(200);
-        }
-=======
 app.get("/User/Verify/Tag/:newtag", async(req, res, next) => {
     try{
         //Get tag to search
@@ -1357,18 +1341,15 @@ app.get("/User/Verify/Tag/:newtag", async(req, res, next) => {
         const tagExists = await checkTagExists(newtag);
     
         if (tagExists) {
-            res.status(409).json({ message:"Tag is taken"});
+           return res.status(409).json({ message:"Tag is taken"});
         }
-        res.status(200).json({ message:"Tag is available"});
->>>>>>> e65253f0eff1c707ab51784a05d498c43a2b654c
+        return res.status(200).json({ message:"Tag is available"});
         
     } catch (err){
         next(err);
     }
 });
 
-<<<<<<< HEAD
-=======
 async function checkTagExists(tag){
     const { data, error } = await anonclientuser
         .from('users')
@@ -1377,4 +1358,33 @@ async function checkTagExists(tag){
         .single();
     return !!data;
 }
->>>>>>> e65253f0eff1c707ab51784a05d498c43a2b654c
+
+/*
+    Method: Verify if email is available Type: GET
+    In : String - Out : Json
+    Date: 15/06/2025
+*/
+app.get("/User/Verify/Email/:email", async(req, res, next) => {
+    try{
+        //Get tag to search
+        const { email } = req.params;
+        const emailExists = await checkEmailExists(newtag);
+    
+        if (emailExists) {
+           return res.status(409).json({ message:"Email is taken"});
+        }
+        return res.status(200).json({ message:"Email is available"});
+        
+    } catch (err){
+        next(err);
+    }
+});
+
+async function checkEmailExists(email){
+    const { data, error } = await anonclientuser
+        .from('users')
+        .select('email')
+        .eq("email", email)
+        .single();
+    return !!data;
+}
