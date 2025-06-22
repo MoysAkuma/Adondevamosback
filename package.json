@@ -2,7 +2,7 @@
   "name": "adondevamosback",
   "version": "Alpha",
   "description": "a backend project in nodejs to manage a website",
-  "main": "src/index.tsx",
+  "main": "src/app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
