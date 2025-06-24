@@ -1,9 +1,7 @@
-const express = require('express');
+import express from 'express';
+import countryController from '../controllers/countries.controller.js'
+
 const router = express.Router();
-const countryController = require('../controllers/contriesController');
-const { validateCreateCountry, 
-    validateUpdateCountry } 
-    = require('../validations/contriesValidations');
 /**
  * @swagger
  * /Countries:
@@ -22,7 +20,6 @@ const { validateCreateCountry,
  *                 example: Created 
  */
 router.post('/Countries', 
-    
     countryController.createCountry);
 
 /*
@@ -30,40 +27,46 @@ router.post('/Countries',
     In : Json - Out : Json
     Date: 15/05/2025
 */
-router.get("/Countries/:CountryID", countryController.getCountrybyID);
+router.get("/Countries/:CountryID", 
+    countryController.getCountrybyID);
 
 /*
     Method: Update country Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
-router.put("/Countries/:CountryID", countryController.updateCountrybyID);
+router.put("/Countries/:CountryID", 
+    countryController.updateCountrybyID);
 
 /*
     Method: Delete country Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
-router.delete("/Countries/:CountryID", countryController.deleteCountrybyID);
+router.delete("/Countries/:CountryID", 
+    countryController.deleteCountrybyID);
 
 /*
     Method: Hide a Country form system
     In : Json - Out : Json
     Date: 11/06/2025
 */
-router.patch("/Countries/:CountryID/Hide", countryController.hideCountrybyID);
+router.patch("/Countries/:CountryID/Hide", 
+    countryController.hideCountrybyID);
 /*
     Method: Show a Country that is hidden
     In : Json - Out : Json
     Date: 11/06/2025
 */
-router.patch("/Countries/:CountryID/Show", countryController.showCountrybyID);
+router.patch("/Countries/:CountryID/Show", 
+    countryController.showCountrybyID);
 
 /*
     Method: get all countries Type: POST
     In : Json - Out : Json
     Date: 15/05/2025
 */
-router.get("/Countries", countryController.getAllCountries);
+router.get("/Countries", 
+    countryController.getAllCountries);
 
-module.exports = router;
+export default countryRoutes = router;

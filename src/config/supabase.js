@@ -1,8 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
+import { env } from './env.js';
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-const supabaseServiceKey = process.env.SERVICE_KEY;
+const supabaseUrl = env.SUPABASE_URL;
+const supabaseKey = env.SUPABASE_ANON_KEY;
+const supabaseServiceKey = env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   throw new Error('Supabase URL and Key must be defined in environment variables');
@@ -31,7 +32,6 @@ const cataloguesClient = createClient(supabaseUrl, supabaseServiceKey, {
 export { 
   supabase as default,
   supabase as publicSchemaClient,
-  userSupabase,
   userClient,
   cataloguesClient
 };

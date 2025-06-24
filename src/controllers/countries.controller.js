@@ -1,37 +1,33 @@
-import cataloguesClient from '../config/supabase';
-import ApiError from  '../utils/apiError'
-import ApiResponse from  '../utils/apiResponse'
+import {ApiError} from  '../utils/apiError.js'
+import {ApiResponse} from  '../utils/apiResponse.js'
+import countriesService from '../services/countries.service.js'
 
 //create crountry
-exports.createCountry = async (req, res, next) => {
+const createCountry = async (req, res, next) => {
   try{
     //GetrqBody
     const { name, originalname, acronym, hide } = req.body;
-    const { data: ncountry, error } = await cataloguesClient
-    .insert(
-    {
+    const data = await countriesService.createCountry({
         name: name, 
         originalname : originalname,
         acronym : acronym,
         enabled : true,
         hide : hide
-    })
-    .select();
+    });
+    
     if (error) throw new ApiError(500,error.message);
-    new ApiResponse(res).success('Creation process sucess', ncountry, 201);
+    new ApiResponse(res).success('Creation process sucess', data, 201);
   } catch(err){
     next(err);
   } 
 };
 
-exports.getCountrybyID = async (req, res, next) => {
+const getCountrybyID = async (req, res, next) => {
   try {
     //Get country id to search
     const { CountryID } = req.params;
-    const { data: country, error } = await cataloguesClient
-      .from('countries')
-      .select("*")
-      .eq('id',CountryID);
+    const country = countriesService.getCountryById(CountryID);
+    
     if (error) throw new ApiError(500,error.message);
     new ApiResponse(res).success(
       'Reading process sucess', 
@@ -41,93 +37,79 @@ exports.getCountrybyID = async (req, res, next) => {
   }
 };
 
-exports.updateCountrybyID = async (req, res, next) => {
+const updateCountrybyID = async (req, res, next) => {
   try {
     //Get country id to search
     const { CountryID } = req.params;
     //GetrqBody
     const { name, originalname, acronym, enabled, hide } = req.body;
-    const { data: country, error } = await cataloguesClient
-    .update(
-    {
+
+    const editedcountry = await countriesService.updateCountry(CountryID, {
         name: name, 
         originalname : originalname,
         acronym : acronym,
         enabled : enabled,
         hide : hide
-    })
-    .eq('id',CountryID)
-    .select();
+    });
 
     if (error) throw new ApiError(500,error.message);
     new ApiResponse(res).success(
-      'Reading process sucess', 
-      country);
+      'Updating Data sucess', 
+      editedcountry);
 
   } catch (error) {
     next(err);
   }
 };
 
-exports.deleteCountrybyID = async (req, res, next) => {
+const deleteCountrybyID = async (req, res, next) => {
   try {
     //Get country id to search
     const { CountryID } = req.params;
-    const { data: country, error } = await cataloguesClient
-    .from('countries')
-    .delete()
-    .eq('id', CountryID);
+    const resp = await countriesService.deleteCountry(CountryID);
 
     if (error) throw new ApiError(500,error.message);
     new ApiResponse(res).success(
       'Deletin process sucess', 
-      country);
+      resp);
   } catch (error) {
     next(err);
   }
 };
 
 //Get all countries
-exports.getAllCountries = async (req, res) => {
+const getAllCountries = async (req, res) => {
   const page = parseInt(req.query.page) || 10;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
   try{
-    const { data: countries, error } = await cataloguesClient
-    .from('countries')
-    .select()
-    .limit(limit)
-    .skip(skip);
+    const countries = await countriesService.getAll(page, limit, skip);
     if (error) throw new ApiError(500,error.message);
     new ApiResponse(res).success(
-      'Reading process sucess', 
+      'Reading all countries', 
       countries);
   } catch(err){
     next(err);
   }   
 };
 
-exports.hideCountrybyID = async (req, res, next) => {
+const hideCountrybyID = async (req, res, next) => {
   try {
     //Get country id to search
     const { CountryID } = req.params;
-    const { data: country, error } = await cataloguesClient
-    .from('countries')
-    .update({
-        hide : true
-    })
-    .eq('id', CountryID)
-    .select("hide");
+    
+    const hideresp = countriesService.setVisibilityCountry(CountryID, false);
+
     if (error) throw new ApiError(500,error.message);
     new ApiResponse(res).success(
       'Country was hidden', 
-      country);
+      hideresp);
   } catch (error) {
     next(err);
   }
 };
 
-exports.showCountrybyID = async (req, res, next) => {
+const showCountrybyID = async (req, res, next) => {
   try {
     //Get country id to search
     const { CountryID } = req.params;
@@ -147,3 +129,15 @@ exports.showCountrybyID = async (req, res, next) => {
     next(err);
   }
 };
+
+const countryController = {
+  createCountry,
+  getCountrybyID,
+  updateCountrybyID,
+  deleteCountrybyID,
+  getAllCountries,
+  hideCountrybyID,
+  showCountrybyID
+};
+
+export default countryController;

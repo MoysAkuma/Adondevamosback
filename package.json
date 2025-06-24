@@ -8,6 +8,7 @@
   },
   "keywords": [],
   "author": "@Moysakuma",
+  "type": "module",
   "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",
