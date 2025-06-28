@@ -1,8 +1,9 @@
-const express = require('express');
-const dotenv = require('dotenv');
-const cors = require('cors');
-const { createClient } = require('@supabase/supabase-js');
-
+import express from 'express';
+import dotenv from 'dotenv';
+import cors from 'cors';
+import { createClient } from '@supabase/supabase-js';
+//Swagger 
+import swaggerUi  from 'swagger-ui-express';
 
 // Load environment variables
 dotenv.config(); 
@@ -14,9 +15,8 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabaseServiceKey = process.env.SERVICE_KEY;
 
-//Swagger 
-const swaggerUi = require('swagger-ui-express');
-const swaggerJsDoc = require('swagger-jsdoc');
+
+import swaggerJsDoc from 'swagger-jsdoc';
 
 const tripsclient = createClient(supabaseUrl, supabaseKey, {
    db: { schema: 'trips' }
@@ -32,6 +32,10 @@ const userclient = createClient(supabaseUrl,supabaseServiceKey , {
 
 const adminCataloguesclient = createClient(supabaseUrl,supabaseServiceKey , {
    db: { schema: 'catalogues' }
+});
+
+const placesclient = createClient(supabaseUrl,supabaseServiceKey , {
+   db: { schema: 'places' }
 });
 
 const CataloguesAnonclient = createClient(supabaseUrl,supabaseKey , {
@@ -1388,3 +1392,125 @@ async function checkEmailExists(email){
         .single();
     return !!data;
 }
+
+/*
+    Method: Create place Type: POST
+    In : Json - Out : Json
+    Date: 27/06/2025
+*/
+app.post("/Places", async(req, res, next) => {
+    try{
+        //GetrqBody
+        const { countryid, stateid, cityid, description, address, facilities, isinternational } = req.body;
+
+        const { data, error } = await placesclient
+        .from('places')
+        .insert(
+            {
+                countryid : countryid, 
+                stateid : stateid,
+                cityid : cityid, 
+                description : description, 
+                address : address,
+                facilities : facilities, 
+                isinternational : isinternational
+            })
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(201).json({
+                "Message": "Creation process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Read Place Type: GET
+    In : ID - Out : Json
+    Date: 27/06/2025
+*/
+app.get("/Places/:PlaceID", async(req, res, next) => {
+    try{
+        //Get PlaceID to search
+        const { PlaceID } = req.params;
+
+        const { data, error } = await placesclient
+        .from('places')
+        .select()
+        .eq('id',PlaceID);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Update user Type: PUT
+    In : Json - Out : Json
+    Date: 21/05/2025
+*/
+app.put("/Places/:PlaceID", async(req, res, next) => {
+    try{
+        //Get place id to search
+        const { PlaceID } = req.params;
+        //GetrqBody
+        const { countryid, stateid, cityid, description, address, facilities, isinternational } = req.body;
+
+        const { data, error } = await placesclient
+        .from('users')
+        .update(
+            {
+                countryid : countryid, 
+                stateid : stateid,
+                cityid : cityid, 
+                description : description, 
+                address : address,
+                facilities : facilities, 
+                isinternational : isinternational
+            })
+        .eq('id',PlaceID)
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Edition process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Delete User Type: Delete
+    In : Json - Out : Json
+    Date: 27/05/2025
+*/
+app.delete("/Places/:PlaceID", async(req, res, next) => {
+    try{
+        //Get PlaceID to search
+        const { PlaceID } = req.params;
+
+        const { data, error } = await placesclient
+        .from('places')
+        .delete()
+        .eq('id', PlaceID);
+
+        if (error) throw res.status(500).json(error);
+        res.status(data.status);
+    } catch (err){
+        next(err);
+    }
+});
+

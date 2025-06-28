@@ -69,4 +69,4 @@ router.patch("/Countries/:CountryID/Show",
 router.get("/Countries", 
     countryController.getAllCountries);
 
-export default countryRoutes = router;
+export default router;

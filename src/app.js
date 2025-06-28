@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import errorMiddleware from './middleware/error.middleware.js'
-import countryRoutes from './routes/countries.routes.js';
+import countriesRoutes from './routes/countries.routes.js';
 const app = express();
 
 
@@ -16,7 +16,7 @@ app.use(cors({
 }));
 
 // Routes
-app.use('/v1', countryRoutes);
+app.use('/v1', countriesRoutes);
 
 // Error handling
 app.use(errorMiddleware.notFound);
