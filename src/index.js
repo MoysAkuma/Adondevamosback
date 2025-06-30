@@ -86,7 +86,7 @@ app.listen(process.env.PORT, () => {
     In : Json - Out : Json
     Date: 13/05/2025
 */
-app.post("/Country", async(req, res, next) => {
+app.post("/Countries", async(req, res, next) => {
     try{
         //GetrqBody
         const { name, originalname, acronym, hide } = req.body;
@@ -118,7 +118,7 @@ app.post("/Country", async(req, res, next) => {
     In : Json - Out : Json
     Date: 15/05/2025
 */
-app.get("/Country/:CountryID", async(req, res, next) => {
+app.get("/Countries/:CountryID", async(req, res, next) => {
     try{
         //Get country id to search
         const { CountryID } = req.params;
@@ -144,7 +144,7 @@ app.get("/Country/:CountryID", async(req, res, next) => {
     In : Json - Out : Json
     Date: 03/06/2025
 */
-app.get("/Country/:CountryID", async(req, res, next) => {
+app.get("/Countries/:CountryID", async(req, res, next) => {
     try{
         //Get country id to search
         const { CountryID } = req.params;
@@ -169,7 +169,7 @@ app.get("/Country/:CountryID", async(req, res, next) => {
     In : Json - Out : Json
     Date: 15/05/2025
 */
-app.put("/Country/:CountryID", async(req, res, next) => {
+app.put("/Countries/:CountryID", async(req, res, next) => {
     try{
         //Get country id to search
         const { CountryID } = req.params;
@@ -204,7 +204,7 @@ app.put("/Country/:CountryID", async(req, res, next) => {
     In : Json - Out : Json
     Date: 15/05/2025
 */
-app.delete("/Country/:CountryID", async(req, res, next) => {
+app.delete("/Countries/:CountryID", async(req, res, next) => {
     try{
         //Get country id to search
         const { CountryID } = req.params;
@@ -226,7 +226,7 @@ app.delete("/Country/:CountryID", async(req, res, next) => {
     In : Json - Out : Json
     Date: 11/06/2025
 */
-app.patch("/Country/:CountryID/Hide", async(req, res, next) =>{
+app.patch("/Countries/:CountryID/Hide", async(req, res, next) =>{
     try{
         //Get country id to search
         const { CountryID } = req.params;
@@ -250,7 +250,7 @@ app.patch("/Country/:CountryID/Hide", async(req, res, next) =>{
     In : Json - Out : Json
     Date: 11/06/2025
 */
-app.patch("/Country/:CountryID/Show", async(req, res, next) =>{
+app.patch("/Countries/:CountryID/Show", async(req, res, next) =>{
     try{
         //Get country id to search
         const { CountryID } = req.params;
@@ -1401,26 +1401,30 @@ async function checkEmailExists(email){
 app.post("/Places", async(req, res, next) => {
     try{
         //GetrqBody
-        const { countryid, stateid, cityid, description, address, facilities, isinternational } = req.body;
+        const { countryid, stateid, cityid, 
+            description, address, facilities, 
+            isinternational } = req.body;
 
-        const { data, error } = await placesclient
+        const { data, error } = 
+        await placesclient
         .from('places')
         .insert(
-            {
-                countryid : countryid, 
-                stateid : stateid,
-                cityid : cityid, 
-                description : description, 
-                address : address,
-                facilities : facilities, 
-                isinternational : isinternational
-            })
+        {
+            countryid : countryid, 
+            stateid : stateid,
+            cityid : cityid, 
+            description : description, 
+            address : address, 
+            isinternational : isinternational
+        })
         .select();
 
         if (error) throw res.status(500).json(error);
         if (data != null) {
-            res.status(201).json({
-                "Message": "Creation process sucess", "info":data
+            res.status(201).json(
+            {
+                "Message": "Creation process sucess", 
+                "info":data
             });
         }
     } catch (err){
@@ -1464,7 +1468,9 @@ app.put("/Places/:PlaceID", async(req, res, next) => {
         //Get place id to search
         const { PlaceID } = req.params;
         //GetrqBody
-        const { countryid, stateid, cityid, description, address, facilities, isinternational } = req.body;
+        const { countryid, stateid, cityid, 
+            description, address, isinternational
+            , name } = req.body;
 
         const { data, error } = await placesclient
         .from('users')
@@ -1474,8 +1480,7 @@ app.put("/Places/:PlaceID", async(req, res, next) => {
                 stateid : stateid,
                 cityid : cityid, 
                 description : description, 
-                address : address,
-                facilities : facilities, 
+                address : address, 
                 isinternational : isinternational
             })
         .eq('id',PlaceID)
@@ -1484,7 +1489,8 @@ app.put("/Places/:PlaceID", async(req, res, next) => {
         if (error) throw res.status(500).json(error);
         if (data != null) {
             res.status(200).json({
-                "Message": "Edition process sucess", "info":data
+                "Message": "Edition process sucess",
+                "info":data
             });
         }
     } catch (err){
@@ -1502,7 +1508,8 @@ app.delete("/Places/:PlaceID", async(req, res, next) => {
         //Get PlaceID to search
         const { PlaceID } = req.params;
 
-        const { data, error } = await placesclient
+        const { data, error } = 
+        await placesclient
         .from('places')
         .delete()
         .eq('id', PlaceID);
@@ -1514,3 +1521,49 @@ app.delete("/Places/:PlaceID", async(req, res, next) => {
     }
 });
 
+/*
+    Method: Create place facility list Type: POST
+    In : Json - Out : Json
+    Date: 29/06/2025
+*/
+app.post("/Places/:PlaceID/Facilities", async(req, res, next) => {
+    try{
+        //Get PlaceID to search
+        const { PlaceID } = req.params;
+
+        //GetrqBody
+        const { selectedFacilities } = req.body;
+        
+        //Validate place exist
+        const placeexist = await checkPlaceExists(PlaceID);
+
+        if(!placeexist){
+            throw res.status(409).json(error)    
+        }
+        
+        const { data, error } = await placesclient
+        .from('places_facilities')
+        .insert(selectedFacilities)
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(201).json(
+            {
+                "Message": "Creation process sucess", 
+                "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+async function checkPlaceExists(Placeid){
+    const { data, error } = await placesclient
+        .from('places')
+        .select('id')
+        .eq("id", Placeid)
+        .single();
+    return !!data;
+}
