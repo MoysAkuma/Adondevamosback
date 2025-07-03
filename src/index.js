@@ -1401,19 +1401,20 @@ async function checkEmailExists(email){
 app.post("/Places", async(req, res, next) => {
     try{
         //GetrqBody
-        const { countryid, stateid, cityid, 
-            description, address, facilities, 
-            isinternational } = req.body;
+        const { name, description, countryid, 
+            stateid, cityid, address, isinternational } 
+            = req.body;
 
         const { data, error } = 
         await placesclient
         .from('places')
         .insert(
         {
+            name : name,
+            description : description, 
             countryid : countryid, 
             stateid : stateid,
             cityid : cityid, 
-            description : description, 
             address : address, 
             isinternational : isinternational
         })
