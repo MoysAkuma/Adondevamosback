@@ -1408,8 +1408,7 @@ app.post("/Places", async(req, res, next) => {
         const { data, error } = 
         await placesclient
         .from('places')
-        .insert(
-        {
+        .insert({
             name : name,
             description : description, 
             countryid : countryid, 
@@ -1424,8 +1423,8 @@ app.post("/Places", async(req, res, next) => {
         if (data != null) {
             res.status(201).json(
             {
-                "Message": "Creation process sucess", 
-                "info":data
+                "Message" : "Creation process sucess", 
+                "info" : data
             });
         }
     } catch (err){
@@ -1523,6 +1522,20 @@ app.delete("/Places/:PlaceID", async(req, res, next) => {
 });
 
 /*
+    Method: Check place exists
+    In : Json - Out : Json
+    Date: 04/07/2025
+*/
+async function checkPlaceExists(Placeid){
+    const { data, error } = await placesclient
+        .from('places')
+        .select('id')
+        .eq("id", Placeid)
+        .single();
+    return !!data;
+}
+
+/*
     Method: Create place facility list Type: POST
     In : Json - Out : Json
     Date: 29/06/2025
@@ -1541,18 +1554,48 @@ app.post("/Places/:PlaceID/Facilities", async(req, res, next) => {
         if(!placeexist){
             throw res.status(409).json(error)    
         }
+
+        const facilities = Object.entries(selectedFacilities).
+        map(([name, value]) => ({
+            facilityid : name,
+            placeid : PlaceID,
+            value : value
+        }));
         
+        const { error } = await placesclient
+        .from('places_facilities')
+        .insert(facilities);
+
+        if (error) throw res.status(500).json(error);
+        
+        res.status(201).json({
+            "Message": "Creation process sucess"
+        });
+        
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Read  Type: GET
+    In : Json - Out : Json
+    Date: 04/07/2025
+*/
+app.get("/Places/:PlaceID/Facilities", async(req, res, next) => {
+    try{
+        //Get PlaceID to search
+        const { PlaceID } = req.params;
+
         const { data, error } = await placesclient
         .from('places_facilities')
-        .insert(selectedFacilities)
-        .select();
+        .select()
+        .eq('placeid',PlaceID);
 
         if (error) throw res.status(500).json(error);
         if (data != null) {
-            res.status(201).json(
-            {
-                "Message": "Creation process sucess", 
-                "info":data
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
             });
         }
     } catch (err){
@@ -1560,11 +1603,86 @@ app.post("/Places/:PlaceID/Facilities", async(req, res, next) => {
     }
 });
 
-async function checkPlaceExists(Placeid){
-    const { data, error } = await placesclient
+/*
+    Method: Edit value of selected facility Type: PATCH
+    In : Json - Out : Json
+    Date: 04/07/2025
+*/
+app.patch("/Places/:PlaceID/Facilities/:FacilityID", async(req, res, next) => {
+    try{
+        //Get PlaceID to search
+        const { PlaceID,  FacilityID} = req.params;
+
+        //GetrqBody
+        const { value } = req.body;
+        
+        //Validate place exist
+        const placeexist = await checkPlaceExists(PlaceID);
+
+        if(!placeexist){
+            throw res.status(409).json(error)    
+        }
+        
+        const { error } = await placesclient
+        .from('places_facilities')
+        .update({value : value })
+        .eq("id");
+
+        if (error) throw res.status(500).json(error);
+        
+        res.status(201).json({
+            "Message": "Creation process sucess"
+        });
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Delete all created facilities of a place  Type: Delete
+    In : Json - Out : Json
+    Date: 04/07/2025
+*/
+app.delete("/Places/:PlaceID/Facilities", async(req, res, next) => {
+    try{
+        //Get PlaceID to search
+        const { PlaceID } = req.params;
+
+        const { data, error } = 
+        await placesclient
         .from('places')
-        .select('id')
-        .eq("id", Placeid)
-        .single();
-    return !!data;
-}
+        .delete()
+        .eq('id', PlaceID);
+
+        if (error) throw res.status(500).json(error);
+        res.status(data.status);
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Log In  Type: POST
+    In : Json - Out : Json
+    Date: 05/07/2025
+*/
+app.post("/LogIn", async(req, res, next) => {
+    try{
+        //GetrqBody
+        const { email, tag, password } 
+            = req.body;
+
+        const { data, error } = 
+        await userclient
+        .from('users')
+        .select()
+        .eq('email', email);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json().end();
+        }
+    } catch (err){
+        next(err);
+    }
+});
