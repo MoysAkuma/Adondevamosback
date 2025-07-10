@@ -1547,6 +1547,8 @@ app.post("/Places/:PlaceID/Facilities", async(req, res, next) => {
 
         //GetrqBody
         const { selectedFacilities } = req.body;
+
+        
         
         //Validate place exist
         const placeexist = await checkPlaceExists(PlaceID);
@@ -1561,13 +1563,14 @@ app.post("/Places/:PlaceID/Facilities", async(req, res, next) => {
             placeid : PlaceID,
             value : value
         }));
-        
+        console.log(facilities);
+        /*
         const { error } = await placesclient
         .from('places_facilities')
         .insert(facilities);
 
         if (error) throw res.status(500).json(error);
-        
+        */
         res.status(201).json({
             "Message": "Creation process sucess"
         });
@@ -1682,6 +1685,63 @@ app.post("/LogIn", async(req, res, next) => {
         if (data != null) {
             res.status(200).json().end();
         }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Get Country, State or city name Place Type: GET
+    In : ID - Out : Json
+    Date: 09/07/2025
+*/
+app.get("/Places/Ubications/:CountryID/:StateID/:CityID", async(req, res, next) => {
+    try{
+        //Get PlaceID to search
+        const { CountryID, StateID, CityID } = req.params;
+
+        // Fetch data from country, state and citis
+        const [countryResponse, stateResponse, citiesResponse] = await Promise.all([
+        adminCataloguesclient
+            .from('countries')
+            .select("name")
+            .eq('id',CountryID)
+            .single(),
+        adminCataloguesclient
+            .from('states')
+            .select("name")
+            .eq('id',StateID)
+            .single(),
+        adminCataloguesclient
+            .from('cities')
+            .select("name")
+            .eq('id',CityID)
+            .single()
+        ]);
+
+         // Check for errors in any of the responses
+        const errors = [
+        countryResponse.error,
+        stateResponse.error,
+        citiesResponse.error
+        ].filter(Boolean);
+
+        if (errors.length > 0) {
+        return res.status(500).json({ 
+            error: 'Failed to fetch data from one or more tables',
+            details: errors
+        });
+        }
+
+        
+        res.status(200).json({
+            "Message": "Reading process sucess", "info" : {
+                CountryName : countryResponse.data.name,
+                StateName : stateResponse.data.name,
+                CityName : citiesResponse.data.name
+            }
+        });
+
     } catch (err){
         next(err);
     }
