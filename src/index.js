@@ -648,7 +648,7 @@ app.get("/Cities/:countryid", async(req, res, next) => {
     In : Json - Out : Json
     Date: 15/05/2025
 */
-app.post("/Facility", async(req, res, next) => {
+app.post("/Facilities", async(req, res, next) => {
     try{
         //GetrqBody
         const { name,code, enabled, hide } = req.body;
@@ -680,7 +680,7 @@ app.post("/Facility", async(req, res, next) => {
     In : Json - Out : Json
     Date: 15/05/2025
 */
-app.get("/Facility/:facilityID", async(req, res, next) => {
+app.get("/Facilities/:facilityID", async(req, res, next) => {
     try{
         //Get facilityID to search
         const { facilityID } = req.params;
@@ -705,7 +705,7 @@ app.get("/Facility/:facilityID", async(req, res, next) => {
     In : Json - Out : Json
     Date: 15/05/2025
 */
-app.put("/Facility/:facilityID", async(req, res, next) => {
+app.put("/Facilities/:facilityID", async(req, res, next) => {
     try{
         //Get state id to search
         const { facilityID } = req.params;
@@ -740,7 +740,7 @@ app.put("/Facility/:facilityID", async(req, res, next) => {
     In : Json - Out : Json
     Date: 15/05/2025
 */
-app.delete("/Facility/:facilityID", async(req, res, next) => {
+app.delete("/Facilities/:facilityID", async(req, res, next) => {
     try{
         //Get facility id to search
         const { facilityID } = req.params;
@@ -764,7 +764,7 @@ app.delete("/Facility/:facilityID", async(req, res, next) => {
     In : Json - Out : Json
     Date: 13/06/2025
 */
-app.patch("/Facility/:facilityID/Hide", async(req, res, next) => {
+app.patch("/Facilities/:facilityID/Hide", async(req, res, next) => {
     try{
         //Get state id to search
         const { facilityID } = req.params;
@@ -795,7 +795,7 @@ app.patch("/Facility/:facilityID/Hide", async(req, res, next) => {
     In : Json - Out : Json
     Date: 13/06/2025
 */
-app.patch("/Facility/:facilityID/Show", async(req, res, next) => {
+app.patch("/Facilities/:facilityID/Show", async(req, res, next) => {
     try{
         //Get state id to search
         const { facilityID } = req.params;
@@ -1123,7 +1123,7 @@ app.get("/UserTypes", async(req, res, next) => {
     In : Json - Out : Json
     Date: 18/05/2025
 */
-app.post("/User", async(req, res, next) => {
+app.post("/Users", async(req, res, next) => {
     try{
         //GetrqBody
         const { name, tag, description, lastName, secondName,password, email, countryID, stateID, cityID, enabled, hide } = req.body;
@@ -1163,7 +1163,7 @@ app.post("/User", async(req, res, next) => {
     In : ID - Out : Json
     Date: 21/05/2025
 */
-app.get("/User/:UserID", async(req, res, next) => {
+app.get("/Users/:UserID", async(req, res, next) => {
     try{
         //Get UserID to search
         const { UserID } = req.params;
@@ -1189,7 +1189,7 @@ app.get("/User/:UserID", async(req, res, next) => {
     In : Json - Out : Json
     Date: 21/05/2025
 */
-app.put("/User/:UserID", async(req, res, next) => {
+app.put("/Users/:UserID", async(req, res, next) => {
     try{
         //Get User id to search
         const { UserID } = req.params;
@@ -1232,7 +1232,7 @@ app.put("/User/:UserID", async(req, res, next) => {
     In : Json - Out : Json
     Date: 21/05/2025
 */
-app.delete("/User/:UserID", async(req, res, next) => {
+app.delete("/Users/:UserID", async(req, res, next) => {
     try{
         //Get User id to search
         const { UserID } = req.params;
@@ -1338,7 +1338,7 @@ app.patch("/Users/:UserID/Hide", async(req, res, next) => {
     In : String - Out : Json
     Date: 15/06/2025
 */
-app.get("/User/Verify/Tag/:newtag", async(req, res, next) => {
+app.get("/Users/Verify/Tag/:newtag", async(req, res, next) => {
     try{
         //Get tag to search
         const { newtag } = req.params;
@@ -1368,7 +1368,7 @@ async function checkTagExists(tag){
     In : String - Out : Json
     Date: 15/06/2025
 */
-app.get("/User/Verify/Email/:email", async(req, res, next) => {
+app.get("/Users/Verify/Email/:email", async(req, res, next) => {
     try{
         //Get tag to search
         const { email } = req.params;
@@ -1425,6 +1425,53 @@ app.post("/Places", async(req, res, next) => {
             {
                 "Message" : "Creation process sucess", 
                 "info" : data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Read all Places Type: GET
+    In : ID - Out : Json
+    Date: 12/07/2025
+*/
+app.get("/Places", async(req, res, next) => {
+    try{
+        const { data, error } = await placesclient
+        .from('places')
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Read all Places Type: GET
+    In : ID - Out : Json
+    Date: 12/07/2025
+*/
+app.get("/Places/Search/name=:PlaceName", async(req, res, next) => {
+    try{
+        //Get Place Name to search
+        const { PlaceName } = req.params;
+        const { data, error } = await placesclient
+        .from('places')
+        .select('id, name, description')
+        .ilike('name', `%${PlaceName}%`);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
             });
         }
     } catch (err){
@@ -1547,30 +1594,37 @@ app.post("/Places/:PlaceID/Facilities", async(req, res, next) => {
 
         //GetrqBody
         const { selectedFacilities } = req.body;
-
         
+        // Validate PlaceID
+        if (!PlaceID || isNaN(PlaceID)) {
+            return res.status(400).json({ error: 'Invalid PlaceID' });
+        }
+
+        //Validate SelectedPlaces
+        if (!Array.isArray(selectedFacilities)) {
+            return res.status(400).json({ error: 'SelectedFacilities must be an array' });
+        }
         
         //Validate place exist
         const placeexist = await checkPlaceExists(PlaceID);
 
         if(!placeexist){
-            throw res.status(409).json(error)    
+            throw res.status(409).json({error: 'Place id not found'})    
         }
-
-        const facilities = Object.entries(selectedFacilities).
-        map(([name, value]) => ({
-            facilityid : name,
-            placeid : PlaceID,
-            value : value
+        
+        // Add PlaceID to each item
+        const itemsToInsert = selectedFacilities.map(item => ({
+            ...item,
+            placeid: parseInt(PlaceID)
         }));
-        console.log(facilities);
-        /*
+
+        //Insert all selected facilities
         const { error } = await placesclient
         .from('places_facilities')
-        .insert(facilities);
-
+        .insert(itemsToInsert);
+        
         if (error) throw res.status(500).json(error);
-        */
+
         res.status(201).json({
             "Message": "Creation process sucess"
         });
@@ -1586,9 +1640,21 @@ app.post("/Places/:PlaceID/Facilities", async(req, res, next) => {
     Date: 04/07/2025
 */
 app.get("/Places/:PlaceID/Facilities", async(req, res, next) => {
-    try{
+    try {
         //Get PlaceID to search
         const { PlaceID } = req.params;
+
+        // Validate PlaceID
+        if (!PlaceID || isNaN(PlaceID)) {
+            return res.status(400).json({ error: 'Invalid PlaceID' });
+        }
+
+        //Validate place exist
+        const placeexist = await checkPlaceExists(PlaceID);
+
+        if(!placeexist){
+            throw res.status(409).json({error: 'Place id not found'})    
+        }
 
         const { data, error } = await placesclient
         .from('places_facilities')
@@ -1596,11 +1662,78 @@ app.get("/Places/:PlaceID/Facilities", async(req, res, next) => {
         .eq('placeid',PlaceID);
 
         if (error) throw res.status(500).json(error);
-        if (data != null) {
-            res.status(200).json({
-                "Message": "Reading process sucess", "info":data
-            });
+        
+        if (data.length === 0) throw res.status(404).end();
+
+        res.status(200).json({
+            "Message": "Reading process sucess", 
+            "info" : data
+        });
+        
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Get info to screen ViewPlace Type: GET
+    In : Json - Out : Json
+    Date: 12/07/2025
+*/
+app.get("/View/Places/:PlaceID/Facilities", async(req, res, next) => {
+    try{
+        //Get PlaceID to search
+        const { PlaceID } = req.params;
+
+        // Validate PlaceID
+        if (!PlaceID || isNaN(PlaceID)) {
+            return res.status(400).json({ error: 'Invalid PlaceID' });
         }
+
+        //Validate place exist
+        const placeexist = await checkPlaceExists(PlaceID);
+
+        if(!placeexist){
+            throw res.status(409).json({error: 'Place id not found'})    
+        }
+        
+        //Get facilitie list
+        const { data : respSelectedData, error: errorSelectedData } = await placesclient
+        .from('places_facilities')
+        .select("id, facilityid, value")
+        .eq('placeid', PlaceID);
+
+        //if error getting facilitylist
+        if (errorSelectedData) throw res.status(500).json(errorFacilityList).end();
+
+        //No Selected facilities found
+        if(!respSelectedData) throw res.status(404).json({error: "No facilities was selected"});
+        
+        //Get facility name list
+        const { data : respfacilityNameList, error: errorNames } = await adminCataloguesclient
+        .from('facilities')
+        .select("id, name")
+        .in("id", respSelectedData.map( item => item.facilityid ) );
+
+        //if error getting facilitylist
+        if (errorNames) throw res.status(500).json(errorFacilityList);
+
+        //final response
+        const resdata = respSelectedData.map( selectedFacilities => 
+            {
+                const searchName = respfacilityNameList.find(x => x.id === selectedFacilities.facilityid );
+                return {
+                    name: searchName?.name || null,
+                    id : selectedFacilities.facilityid,
+                    value : selectedFacilities.value
+                };
+            }
+        );
+        
+        res.status(200).json({
+            "Message": "Reading process sucess", "info":resdata
+        });
+        
     } catch (err){
         next(err);
     }
