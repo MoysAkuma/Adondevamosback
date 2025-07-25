@@ -1334,6 +1334,32 @@ app.patch("/Users/:UserID/Hide", async(req, res, next) => {
 });
 
 /*
+    Method: Search users with Email or  Type: GET
+    In : ID - Out : Json
+    Date: 23/07/2025
+*/
+app.get("/Users/Search/tag=:searchText", async(req, res, next) => {
+    try{
+        //Get tag or email to search
+        const { searchText } = req.params;
+        const { data, error } = await userclient
+        .from('users')
+        .select('id, name, email, tag, email')
+        .or(`tag.ilike.%${searchText}%, email.ilike.%${searchText}%`)
+        .limit(5);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
     Method: Verify if tag is available Type: GET
     In : String - Out : Json
     Date: 15/06/2025
@@ -1466,7 +1492,8 @@ app.get("/Places/Search/name=:PlaceName", async(req, res, next) => {
         const { data, error } = await placesclient
         .from('places')
         .select('id, name, description')
-        .ilike('name', `%${PlaceName}%`);
+        .ilike('name', `%${PlaceName}%`)
+        .limit(5);
 
         if (error) throw res.status(500).json(error);
         if (data != null) {
@@ -1478,6 +1505,8 @@ app.get("/Places/Search/name=:PlaceName", async(req, res, next) => {
         next(err);
     }
 });
+
+
 
 /*
     Method: Read Place Type: GET
