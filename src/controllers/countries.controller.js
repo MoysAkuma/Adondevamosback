@@ -15,8 +15,8 @@ const createCountry = async (req, res, next) => {
         hide : hide
     });
     
-    if (error) throw new ApiError(500,error.message);
-    new ApiResponse(res).success('Creation process sucess', data, 201);
+    if (data.status != 201) throw new ApiError(500,error.message);
+    new ApiResponse(res).success('Creation process sucess', data, data.status);
   } catch(err){
     next(err);
   } 
@@ -32,7 +32,7 @@ const getCountrybyID = async (req, res, next) => {
     new ApiResponse(res).success(
       'Reading process sucess', 
       country);
-  } catch (error) {
+  } catch (err) {
     next(err);
   }
 };
@@ -57,7 +57,7 @@ const updateCountrybyID = async (req, res, next) => {
       'Updating Data sucess', 
       editedcountry);
 
-  } catch (error) {
+  } catch (err) {
     next(err);
   }
 };
@@ -72,7 +72,7 @@ const deleteCountrybyID = async (req, res, next) => {
     new ApiResponse(res).success(
       'Deletin process sucess', 
       resp);
-  } catch (error) {
+  } catch (err) {
     next(err);
   }
 };
@@ -84,12 +84,15 @@ const getAllCountries = async (req, res) => {
   const skip = (page - 1) * limit;
   try{
     const countries = await countriesService.getAll(page, limit, skip);
-    if (error) throw new ApiError(500,error.message);
-    new ApiResponse(res).success(
+    console.log(countries);
+    if(countries.status != 200){
+      return ApiError(countries.message, countries.status )
+    }
+    return new ApiResponse(res).success(
       'Reading all countries', 
-      countries);
+      countries.data);
   } catch(err){
-    next(err);
+    return new ApiError(err.message, err.status);
   }   
 };
 
@@ -104,7 +107,7 @@ const hideCountrybyID = async (req, res, next) => {
     new ApiResponse(res).success(
       'Country was hidden', 
       hideresp);
-  } catch (error) {
+  } catch (err) {
     next(err);
   }
 };
@@ -125,7 +128,7 @@ const showCountrybyID = async (req, res, next) => {
     new ApiResponse(res).success(
       'Country was hidden', 
       country);
-  } catch (error) {
+  } catch (err) {
     next(err);
   }
 };

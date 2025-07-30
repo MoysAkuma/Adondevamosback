@@ -1,3 +1,5 @@
+import  { ApiError }  from "../utils/apiError.js";
+
 const errorMiddleware = {
   handleError(err, req, res, next) {
     console.error(err.stack);

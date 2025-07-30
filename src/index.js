@@ -1834,23 +1834,52 @@ app.delete("/Places/:PlaceID/Facilities", async(req, res, next) => {
 app.post("/LogIn", async(req, res, next) => {
     try{
         //GetrqBody
-        const { email, tag, password } 
+        const { id, password } 
             = req.body;
+        //Validate if input is email
+        const isEmailLogIng = isEmail(id);
+        //if email search by email and password
+        const data = (isEmailLogIng) ?
+           await searchByEmailAndPassword(id, password, res) :
+            //if text search by tag and password 
+           await searchByTagAndPassword(id, password, res);
 
-        const { data, error } = 
-        await userclient
-        .from('users')
-        .select()
-        .eq('email', email);
-
-        if (error) throw res.status(500).json(error);
-        if (data != null) {
-            res.status(200).json().end();
-        }
+        res.status(200).end();
     } catch (err){
         next(err);
     }
 });
+
+// Email validation function
+function isEmail(input) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(input);
+}
+
+async function searchByEmailAndPassword (email, password, res){
+    const { data, error } = 
+        await userclient
+        .from('users')
+        .select("id")
+        .eq('email', email)
+        .eq('password', password)
+        .single();
+    if (error) throw res.status(409).end();
+    return !!data;
+}
+
+async function searchByTagAndPassword (tag, password, res){
+    const { data, error } = 
+        await userclient
+        .from('users')
+        .select()
+        .eq('tag', tag)
+        .eq('password', password)
+        .single()
+    
+    if (error) throw res.status(409).end();
+    return !!data;
+}
 
 /*
     Method: Get Country, State or city name Place Type: GET

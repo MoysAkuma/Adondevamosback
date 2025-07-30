@@ -25,8 +25,7 @@ const countriesService = {
 
   async getCountryById(countryId) {
     const { data, error } = await cataloguesClient
-    .from('countries')
-    .select("*")
+    .from('countries')    .select("*")
     .eq('id',countryId);
 
     if (error) throw error;
@@ -48,9 +47,11 @@ const countriesService = {
     .select("*")
     .limit(limit)
     .skip(skip);
-
-    if (error) throw error;
-    return data;
+    
+    console.log(data);
+    if (error) return ({ status : 500, error: error.message});
+    
+    return { status: 200, data : data };
   },
   async setVisibilityCountry(countryId, hide=true) {
     const { data, error } = await cataloguesClient

@@ -18,8 +18,11 @@ app.use(cors({
 // Routes
 app.use('/v1', countriesRoutes);
 
+
 // Error handling
 app.use(errorMiddleware.notFound);
 app.use(errorMiddleware.handleError);
 
-export { app };
+app.listen(3001, '0.0.0.0', () => {
+  console.log("Adondevamos.back is running at ", 3001);
+});
