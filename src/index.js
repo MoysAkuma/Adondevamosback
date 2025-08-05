@@ -1,6 +1,9 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import session from 'express-session';
+import bodyParser from'body-parser';
+
 import { createClient } from '@supabase/supabase-js';
 //Swagger 
 import swaggerUi  from 'swagger-ui-express';
@@ -9,6 +12,10 @@ import swaggerUi  from 'swagger-ui-express';
 dotenv.config(); 
 
 const app = express();
+
+
+
+
 
 // Initialize Supabase client
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -53,7 +60,20 @@ app.use(express.json());
 app.use(cors({
   origin: 'http://localhost:3000', 
   methods: ['GET', 'POST', 'PUT','PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
+
+app.use(bodyParser.json());
+app.use(session({
+  secret: process.env.leviosa, // Change this to a random string
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: false, // Set to true if using HTTPS
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
 }));
 
 // Swagger setup
@@ -80,6 +100,126 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 app.listen(process.env.PORT, () => {
  console.log("Adondevamos.back is running at ",process.env.PORT);
 });
+
+/*Autentication managment*/
+/*
+    Method: Log In  Type: POST
+    In : Json - Out : Json
+    Date: 05/07/2025
+*/
+app.post("/login", async(req, res, next) => {
+    try{
+        //GetrqBody
+        const { id, password } 
+            = req.body;
+        
+        //Validate if input is email
+        const isEmailLogIng = isEmail(id);
+        
+        //if email search by email and password
+        const data = (isEmailLogIng) ?
+           await searchByEmailAndPassword(id, password, res) :
+            //if text search by tag and password 
+           await searchByTagAndPassword(id, password, res);
+        req.session.userId = data;
+        res.status(200).json(data).end();
+    } catch (err){
+        next(err);
+    }
+});
+/*
+    Method: CheckOut  Type: POST
+    In : Json - Out : Json
+    Date: 04/08/2025
+*/
+app.get("/check-auth", async(req, res, next) => {
+    try{
+        console.log(req.session);
+        if(req.session.id)
+        {
+            const data = await searchById(req.session.id, res);
+
+            if (data != null) {
+                res.status(200).json({
+                    "isAuthenticated": true
+
+                });
+            }
+        }else {
+            res.status(409).json({
+                "isAuthenticated": false
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: logout  Type: POST
+    In : Json - Out : Json
+    Date: 04/08/2025
+*/
+app.get("/logout'", async(req, res, next) => {
+    try{
+        req.session.destroy( 
+            err => {
+                if(err){
+                    return res.status(500).json({message:"Could not log out"})
+                }
+                res.clearCookie("connect.sid");
+                res.status(200).json({            
+                });
+            }
+        );
+        
+    }
+    catch (err){
+        next(err);
+    }
+});
+// Email validation function
+function isEmail(input) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(input);
+}
+
+async function searchByEmailAndPassword (email, password, res){
+    const { data, error } = 
+        await userclient
+        .from('users')
+        .select("id,name, tag, lastname")
+        .eq('email', email)
+        .eq('password', password)
+        .single();
+    if (error) throw res.status(409).end();
+    return data;
+}
+
+async function searchByTagAndPassword (tag, password, res){
+    const { data, error } = 
+        await userclient
+        .from('users')
+        .select("id, name, tag, lastname")
+        .eq('tag', tag)
+        .eq('password', password)
+        .single()
+    
+    if (error) throw res.status(409).end();
+    return data;
+}
+
+async function searchById (id, res){
+    const { data, error } = 
+        await userclient
+        .from('users')
+        .select()
+        .eq('id', id)
+        .single()
+    
+    if (error) throw res.status(409).end();
+    return !!data;
+}
 
 /*
     Method: Create country Type: POST
@@ -1826,60 +1966,7 @@ app.delete("/Places/:PlaceID/Facilities", async(req, res, next) => {
     }
 });
 
-/*
-    Method: Log In  Type: POST
-    In : Json - Out : Json
-    Date: 05/07/2025
-*/
-app.post("/LogIn", async(req, res, next) => {
-    try{
-        //GetrqBody
-        const { id, password } 
-            = req.body;
-        //Validate if input is email
-        const isEmailLogIng = isEmail(id);
-        //if email search by email and password
-        const data = (isEmailLogIng) ?
-           await searchByEmailAndPassword(id, password, res) :
-            //if text search by tag and password 
-           await searchByTagAndPassword(id, password, res);
 
-        res.status(200).end();
-    } catch (err){
-        next(err);
-    }
-});
-
-// Email validation function
-function isEmail(input) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(input);
-}
-
-async function searchByEmailAndPassword (email, password, res){
-    const { data, error } = 
-        await userclient
-        .from('users')
-        .select("id")
-        .eq('email', email)
-        .eq('password', password)
-        .single();
-    if (error) throw res.status(409).end();
-    return !!data;
-}
-
-async function searchByTagAndPassword (tag, password, res){
-    const { data, error } = 
-        await userclient
-        .from('users')
-        .select()
-        .eq('tag', tag)
-        .eq('password', password)
-        .single()
-    
-    if (error) throw res.status(409).end();
-    return !!data;
-}
 
 /*
     Method: Get Country, State or city name Place Type: GET
