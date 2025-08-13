@@ -121,7 +121,8 @@ app.post("/login", async(req, res, next) => {
            await searchByEmailAndPassword(id, password, res) :
             //if text search by tag and password 
            await searchByTagAndPassword(id, password, res);
-        req.session.userId = data;
+        req.session.userId = data.id;
+        console.log(data);
         res.status(200).json(data).end();
     } catch (err){
         next(err);
@@ -135,15 +136,17 @@ app.post("/login", async(req, res, next) => {
 app.get("/check-auth", async(req, res, next) => {
     try{
         console.log(req.session);
-        if(req.session.id)
+        if(req.session.userId)
         {
-            const data = await searchById(req.session.id, res);
+            const data = await searchById(req.session.userId, res);
 
             if (data != null) {
-                res.status(200).json({
-                    "isAuthenticated": true
-
-                });
+                res.status(200).json(
+                    {
+                        "isAuthenticated": true,
+                        "user" : data
+                    }
+                );
             }
         }else {
             res.status(409).json({
@@ -218,8 +221,10 @@ async function searchById (id, res){
         .single()
     
     if (error) throw res.status(409).end();
-    return !!data;
+    return data;
 }
+
+
 
 /*
     Method: Create country Type: POST
