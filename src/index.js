@@ -121,9 +121,19 @@ app.post("/login", async(req, res, next) => {
            await searchByEmailAndPassword(id, password, res) :
             //if text search by tag and password 
            await searchByTagAndPassword(id, password, res);
+        
+        //getifisadmin
+        const datarole = await searchRole(data.id,  res);
+
         req.session.userId = data.id;
-        console.log(data);
-        res.status(200).json(data).end();
+        
+        res.status(200).json({
+            role : datarole ? 'Admin' : 'User',
+            id : data.id,
+            tag : data.tag,
+            name : data.name,
+            lastname : data.lastname
+        }).end();
     } catch (err){
         next(err);
     }
@@ -221,9 +231,20 @@ async function searchById (id, res){
         .single()
     
     if (error) throw res.status(409).end();
-    return data;
+    return !!data;
 }
 
+async function searchRole (id, res){
+    const { data, error } = 
+        await userclient
+        .from('admins')
+        .select()
+        .eq('userid', id)
+        .single()
+    
+    if (error) throw res.status(409).end();
+    return data;
+}
 
 
 /*
