@@ -145,16 +145,14 @@ app.post("/login", async(req, res, next) => {
 */
 app.get("/check-auth", async(req, res, next) => {
     try{
-        console.log(req.session);
         if(req.session.userId)
         {
             const data = await searchById(req.session.userId, res);
-
+            console.log(data);
             if (data != null) {
                 res.status(200).json(
                     {
-                        "isAuthenticated": true,
-                        "user" : data
+                        "isAuthenticated": true
                     }
                 );
             }
@@ -173,7 +171,7 @@ app.get("/check-auth", async(req, res, next) => {
     In : Json - Out : Json
     Date: 04/08/2025
 */
-app.get("/logout'", async(req, res, next) => {
+app.post("/Logout", async(req, res, next) => {
     try{
         req.session.destroy( 
             err => {
@@ -1292,7 +1290,10 @@ app.get("/UserTypes", async(req, res, next) => {
 app.post("/Users", async(req, res, next) => {
     try{
         //GetrqBody
-        const { name, tag, description, lastName, secondName,password, email, countryID, stateID, cityID, enabled, hide } = req.body;
+        const { name, tag, description, lastname, 
+            secondname,password, email, 
+            countryid, stateid, cityid
+        } = req.body;
 
         const { data, error } = await anonclientuser
         .from('users')
@@ -1300,16 +1301,16 @@ app.post("/Users", async(req, res, next) => {
             {
                 name: name,
                 tag : tag, 
-                lastname : lastName, 
-                secondname: secondName, 
+                lastname : lastname, 
+                secondname: secondname, 
                 password : password, 
-                countryid: countryID,
-                stateid : stateID,
-                cityid : cityID,
+                countryid: countryid,
+                stateid : stateid,
+                cityid : cityid,
                 description : description,
                 email : email,         
-                enabled : enabled,
-                hide : hide
+                enabled : true,
+                hide : false
             })
         .select();
 
@@ -1360,7 +1361,9 @@ app.put("/Users/:UserID", async(req, res, next) => {
         //Get User id to search
         const { UserID } = req.params;
         //GetrqBody
-        const { name, tag, lastName, password, email, countryID, stateID, cityID, enabled, hide } = req.body;
+        const { name, tag, lastname, 
+            password, email, countryid, stateid, cityid 
+        } = req.body;
 
         const { data, error } = await userclient
         .from('users')
@@ -1368,12 +1371,12 @@ app.put("/Users/:UserID", async(req, res, next) => {
             {
                 name: name,
                 tag : tag, 
-                lastname : lastName, 
-                secondname: secondName, 
+                lastname : lastname, 
+                secondname: secondname, 
                 password : password, 
-                countryid: countryID,
-                stateid : stateID,
-                cityid : cityID,
+                countryid: countryid,
+                stateid : stateid,
+                cityid : cityid,
                 description : description,
                 email : email,  
                 enabled : enabled,
@@ -1385,7 +1388,8 @@ app.put("/Users/:UserID", async(req, res, next) => {
         if (error) throw res.status(500).json(error);
         if (data != null) {
             res.status(200).json({
-                "Message": "Edition process sucess", "info":data
+                "Message": "Edition process sucess",
+                "info":data
             });
         }
     } catch (err){
