@@ -1598,7 +1598,7 @@ app.post("/Places", async(req, res, next) => {
     try{
         //GetrqBody
         const { name, description, countryid, 
-            stateid, cityid, address, isinternational } 
+            stateid, cityid, address, isPublic } 
             = req.body;
 
         const { data, error } = 
@@ -1611,7 +1611,7 @@ app.post("/Places", async(req, res, next) => {
             stateid : stateid,
             cityid : cityid, 
             address : address, 
-            isinternational : isinternational
+            ispublic : isPublic
         })
         .select();
 
@@ -1722,6 +1722,7 @@ app.put("/Places/:PlaceID", async(req, res, next) => {
         .from('users')
         .update(
             {
+                name : name,
                 countryid : countryid, 
                 stateid : stateid,
                 cityid : cityid, 
@@ -2050,6 +2051,237 @@ app.get("/Places/Ubications/:CountryID/:StateID/:CityID", async(req, res, next) 
             }
         });
 
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Create Trip Type: POST
+    In : Json - Out : Json
+    Date: 27/08/2025
+*/
+app.post("/Trips", async(req, res, next) => {
+    try{
+        //GetrqBody
+        const { name, creatorid, description, 
+            initialdate, finaldate, isinternational } 
+            = req.body;
+
+        const { data, error } = 
+        await tripsclient
+        .from('trips')
+        .insert({
+            name : name,
+            ownerid : creatorid,
+            description:description,
+            initialdate:initialdate,
+            finaldate:finaldate,
+            isinternational : isinternational
+        })
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(201).json(
+            {
+                "Message" : "Creation process sucess", 
+                "info" : data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Read Trip Type: GET
+    In : Json - Out : Json
+    Date: 27/08/2025
+*/
+app.get("/Trips/:TripID", async(req, res, next) => {
+    try{
+        //Get TripID to search
+        const { TripID } = req.params;
+
+        const { data, error } = await tripsclient
+        .from('trips')
+        .select("name, ownerid, description, initialdate, finaldate, isinternational")
+        .eq('id', TripID);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Read All Trip Type: GET
+    In : Json - Out : Json
+    Date: 27/08/2025
+*/
+app.get("/Trips", async(req, res, next) => {
+    try{
+        const { data, error } = await tripsclient
+        .from('trips')
+        .select("name, ownerid, description, initialdate, finaldate, isinternational")
+        .limit(5);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Edit Trip Type: PUT
+    In : Json - Out : Json
+    Date: 27/08/2025
+*/
+app.post("/Trips/:TripID", async(req, res, next) => {
+    try{
+        //Get TripID to search
+        const { TripID } = req.params;
+
+        //GetrqBody
+        const { name, creatorid, description, 
+            initialdate, finaldate, isinternational } 
+            = req.body;
+
+        const { data, error } = 
+        await tripsclient
+        .from('trips')
+        .update({
+            name : name,
+            ownerid : creatorid,
+            description:description,
+            initialdate:initialdate,
+            finaldate:finaldate,
+            isinternational : isinternational
+        })
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(201).json(
+            {
+                "Message" : "Edition process sucess", 
+                "info" : data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Edit Trip Type: PUT
+    In : Json - Out : Json
+    Date: 27/08/2025
+*/
+app.put("/Trips/:TripID", async(req, res, next) => {
+    try{
+        //Get TripID to search
+        const { TripID } = req.params;
+
+        //GetrqBody
+        const { name, creatorid, description, 
+            initialdate, finaldate, isinternational } 
+            = req.body;
+
+        const { data, error } = 
+        await tripsclient
+        .from('trips')
+        .update(
+            {
+                name : name,
+                ownerid : creatorid,
+                description:description,
+                initialdate:initialdate,
+                finaldate:finaldate,
+                isinternational : isinternational
+            }
+        )
+        .eq('id', TripID);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(201).json(
+            {
+                "Message" : "Edition process sucess", 
+                "info" : data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Hide Trip Type: PATCH
+    In : Json - Out : Json
+    Date: 27/08/2025
+*/
+app.patch("/Trips/:TripID/Hide", async(req, res, next) => {
+    try{
+        //Get TripID to search
+        const { TripID } = req.params;
+
+        const { data, error } = 
+        await tripsclient
+        .from('trips')
+        .update(
+            {
+                hide : true
+            }
+        )
+        .select();
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(201).json(
+            {
+                "Message" : "Edition process sucess", 
+                "info" : data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Delete Trip Type: DELETE
+    In : INT - Out : Json
+    Date: 27/08/2025
+*/
+app.delete("/Trips/:TripID", async(req, res, next) => {
+    try{
+        //Get TripID to search
+        const { TripID } = req.params;
+
+        const { data, error } = await tripsclient
+        .from('trips')
+        .delete()
+        .eq('id', TripID);
+
+        if (error) throw res.status(500).json(error);
+        
+        res.status(200).json({
+            "Message": "Deleting process sucess", 
+            "info":data
+        });
+        
     } catch (err){
         next(err);
     }
