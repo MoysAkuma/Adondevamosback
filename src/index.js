@@ -1598,7 +1598,7 @@ app.post("/Places", async(req, res, next) => {
     try{
         //GetrqBody
         const { name, description, countryid, 
-            stateid, cityid, address, isPublic } 
+            stateid, cityid, address, ispublic } 
             = req.body;
 
         const { data, error } = 
@@ -1611,7 +1611,7 @@ app.post("/Places", async(req, res, next) => {
             stateid : stateid,
             cityid : cityid, 
             address : address, 
-            ispublic : isPublic
+            ispublic : ispublic
         })
         .select();
 
@@ -2104,17 +2104,47 @@ app.get("/Trips/:TripID", async(req, res, next) => {
         //Get TripID to search
         const { TripID } = req.params;
 
-        const { data, error } = await tripsclient
+        const { data : tripinfo, error } = await tripsclient
         .from('trips')
         .select("name, ownerid, description, initialdate, finaldate, isinternational")
-        .eq('id', TripID);
+        .eq('id', TripID)
+        .single();
+
+        //get places
+        const { data : itinerary, 
+            error : errorItinerary } = await tripsclient
+        .from('trips_itinerary')
+        .select('id, initialdate, finaldate, placeid')
+        .in('tripid', TripID);
+        
+        if (errorItinerary) throw res.status(500).json(errorItinerary);
+
+        //get memberlist
+        const { data : memberlist, 
+            error : errorMemberlist } = await tripsclient
+        .from('trips_members')
+        .select('id, userid')
+        .in('tripid', TripID);
+        
+        if (errorMemberlist) throw res.status(500).json(errorUsernames);
+
+        const itemsToReturn = ({
+            name : tripinfo.name, 
+            ownerid : tripinfo.ownerid, 
+            description : tripinfo.description, 
+            initialdate : tripinfo.initialdate, 
+            finaldate : tripinfo.finaldate, 
+            isinternational : tripinfo.isinternational,
+            itinerary : itinerary,
+            memberlist : memberlist 
+        });
 
         if (error) throw res.status(500).json(error);
-        if (data != null) {
-            res.status(200).json({
-                "Message": "Reading process sucess", "info":data
-            });
-        }
+        
+        res.status(200).json({
+            "Message": "Reading process sucess", "info":itemsToReturn
+        });
+        
     } catch (err){
         next(err);
     }
@@ -2143,12 +2173,51 @@ app.get("/Trips", async(req, res, next) => {
     }
 });
 
+app.get("/Trips/View/News", async(req, res, next) => {
+    try{
+        const { data: triplist, error:errorNewTrips } = await tripsclient
+        .from('trips')
+        .select("id, name, ownerid, description, initialdate, finaldate, isinternational")
+        .order('createddate', { ascending: false })
+        .limit(3);
+        
+        if (errorNewTrips) throw res.status(500).json(error);
+        
+        //get usernameCreatorslist ids
+        const userlist = triplist.map(user => user.ownerid).filter(Boolean);
+
+        const { data: userinfo, error:errorUsers } = await userclient
+        .from('users')
+        .select("id, name, tag, email")
+        .in("id", userlist);
+        
+        if (errorUsers) throw res.status(500).json(error);
+        
+        const itemsToReturn = triplist.map(item => ({
+            id : item.id, 
+            name : item.name, 
+            owner : userinfo.find(user => user.id === item.ownerid ) || "", 
+            description : item.description, 
+            initialdate : item.initialdate, 
+            finaldate : item.finaldate, 
+            isinternational : item.isinternational
+        }));
+
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":itemsToReturn
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
 /*
     Method: Edit Trip Type: PUT
     In : Json - Out : Json
     Date: 27/08/2025
 */
-app.post("/Trips/:TripID", async(req, res, next) => {
+app.put("/Trips/:TripID", async(req, res, next) => {
     try{
         //Get TripID to search
         const { TripID } = req.params;
@@ -2286,3 +2355,254 @@ app.delete("/Trips/:TripID", async(req, res, next) => {
         next(err);
     }
 });
+
+/*
+    Method: Add Member List Type: POST
+    In : Json - Out : Json
+    Date: 01/09/2025
+*/
+app.post("/Trips/:TripID/Members", async(req, res, next) => {
+    try{
+        //Get TripID to search
+        const { TripID } = req.params;
+        //GetrqBody
+        const { MemberList } 
+            = req.body;
+
+        //Validate Tripid
+        if (!TripID || isNaN(TripID)) {
+            return res.status(400).json({ error: 'Invalid TripID' });
+        }
+        //Validate member list is array
+        if (!Array.isArray(MemberList)) {
+            return res.status(400).json({ error: 'MemberList must be an array' });
+        }
+
+        //Validate trip exist
+        const tripsexist = await checkTripExists(TripID);
+        
+        if(!tripsexist){
+            throw res.status(404).end();
+        }
+
+        // Add TripID to each item
+        const itemsToInsert = MemberList.map(item => ({
+            ...item,
+            tripid: parseInt(TripID)
+        }));
+
+        //Insert all member
+        const { error } = await tripsclient
+        .from('trips_members')
+        .insert(itemsToInsert);
+        
+        if (error) throw res.status(500).json(error);
+
+        res.status(201).json({
+            "Message": "Creation process sucess"
+        });        
+        
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Read Members Type: GET
+    In : Json - Out : Json
+    Date: 04/07/2025
+*/
+app.get("/Trips/:TripID/Members", async(req, res, next) => {
+    try {
+        //Get TripID to search
+        const { TripID } = req.params;
+
+        // Validate TripID
+        if (!TripID || isNaN(TripID)) {
+            return res.status(400).json({ error: 'Invalid TripID' });
+        }
+
+        //Validate trip exist
+        const tripsexist = await checkTripExists(TripID);
+
+        if(!tripsexist){
+            throw res.status(404).end();
+        }
+        
+
+        const { data : memberlist, error : errorMemberlist } = await tripsclient
+        .from('trips_members')
+        .select('id, userid, roleid')
+        .eq('tripid',TripID);
+        
+        //Validate memberlist response
+        
+        if (errorMemberlist) throw res.status(500).json(error);
+
+        if (memberlist.length === 0) throw res.status(404).end();
+
+        //get userlist ids
+        const userlist = memberlist.map(user => user.userid).filter(Boolean);
+
+        //get usernane list by list of ids
+        const { data : membername, error : errorUsernames } = await userclient
+        .from('users')
+        .select('id, name')
+        .in('id',userlist);
+
+        //get role name by id
+        const rolelist = memberlist.map(role => role.roleid).filter(Boolean);
+
+        //get usernane list by list of ids
+        const { data : roleresp, error : errorRoles } = await adminCataloguesclient
+        .from('roles')
+        .select('id, name')
+        .in('id',rolelist);
+
+        if (errorRoles) throw res.status(500).json(error);
+
+        const itemsToReturn = memberlist.map(item => ({
+            userid : item.userid,
+            username : membername.find(user => user.id === item.userid ).name || "",
+            roleid : item.roleid,
+            rolename : roleresp.find( role => role.id === item.roleid ).name || ""
+        }));
+
+        res.status(200).json({
+            "Message": "Reading process sucess", 
+            "info" : itemsToReturn
+        });
+        
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Add Itinerary List Type: POST
+    In : Json - Out : Json
+    Date: 02/09/2025
+*/
+app.post("/Trips/:TripID/Itinerary", async(req, res, next) => {
+    try{
+        //Get TripID to search
+        const { TripID } = req.params;
+        //GetrqBody
+        const { Itinerary } 
+            = req.body;
+
+        //Validate Tripid
+        if (!TripID || isNaN(TripID)) {
+            return res.status(400).json({ error: 'Invalid TripID' });
+        }
+
+        //Validate itinerary is array
+        if (!Array.isArray(Itinerary)) {
+            return res.status(400).json({ error: 'Itinerary must be an array' });
+        }
+
+        //Validate trip exist
+        const tripsexist = await checkTripExists(TripID);
+
+        if ( !tripsexist ) {
+            throw res.status(404).end();
+        }
+
+        // Add TripID to each item
+        const itemsToInsert = Itinerary.map(item => ({
+            ...item,
+            tripid: parseInt(TripID)
+        }));
+
+        //Insert all itinerary
+        const { data: itinerarylist, error : erroritinerary } = await tripsclient
+        .from('trips_itinerary')
+        .insert(itemsToInsert);
+        
+        if (erroritinerary) throw res.status(500).json(erroritinerary);
+
+        res.status(201).json(
+            {
+                "Message": "Creation process sucess"
+            }
+        );
+        
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Read Itinerary Type: GET
+    In : Json - Out : Json
+    Date: 02/09/2025
+*/
+app.get("/Trips/:TripID/Itinerary", async(req, res, next) => {
+    try {
+        //Get TripID to search
+        const { TripID } = req.params;
+
+        // Validate TripID
+        if (!TripID || isNaN(TripID)) {
+            return res.status(400).json({ error: 'Invalid TripID' });
+        }
+
+        //Validate trip exist
+        const tripsexist = await checkTripExists(TripID);
+
+        if(!tripsexist){
+            throw res.status(404).end();
+        }
+        
+        const { data : itinerary, error : errorItinerary } = await tripsclient
+        .from('trips_itinerary')
+        .select('id, initialdate, finaldate, placeid')
+        .eq('tripid',TripID);
+        
+        //Validate memberlist response
+        
+        if (errorItinerary) throw res.status(500).json(errorItinerary);
+
+        if (itinerary.length === 0) throw res.status(404).end();
+
+        //get placelist ids
+        const placelist = itinerary.map(itinerary => itinerary.placeid).filter(Boolean);
+
+        //get places name list by list of ids
+        const { data : placesname, error : errorUsernames } = await placesclient
+        .from('places')
+        .select('id, name')
+        .in('id', placelist);
+
+        if (errorItinerary) throw res.status(500).json(errorUsernames);
+
+        const itemsToReturn = itinerary.map(item => ({
+            id : item.id, 
+            initialdate : item.initialdate, 
+            finaldate : item.finaldate, 
+            place : placesname.find( catPlaces => catPlaces.id === item.placeid ) || ""
+        }));
+
+        res.status(200).json({
+            "Message": "Reading process sucess", 
+            "info" : itemsToReturn
+        });
+        
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Check trip exists
+    In : Json - Out : Json
+    Date: 02/09/2025
+*/
+async function checkTripExists(Tripid){
+    const { data, error } = await tripsclient
+        .from('trips')
+        .select('id')
+        .eq("id", Tripid)
+        .single();
+    return !!data;
+}
