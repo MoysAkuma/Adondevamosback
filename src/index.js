@@ -2192,22 +2192,66 @@ app.get("/Trips/View/News", async(req, res, next) => {
         .in("id", userlist);
         
         if (errorUsers) throw res.status(500).json(error);
-        
-        const itemsToReturn = triplist.map(item => ({
-            id : item.id, 
-            name : item.name, 
-            owner : userinfo.find(user => user.id === item.ownerid ) || "", 
-            description : item.description, 
-            initialdate : item.initialdate, 
-            finaldate : item.finaldate, 
-            isinternational : item.isinternational
-        }));
 
-        if (data != null) {
-            res.status(200).json({
-                "Message": "Reading process sucess", "info":itemsToReturn
-            });
-        }
+        //get ids
+        const tripids = triplist.map(trip => trip.id).filter(Boolean);
+
+        //get itinerary
+        const { data: itinerarylist, error : erroritinerary } = await tripsclient
+        .from('trips_itinerary')
+        .select("id, initialdate, finaldate, tripid, placeid")
+        .in("tripid", tripids);
+
+        if (erroritinerary) throw res.status(500).json(erroritinerary);
+
+        //get placelist ids
+        const placelist = itinerarylist.map(itinerary => itinerary.placeid).filter(Boolean);
+        
+        //get places name list by list of ids
+        const { data : placesname, error : errorUsernames } = await placesclient
+        .from('places')
+        .select('id, name')
+        .in('id', placelist);
+
+        if (errorUsernames) throw res.status(500).json(error);
+
+        const itineraryToReturn = itinerarylist.map(itinerarylist => ( {
+             ...itinerarylist,
+             name : placesname.find( name => name.id === itinerarylist.placeid ).name || ""
+            } ));
+        
+        if (erroritinerary) throw res.status(500).json(erroritinerary);
+        const itemsToReturn = triplist.map(
+            item => ({
+                id : item.id, 
+                name : item.name, 
+                owner : userinfo.find(user => user.id === item.ownerid ) || "", 
+                description : item.description, 
+                initialdate : item.initialdate, 
+                finaldate : item.finaldate, 
+                isinternational : item.isinternational,
+                itinerary : (itineraryToReturn.filter( itinerary => itinerary.tripid === item.id )).map(
+                    rtn=> 
+                        ({
+                            id : rtn.id,
+                            initialdate : rtn.initialdate,
+                            finaldate : rtn.finaldate,
+                            name : rtn.name
+                        })
+                    ),
+                statics : {
+                    Votes : {
+                        Total: 0
+                    }
+                }
+            })
+        );
+
+        
+        res.status(200).json({
+            "Message": "Reading process sucess", "info":itemsToReturn
+        });
+        
     } catch (err){
         next(err);
     }
