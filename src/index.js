@@ -148,7 +148,6 @@ app.get("/check-auth", async(req, res, next) => {
         if(req.session.userId)
         {
             const data = await searchById(req.session.userId, res);
-            console.log(data);
             if (data != null) {
                 res.status(200).json(
                     {
@@ -452,7 +451,6 @@ app.get("/Countries", async(req, res, next) => {
             });
         }
     } catch (err){
-        console.log(err);
         next(err);
     }
 });
@@ -1690,15 +1688,29 @@ app.get("/Places/:PlaceID", async(req, res, next) => {
 
         const { data, error } = await placesclient
         .from('places')
-        .select()
-        .eq('id',PlaceID);
+        .select("id,name, address, description, ispublic, countryid, stateid, cityid")
+        .single()
+        .eq('id', PlaceID);
+
+        const resp 
+        = await checkPlaceNames(data.countryid, data.stateid, data.cityid);
+
+        const placesresp = {
+            id: data.id,
+            name : data.name, 
+            address : data.address, 
+            description : data.description, 
+            ispublic : data.ispublic, 
+            country : resp.CountryName,
+            state : resp.StateName,
+            city : resp.CityName
+        };
 
         if (error) throw res.status(500).json(error);
-        if (data != null) {
-            res.status(200).json({
-                "Message": "Reading process sucess", "info":data
-            });
-        }
+        
+        res.status(200).json({
+            "Message": "Reading process sucess", "info":placesresp
+        });
     } catch (err){
         next(err);
     }
@@ -2010,44 +2022,14 @@ app.get("/Places/Ubications/:CountryID/:StateID/:CityID", async(req, res, next) 
         const { CountryID, StateID, CityID } = req.params;
 
         // Fetch data from country, state and citis
-        const [countryResponse, stateResponse, citiesResponse] = await Promise.all([
-        adminCataloguesclient
-            .from('countries')
-            .select("name")
-            .eq('id',CountryID)
-            .single(),
-        adminCataloguesclient
-            .from('states')
-            .select("name")
-            .eq('id',StateID)
-            .single(),
-        adminCataloguesclient
-            .from('cities')
-            .select("name")
-            .eq('id',CityID)
-            .single()
-        ]);
+        const resp 
+        = await checkPlaceNames(CountryID, StateID, CityID);
 
-         // Check for errors in any of the responses
-        const errors = [
-        countryResponse.error,
-        stateResponse.error,
-        citiesResponse.error
-        ].filter(Boolean);
-
-        if (errors.length > 0) {
-        return res.status(500).json({ 
-            error: 'Failed to fetch data from one or more tables',
-            details: errors
-        });
-        }
-
-        
         res.status(200).json({
             "Message": "Reading process sucess", "info" : {
-                CountryName : countryResponse.data.name,
-                StateName : stateResponse.data.name,
-                CityName : citiesResponse.data.name
+                CountryName : resp.CountryName,
+                StateName : resp.StateName,
+                CityName : resp.CityName
             }
         });
 
@@ -2055,6 +2037,50 @@ app.get("/Places/Ubications/:CountryID/:StateID/:CityID", async(req, res, next) 
         next(err);
     }
 });
+
+/*
+    Method: Get Ubication Namen
+    In : INT,  - Out : Json
+    Date: 04/07/2025
+*/
+async function checkPlaceNames(countryid, stateid, cityid){
+
+    // Fetch data from country, state and citis
+        const [countryResponse, stateResponse, citiesResponse] = await Promise.all([
+        adminCataloguesclient
+            .from('countries')
+            .select("name")
+            .eq('id',countryid)
+            .single(),
+        adminCataloguesclient
+            .from('states')
+            .select("name")
+            .eq('id',stateid)
+            .single(),
+        adminCataloguesclient
+            .from('cities')
+            .select("name")
+            .eq('id',cityid)
+            .single()
+        ]);
+
+         // Check for errors in any of the responses
+        const errors = [
+            countryResponse.error,
+            stateResponse.error,
+            citiesResponse.error
+        ].filter(Boolean);
+
+        if(errors.length == 0){
+            
+        }
+        return {
+            CountryName : countryResponse.data.name,
+            StateName : stateResponse.data.name,
+            CityName : citiesResponse.data.name
+        }
+}
+
 
 /*
     Method: Create Trip Type: POST
@@ -2110,33 +2136,20 @@ app.get("/Trips/:TripID", async(req, res, next) => {
         .eq('id', TripID)
         .single();
 
-        //get places
-        const { data : itinerary, 
-            error : errorItinerary } = await tripsclient
-        .from('trips_itinerary')
-        .select('id, initialdate, finaldate, placeid')
-        .in('tripid', TripID);
-        
-        if (errorItinerary) throw res.status(500).json(errorItinerary);
+        //getTripJoins
+        const TripJoins = await getTripJoins(TripID);
 
-        //get memberlist
-        const { data : memberlist, 
-            error : errorMemberlist } = await tripsclient
-        .from('trips_members')
-        .select('id, userid')
-        .in('tripid', TripID);
-        
-        if (errorMemberlist) throw res.status(500).json(errorUsernames);
+        const ownerinfo = await getInfoToView(tripinfo.ownerid);
 
         const itemsToReturn = ({
             name : tripinfo.name, 
-            ownerid : tripinfo.ownerid, 
+            owner : ownerinfo, 
             description : tripinfo.description, 
             initialdate : tripinfo.initialdate, 
             finaldate : tripinfo.finaldate, 
             isinternational : tripinfo.isinternational,
-            itinerary : itinerary,
-            memberlist : memberlist 
+            itinerary : TripJoins.itinerary,
+            memberlist : TripJoins.memberlist 
         });
 
         if (error) throw res.status(500).json(error);
@@ -2149,6 +2162,8 @@ app.get("/Trips/:TripID", async(req, res, next) => {
         next(err);
     }
 });
+
+
 
 /*
     Method: Read All Trip Type: GET
@@ -2213,7 +2228,7 @@ app.get("/Trips/View/News", async(req, res, next) => {
         .select('id, name')
         .in('id', placelist);
 
-        if (errorUsernames) throw res.status(500).json(error);
+        if (errorUsernames) throw res.status(500).json(errorUsernames);
 
         const itineraryToReturn = itinerarylist.map(itinerarylist => ( {
              ...itinerarylist,
@@ -2497,7 +2512,7 @@ app.get("/Trips/:TripID/Members", async(req, res, next) => {
         //get role name by id
         const rolelist = memberlist.map(role => role.roleid).filter(Boolean);
 
-        //get usernane list by list of ids
+        //get username list by list of ids
         const { data : roleresp, error : errorRoles } = await adminCataloguesclient
         .from('roles')
         .select('id, name')
@@ -2649,4 +2664,90 @@ async function checkTripExists(Tripid){
         .eq("id", Tripid)
         .single();
     return !!data;
+}
+
+/*
+    Method: getTripInfo
+    In : INT - Out : Json
+    Date: 04/09/2025
+*/
+async function getTripJoins(Tripid){
+    //get itinerary
+    const { data : itinerary, 
+        error : errorItinerary } = await tripsclient
+    .from('trips_itinerary')
+    .select('id, initialdate, finaldate, placeid')
+    .in('tripid', Tripid);
+    
+    if (errorItinerary) throw res.status(500).json(errorItinerary);
+
+    //get placelist ids
+    const placelist = itinerary.map(itinerary => itinerary.placeid).filter(Boolean);
+    
+    //get places name list by list of ids
+    const { data : placesname, error : errorPlacesnames } = await placesclient
+    .from('places')
+    .select('id, name')
+    .in('id', placelist);
+
+    if (errorPlacesnames) throw res.status(500).json(errorPlacesnames);
+
+    const itineraryToReturn = itinerary.map(itinerarylist => ( {
+        ...itinerarylist,
+        name : placesname.find( name => name.id === itinerarylist.placeid ).name || ""
+    } ));
+    //get memberlist
+    const { data : memberlist, 
+        error : errorMemberlist } = await tripsclient
+    .from('trips_members')
+    .select('id, userid, roleid')
+    .in('tripid', Tripid);
+    
+    if (errorMemberlist) throw res.status(500).json(errorMemberlist);
+    //get userlist ids
+    const userlist = memberlist.map(user => user.userid).filter(Boolean);
+
+    //get usernane list by list of ids
+    const { data : memberinfo, error : errorUsernames } = await userclient
+    .from('users')
+    .select('id, name, tag, email')
+    .in('id',userlist);
+
+    if (errorUsernames) throw res.status(500).json(errorUsernames);
+
+    //get role name by id
+    const rolelist = memberlist.map(role => role.roleid).filter(Boolean);
+
+    //get username list by list of ids
+    const { data : roleresp, error : errorRoles } = await adminCataloguesclient
+    .from('roles')
+    .select('id, name')
+    .in('id',rolelist);
+
+    if (errorRoles) throw res.status(500).json(errorRoles);
+
+    const memberToReturn = memberlist.map(member => ( {
+            ...member,
+            name : memberinfo.find( name => name.id === member.userid ).name || "",
+            tag : memberinfo.find( name => name.id === member.userid ).tag || "",
+            email : memberinfo.find( name => name.id === member.userid ).email || "",
+            role: roleresp.find(role => role.id === member.roleid ).name || ""
+        } ));
+
+    return {
+        tripid : Tripid,
+        itinerary : itineraryToReturn,
+        memberlist : memberToReturn
+    };
+}
+
+async function getInfoToView(userid){
+    const { data , error } = await userclient
+        .from('users')
+        .select("id, name, tag, email")
+        .eq("id", userid)
+        .single();
+
+    if (error) throw res.status(500).json(error);
+    return data;
 }
