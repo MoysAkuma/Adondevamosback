@@ -91,7 +91,7 @@ const swaggerOptions = {
       },
     ],
   },
-  apis: ['routes/*.js'], // files containing annotations as above
+  apis: ['*.js'], // files containing annotations as above
 };
 
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
@@ -1805,7 +1805,7 @@ app.post("/Places/:PlaceID/Facilities", async(req, res, next) => {
         const { PlaceID } = req.params;
 
         //GetrqBody
-        const { selectedFacilities } = req.body;
+        const { Facilities } = req.body;
         
         // Validate PlaceID
         if (!PlaceID || isNaN(PlaceID)) {
@@ -1813,7 +1813,7 @@ app.post("/Places/:PlaceID/Facilities", async(req, res, next) => {
         }
 
         //Validate SelectedPlaces
-        if (!Array.isArray(selectedFacilities)) {
+        if (!Array.isArray(Facilities)) {
             return res.status(400).json({ error: 'SelectedFacilities must be an array' });
         }
         
@@ -1825,7 +1825,7 @@ app.post("/Places/:PlaceID/Facilities", async(req, res, next) => {
         }
         
         // Add PlaceID to each item
-        const itemsToInsert = selectedFacilities.map(item => ({
+        const itemsToInsert = Facilities.map(item => ({
             ...item,
             placeid: parseInt(PlaceID)
         }));
