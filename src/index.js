@@ -54,7 +54,7 @@ app.use(express.json());
 
 // Or configure specific origins
 app.use(cors({
-  origin: 'http://localhost:3000', 
+  origin: process.env.FRONT_URL, 
   methods: ['GET', 'POST', 'PUT','PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
