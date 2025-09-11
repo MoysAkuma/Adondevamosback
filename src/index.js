@@ -13,10 +13,6 @@ dotenv.config();
 
 const app = express();
 
-
-
-
-
 // Initialize Supabase client
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
@@ -83,12 +79,12 @@ const swaggerOptions = {
     info: {
       title: 'Adondevamos.back',
       version: 'Alpha',
-      description: 'Restful api to manage adondeveamos.web part of Adondevamos.io website',
+      description: 'Restful api to manage adondeveamos.web part of Adondevamos website',
     },
     servers: [
       {
-        url: 'http://localhost:3001',
-      },
+        url: process.env.FRONT_URL,
+      },0
     ],
   },
   apis: ['*.js'], // files containing annotations as above
