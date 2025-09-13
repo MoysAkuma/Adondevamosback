@@ -62,13 +62,19 @@ app.use(cors({
 
 
 app.use(bodyParser.json());
+
+//session config
 app.use(session({
-  secret: process.env.leviosa, // Change this to a random string
-  resave: false,
-  saveUninitialized: false,
+    name:'sessionId',
+    secret: process.env.SECRET, // Change this to a random string
+    resave: false,
+    saveUninitialized: false,
+  
   cookie: {
-    secure: false, // Set to true if using HTTPS
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    secure: process.env.NODE_ENV === 'production', // Set to true if using HTTPS
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
   }
 }));
 
@@ -143,14 +149,19 @@ app.get("/check-auth", async(req, res, next) => {
     try{
         if(req.session.userId)
         {
-            const data = await searchById(req.session.userId, res);
+            res.status(200).json(
+                {
+                    "isAuthenticated": true
+                }
+            );
+            /*const data = await searchById(req.session.userId, res);
             if (data != null) {
                 res.status(200).json(
                     {
                         "isAuthenticated": true
                     }
                 );
-            }
+            }*/
         }else {
             res.status(409).json({
                 "isAuthenticated": false
@@ -178,7 +189,7 @@ app.post("/Logout", async(req, res, next) => {
                 });
             }
         );
-        
+        res.clearCookie('sessionId');
     }
     catch (err){
         next(err);
