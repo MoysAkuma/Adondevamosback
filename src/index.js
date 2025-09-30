@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import session from 'express-session';
 import bodyParser from'body-parser';
+import cookieParser from 'cookie-parser';
 
 import { createClient } from '@supabase/supabase-js';
 //Swagger 
@@ -60,9 +61,6 @@ app.use(cors({
   credentials: true
 }));
 
-
-app.use(bodyParser.json());
-
 //session config
 app.use(session({
     name:'sessionId',
@@ -71,12 +69,20 @@ app.use(session({
     saveUninitialized: false,
   
   cookie: {
-    secure: process.env.NODE_ENV === 'production', // Set to true if using HTTPS
+    secure: process.env.IS_HTTPS, // Set to true if using HTTPS
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    sameSite: process.env.ENV === 'development' ? 'lax' : 'none' ,
+    domain : process.env.ENV === 'development' ? undefined : '.onrender.com' 
   }
 }));
+
+
+
+
+app.use(bodyParser.json());
+app.use(cookieParser());
+
 
 // Swagger setup
 const swaggerOptions = {
@@ -99,9 +105,13 @@ const swaggerOptions = {
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
+
+
 app.listen(process.env.PORT, () => {
  console.log("Adondevamos.back is running at ",process.env.PORT);
 });
+
+
 
 /*Autentication managment*/
 /*
@@ -127,15 +137,48 @@ app.post("/login", async(req, res, next) => {
         //getifisadmin
         const datarole = await searchRole(data.id,  res);
 
-        req.session.userId = data.id;
+        if(req.session){
+            req.session.userId = data.id;
+            req.session.isAdmin = !!datarole;
+            req.session.loginTime = new Date().toISOString();
+        } 
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session regeneration error:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Login failed'
+                });
+            }
+
+            // Set session data
+            req.session.userId = data.id;
+            req.session.isAdmin = !!datarole;
+            req.session.loginTime = new Date().toISOString();
+
+            console.log('Session created:', {
+                sessionId: req.sessionID,
+                userId: req.session.userId
+            });
+
+            res.status(200).json({
+                id: data.id,
+                tag: data.tag,
+                role: datarole ? 'Admin' : 'User',
+                name: data.name,
+                lastname: data.lastname,
+                sessionId: req.sessionID
+            });
+        });
+
+       // DESTROY any existing session first
+       /* req.session.destroy(() => {
+            // Create new session with user data
+            
+        }); 
+        */
         
-        res.status(200).json({
-            role : datarole ? 'Admin' : 'User',
-            id : data.id,
-            tag : data.tag,
-            name : data.name,
-            lastname : data.lastname
-        }).end();
+        
     } catch (err){
         next(err);
     }
@@ -147,23 +190,23 @@ app.post("/login", async(req, res, next) => {
 */
 app.get("/check-auth", async(req, res, next) => {
     try{
-        if(req.session.userId)
-        {
-            res.status(200).json(
-                {
-                    "isAuthenticated": true
-                }
-            );
-            /*const data = await searchById(req.session.userId, res);
+         console.log('Check-auth called - Session:', {
+            sessionId: req.sessionID,
+            userId: req.session.userId,
+            cookies: req.cookies
+        });
+
+        if(req.session.userId) {
+            const data = await searchById(req.session.userId, res);
             if (data != null) {
                 res.status(200).json(
                     {
                         "isAuthenticated": true
                     }
                 );
-            }*/
+            }
         }else {
-            res.status(409).json({
+            res.status(401).json({
                 "isAuthenticated": false
             });
         }
@@ -184,12 +227,10 @@ app.post("/Logout", async(req, res, next) => {
                 if(err){
                     return res.status(500).json({message:"Could not log out"})
                 }
-                res.clearCookie("connect.sid");
-                res.status(200).json({            
-                });
+                res.clearCookie("sessionId");
+                res.status(200).end();
             }
         );
-        res.clearCookie('sessionId');
     }
     catch (err){
         next(err);
@@ -629,7 +670,7 @@ app.get("/States/ByCountryID/:countryid", async(req, res, next) => {
     In : Json - Out : Json
     Date: 15/05/2025
 */
-app.post("/City", async(req, res, next) => {
+app.post("/Cities", async(req, res, next) => {
     try{
         //GetrqBody
         const { name, originalname, countryid,stateid, enabled, hide } = req.body;
@@ -663,7 +704,7 @@ app.post("/City", async(req, res, next) => {
     In : Json - Out : Json
     Date: 15/05/2025
 */
-app.get("/City/:cityID", async(req, res, next) => {
+app.get("/Cities/:cityID", async(req, res, next) => {
     try{
         //Get state id to search
         const { cityID } = req.params;
@@ -688,7 +729,7 @@ app.get("/City/:cityID", async(req, res, next) => {
     In : Json - Out : Json
     Date: 15/05/2025
 */
-app.put("/City/:cityID", async(req, res, next) => {
+app.put("/Cities/:cityID", async(req, res, next) => {
     try{
         //Get state id to search
         const { cityID } = req.params;
@@ -724,7 +765,7 @@ app.put("/City/:cityID", async(req, res, next) => {
     In : Json - Out : Json
     Date: 15/05/2025
 */
-app.delete("/City/:cityID", async(req, res, next) => {
+app.delete("/Cities/:cityID", async(req, res, next) => {
     try{
         //Get state id to search
         const { cityID } = req.params;
