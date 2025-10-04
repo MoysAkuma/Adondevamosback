@@ -60,11 +60,11 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: true, // Set to true if using HTTPS
+        secure: process.env.NODE_ENV === 'production', // true in production (HTTPS)
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        sameSite: 'lax',
-        domain :  undefined
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        domain: process.env.NODE_ENV === 'production' ? (new URL(process.env.FRONT_URL).hostname) : undefined
     }
 }));
 
@@ -137,7 +137,6 @@ app.post("/login", async(req, res, next) => {
         } 
         req.session.save((err) => {
             if (err) {
-                console.error('Session regeneration error:', err);
                 return res.status(500).json({
                     success: false,
                     message: 'Login failed'
@@ -149,11 +148,6 @@ app.post("/login", async(req, res, next) => {
             req.session.isAdmin = !!datarole;
             req.session.loginTime = new Date().toISOString();
 
-            console.log('Session created:', {
-                sessionId: req.sessionID,
-                userId: req.session.userId
-            });
-
             res.status(200).json({
                 id: data.id,
                 tag: data.tag,
@@ -163,15 +157,6 @@ app.post("/login", async(req, res, next) => {
                 sessionId: req.sessionID
             });
         });
-
-       // DESTROY any existing session first
-       /* req.session.destroy(() => {
-            // Create new session with user data
-            
-        }); 
-        */
-        
-        
     } catch (err){
         next(err);
     }
@@ -183,12 +168,6 @@ app.post("/login", async(req, res, next) => {
 */
 app.get("/check-auth", async(req, res, next) => {
     try{
-         console.log('Check-auth called - Session:', {
-            sessionId: req.sessionID,
-            userId: req.session.userId,
-            cookies: req.cookies
-        });
-
         if(req.session.userId) {
             const data = await searchById(req.session.userId, res);
             if (data != null) {
