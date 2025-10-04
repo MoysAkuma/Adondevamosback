@@ -46,14 +46,6 @@ const CataloguesAnonclient = createClient(supabaseUrl,supabaseKey , {
    db: { schema: 'catalogues' }
 });
 
-//Configuraciones
-app.set('port', process.env.PORT || 3001);
-app.set('json spaces', 2)
-
-// Middleware to parse JSON bodies
-app.use(express.json());
-
-// Or configure specific origins
 app.use(cors({
   origin: process.env.FRONT_URL, 
   methods: ['GET', 'POST', 'PUT','PATCH', 'DELETE'],
@@ -67,22 +59,23 @@ app.use(session({
     secret: process.env.SECRET, // Change this to a random string
     resave: false,
     saveUninitialized: false,
-  
-  cookie: {
-    secure: process.env.IS_HTTPS, // Set to true if using HTTPS
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: process.env.ENV === 'development' ? 'lax' : 'none' ,
-    domain : process.env.ENV === 'development' ? undefined : '.onrender.com' 
-  }
+    cookie: {
+        secure: true, // Set to true if using HTTPS
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        sameSite: 'lax',
+        domain :  undefined
+    }
 }));
 
-
-
-
+// Middleware to parse JSON bodies
+app.use(express.json());
 app.use(bodyParser.json());
 app.use(cookieParser());
 
+//Configuraciones
+app.set('port', process.env.PORT || 3001);
+app.set('json spaces', 2)
 
 // Swagger setup
 const swaggerOptions = {
@@ -488,9 +481,12 @@ app.patch("/Countries/:CountryID/Show", async(req, res, next) =>{
 */
 app.get("/Countries", async(req, res, next) => {
     try{
+        const limit = parseInt(req.query.limit) || 10;
         const { data, error } = await adminCataloguesclient
         .from('countries')
-        .select();
+        .select("id, name, originalname, acronym, enabled, hide, createddate")
+        .order('createddate', { ascending: true })
+        .limit(limit);
 
         if (error) throw res.status(500).json(error);
         if (data != null) {
