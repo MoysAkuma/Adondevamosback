@@ -58,9 +58,14 @@ app.use(cors({
 // Redis client setup for session store
 let redisClient;
 let redisStore;
-if (process.env.REDIS_URL) {
+if (process.env.REDIS_HOST && process.env.REDIS_PORT && process.env.REDIS_PASSWORD) {
   redisClient = createRedisClient({
-    url: process.env.REDIS_URL,
+    socket: {
+      host: process.env.REDIS_HOST,
+      port: Number(process.env.REDIS_PORT)
+    },
+    username: process.env.REDIS_USERNAME || 'default',
+    password: process.env.REDIS_PASSWORD,
     legacyMode: true // for connect-redis compatibility
   });
   redisClient.connect().catch(console.error);
@@ -90,8 +95,7 @@ app.use(cookieParser());
 
 //Configuraciones
 app.set('port', process.env.PORT || 3001);
-app.set('json spaces', 2)
-app.set('trust proxy', 1);
+app.set('json spaces', 2);
 // Swagger setup
 const swaggerOptions = {
   swaggerDefinition: {
@@ -2543,7 +2547,7 @@ app.get("/Trips/:TripID/Members", async(req, res, next) => {
         const { data : membername, error : errorUsernames } = await userclient
         .from('users')
         .select('id, name')
-        .in('id',userlist);
+        .in('id', userlist);
 
         //get role name by id
         const rolelist = memberlist.map(role => role.roleid).filter(Boolean);
