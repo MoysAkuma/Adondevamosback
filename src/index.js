@@ -2,6 +2,8 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import session from 'express-session';
+import { RedisStore } from 'connect-redis';
+import { createClient as createRedisClient } from 'redis';
 import bodyParser from'body-parser';
 import cookieParser from 'cookie-parser';
 
@@ -53,12 +55,25 @@ app.use(cors({
   credentials: true
 }));
 
+// Redis client setup for session store
+let redisClient;
+let redisStore;
+if (process.env.REDIS_URL) {
+  redisClient = createRedisClient({
+    url: process.env.REDIS_URL,
+    legacyMode: true // for connect-redis compatibility
+  });
+  redisClient.connect().catch(console.error);
+  redisStore = new RedisStore({ client: redisClient });
+}
+
 //session config
 app.use(session({
     name:'sessionId',
     secret: process.env.SECRET, // Change this to a random string
     resave: false,
     saveUninitialized: false,
+    store: redisStore || undefined,
     cookie: {
         secure: process.env.NODE_ENV === 'production', // true in production (HTTPS)
         httpOnly: true,
@@ -76,7 +91,7 @@ app.use(cookieParser());
 //Configuraciones
 app.set('port', process.env.PORT || 3001);
 app.set('json spaces', 2)
-
+app.set('trust proxy', 1);
 // Swagger setup
 const swaggerOptions = {
   swaggerDefinition: {
@@ -98,13 +113,9 @@ const swaggerOptions = {
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
-
-
 app.listen(process.env.PORT, () => {
  console.log("Adondevamos.back is running at ",process.env.PORT);
 });
-
-
 
 /*Autentication managment*/
 /*
@@ -130,17 +141,19 @@ app.post("/login", async(req, res, next) => {
         //getifisadmin
         const datarole = await searchRole(data.id,  res);
 
-        if(req.session){
+        if (req.session) {
             req.session.userId = data.id;
             req.session.isAdmin = !!datarole;
             req.session.loginTime = new Date().toISOString();
         } 
         req.session.save((err) => {
             if (err) {
-                return res.status(500).json({
-                    success: false,
-                    message: 'Login failed'
-                });
+                return res.status(500).json(
+                    {
+                        success: false,
+                        message: 'Login failed'
+                    }
+                );
             }
 
             // Set session data
@@ -168,7 +181,7 @@ app.post("/login", async(req, res, next) => {
 */
 app.get("/check-auth", async(req, res, next) => {
     try{
-        if(req.session.userId) {
+        if (req.session.userId) {
             const data = await searchById(req.session.userId, res);
             if (data != null) {
                 res.status(200).json(
@@ -2547,7 +2560,7 @@ app.get("/Trips/:TripID/Members", async(req, res, next) => {
             userid : item.userid,
             username : membername.find(user => user.id === item.userid ).name || "",
             roleid : item.roleid,
-            rolename : roleresp.find( role => role.id === item.roleid ).name || ""
+            rolename : roleresp.find(role => role.id === item.roleid ).name || ""
         }));
 
         res.status(200).json({
@@ -2718,7 +2731,7 @@ async function getTripJoins(Tripid){
     const itineraryToReturn = itinerary.map(itinerarylist => ( {
         ...itinerarylist,
         name : placesname.find( name => name.id === itinerarylist.placeid ).name || ""
-    } ));
+    }));
     //get memberlist
     const { data : memberlist, 
         error : errorMemberlist } = await tripsclient
@@ -2747,7 +2760,7 @@ async function getTripJoins(Tripid){
     .select('id, name')
     .in('id',rolelist);
 
-    if (errorRoles) throw res.status(500).json(errorRoles);
+    if (errorRoles) throw res.status(500).json(error);
 
     const memberToReturn = memberlist.map(member => ( {
             ...member,
