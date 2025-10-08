@@ -55,6 +55,13 @@ app.use(cors({
   credentials: true
 }));
 
+// Debug: Log Redis config (do not log password)
+console.log('Redis config:', {
+  host: process.env.REDIS_HOST,
+  port: process.env.REDIS_PORT,
+  username: process.env.REDIS_USERNAME
+});
+
 // Redis client setup for session store
 let redisClient;
 let redisStore;
@@ -68,14 +75,18 @@ if (process.env.REDIS_HOST && process.env.REDIS_PORT && process.env.REDIS_PASSWO
     password: process.env.REDIS_PASSWORD,
     legacyMode: true // for connect-redis compatibility
   });
+  redisClient.on('connect', () => console.log('Redis connected'));
+  redisClient.on('error', err => console.error('Redis error:', err));
   redisClient.connect().catch(console.error);
   redisStore = new RedisStore({ client: redisClient });
+  if (redisStore) console.log('RedisStore initialized');
+  else console.log('RedisStore not initialized');
 }
 
 //session config
 app.use(session({
     name:'sessionId',
-    secret: process.env.SECRET, // Change this to a random string
+    secret: process.env.SECRET,
     resave: false,
     saveUninitialized: false,
     store: redisStore || undefined,
@@ -87,6 +98,12 @@ app.use(session({
         domain: process.env.NODE_ENV === 'production' ? (new URL(process.env.FRONT_URL).hostname) : undefined
     }
 }));
+
+// Debug: Log session object on every request
+app.use((req, res, next) => {
+  console.log('Session:', req.session);
+  next();
+});
 
 // Middleware to parse JSON bodies
 app.use(express.json());
@@ -2271,9 +2288,9 @@ app.get("/Trips/View/News", async(req, res, next) => {
         if (errorUsernames) throw res.status(500).json(errorUsernames);
 
         const itineraryToReturn = itinerarylist.map(itinerarylist => ( {
-             ...itinerarylist,
-             name : placesname.find( name => name.id === itinerarylist.placeid ).name || ""
-            } ));
+            ...itinerarylist,
+            name : placesname.find( name => name.id === itinerarylist.placeid ).name || ""
+        }));
         
         if (erroritinerary) throw res.status(500).json(erroritinerary);
         const itemsToReturn = triplist.map(
