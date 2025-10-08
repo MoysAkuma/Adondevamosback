@@ -97,14 +97,15 @@ app.use(session({
         secure: process.env.NODE_ENV === 'production', // true in production (HTTPS)
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        domain: process.env.NODE_ENV === 'production' ? 'adondevamos-web.onrender.com' : undefined
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+        // domain property removed for testing
     }
 }));
 
-// Debug: Log session object on every request
+// Debug: Log session object and Set-Cookie header on every request
 app.use((req, res, next) => {
   console.log('Session:', req.session);
+  console.log('Set-Cookie header (middleware):', res.getHeader('Set-Cookie'));
   next();
 });
 
