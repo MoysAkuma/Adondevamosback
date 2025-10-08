@@ -83,6 +83,9 @@ if (process.env.REDIS_HOST && process.env.REDIS_PORT && process.env.REDIS_PASSWO
   else console.log('RedisStore not initialized');
 }
 
+// Set trust proxy BEFORE session middleware
+app.set('trust proxy', 1);
+
 //session config
 app.use(session({
     name:'sessionId',
@@ -95,7 +98,7 @@ app.use(session({
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        domain: process.env.NODE_ENV === 'production' ? (new URL(process.env.FRONT_URL).hostname) : undefined
+        domain: process.env.NODE_ENV === 'production' ? 'adondevamos-web.onrender.com' : undefined
     }
 }));
 
@@ -169,13 +172,20 @@ app.post("/login", async(req, res, next) => {
         } 
         req.session.save((err) => {
             if (err) {
-                return res.status(500).json(
-                    {
-                        success: false,
-                        message: 'Login failed'
-                    }
-                );
+                console.error('Session save error:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Login failed'
+                });
             }
+
+            // Debug: Log session and cookie creation
+            console.log('Session created:', {
+                sessionId: req.sessionID,
+                userId: req.session.userId,
+                cookie: req.session.cookie
+            });
+            console.log('Set-Cookie header:', res.getHeader('Set-Cookie'));
 
             // Set session data
             req.session.userId = data.id;
