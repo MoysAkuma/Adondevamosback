@@ -55,13 +55,6 @@ app.use(cors({
   credentials: true
 }));
 
-// Debug: Log Redis config (do not log password)
-console.log('Redis config:', {
-  host: process.env.REDIS_HOST,
-  port: process.env.REDIS_PORT,
-  username: process.env.REDIS_USERNAME
-});
-
 // Redis client setup for session store
 let redisClient;
 let redisStore;
@@ -104,8 +97,6 @@ app.use(session({
 
 // Debug: Log session object and Set-Cookie header on every request
 app.use((req, res, next) => {
-  console.log('Session:', req.session);
-  console.log('Set-Cookie header (middleware):', res.getHeader('Set-Cookie'));
   next();
 });
 
@@ -179,14 +170,6 @@ app.post("/login", async(req, res, next) => {
                     message: 'Login failed'
                 });
             }
-
-            // Debug: Log session and cookie creation
-            console.log('Session created:', {
-                sessionId: req.sessionID,
-                userId: req.session.userId,
-                cookie: req.session.cookie
-            });
-            console.log('Set-Cookie header:', res.getHeader('Set-Cookie'));
 
             // Set session data
             req.session.userId = data.id;
@@ -2819,3 +2802,36 @@ async function getInfoToView(userid){
     if (error) throw res.status(500).json(error);
     return data;
 }
+
+app.post("/Trips/Search", async(req, res, next) => {
+    const { filters } = req.body;
+
+    try {
+        let query = tripsclient
+            .from('trips')
+            .select("name, ownerid, description, initialdate, finaldate, isinternational");
+
+        if (filters.name) {
+            query = query.ilike('name', `%${filters.name}%`);
+        }
+        if (filters.initialdate) {
+            query = query.gte('initialdate', filters.initialdate);
+        }
+        if (filters.finaldate) {
+            query = query.lte('finaldate', filters.finaldate);
+        }
+
+        query = query.limit(5);
+
+        const { data, error } = await query;
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (error) {
+        next(error);
+    }
+});
