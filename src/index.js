@@ -2807,9 +2807,10 @@ app.post("/Trips/Search", async(req, res, next) => {
     const { filters } = req.body;
 
     try {
+        //Create base query
         let query = tripsclient
             .from('trips')
-            .select("name, ownerid, description, initialdate, finaldate, isinternational");
+            .select("id, name, ownerid, description, initialdate, finaldate, isinternational");
 
         if (filters.name) {
             query = query.ilike('name', `%${filters.name}%`);
@@ -2823,15 +2824,42 @@ app.post("/Trips/Search", async(req, res, next) => {
 
         query = query.limit(5);
 
-        const { data, error } = await query;
+        const { data : dataTrips, error : errorTrips } = await query;
+        
+        const ownerIds = dataTrips.map(trip => trip.ownerid).filter(Boolean);
 
-        if (error) throw res.status(500).json(error);
-        if (data != null) {
+        const ownerList = await getOwnersByUserIds(ownerIds);
+        
+        const dataToReturn = dataTrips.map(trip => ({
+            ...trip,
+            owner : ownerList.find(owner => owner.id === trip.ownerid) || {}
+        }));
+
+        if (errorTrips) throw res.status(500).json(errorTrips);
+
+        if (dataToReturn != null) {
             res.status(200).json({
-                "Message": "Reading process sucess", "info":data
+                "Message" : "Reading process sucess", 
+                "info" : dataToReturn
             });
         }
     } catch (error) {
         next(error);
     }
 });
+
+/*
+    Method: GetList of owner trips Type: GET
+    In : Json - Out : Json
+    Date: 11/10/2025
+*/
+async function getOwnersByUserIds(OwnerList){
+    const { data : ownerInfo, error : errorOwners } = 
+    await userclient
+    .from('users')
+    .select('id, name, tag, email')
+    .in('id', OwnerList);
+
+    if (errorOwners) throw res.status(500).json(errorOwners);
+    return ownerInfo;
+}
