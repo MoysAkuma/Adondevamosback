@@ -2881,52 +2881,24 @@ app.post("/Places/Search", async(req, res, next) => {
         const { data : dataPlaces, error : errorPlacess } = await query;
 
         if (errorPlacess) throw res.status(500).json(errorTrips);
+
         //GetUbicationNames
-        const placesWithNames = await Promise.all(
-            
-            dataPlaces.map(async (place) => {
-                try{
-                    const UbicationNames = await checkPlaceNames(
-                        place.countryid,
-                        place.stateid,
-                        place.cityid
-                    );
-                    return {
-                        id : place.id,
-                        name : place.name, 
-                        address : place.address, 
-                        description : place.description, 
-                        ispublic : place.ispublic,
-                        country: {
-                            id : place.countryid,
-                            name : UbicationNames.CountryName
-                        },
-                        state: {
-                            id : place.stateid,
-                            name : UbicationNames.StateName
-                        },
-                        city : {
-                            id : place.cityid,
-                            name : UbicationNames.CityName
-                        }
-                    }
-                }
-                catch(err){
-                    console.log("Error at getting name of ubication catalogue");
-                    return {
-                        ...place,
-                        CountryName : null,
-                        StateName : null,
-                        CityName : null
-                    }
-                }
-            })
-        );
+        const placesWithNames = await GetUbicationNamesByList(dataPlaces);
         
+        const dataTOReturn = dataPlaces.map( place => {
+            const namePlaces = placesWithNames.find( searchPlace => searchPlace.id === place.id);
+            return {
+                ...place,
+                country : namePlaces.country,
+                state : namePlaces.state,
+                city : namePlaces.city
+            }
+        } )
+
         if (placesWithNames != null) {
             res.status(200).json({
                 "Message" : "Reading process sucess", 
-                "info" : placesWithNames
+                "info" : dataTOReturn
             });
         }
     } catch (error) {
@@ -2948,4 +2920,49 @@ async function getOwnersByUserIds(OwnerList){
 
     if (errorOwners) throw res.status(500).json(errorOwners);
     return ownerInfo;
+}
+/*
+    Method: GetList of Ubications Type: GET
+    In : Json - Out : Json
+    Date: 12/10/2025
+*/
+async function GetUbicationNamesByList(lstUbications){
+    const ubicationNamesSearch = await Promise.all(
+        lstUbications.map(async (ubication) => {
+            try{
+                const UbicationNames = await 
+                checkPlaceNames(
+                    ubication.countryid,
+                    ubication.stateid,
+                    ubication.cityid
+                );
+                return {
+                    id : ubication.id,
+                    country: {
+                        id : ubication.countryid,
+                        name : UbicationNames.CountryName
+                    },
+                    state: {
+                        id : ubication.stateid,
+                        name : UbicationNames.StateName
+                    },
+                    city : {
+                        id : ubication.cityid,
+                        name : UbicationNames.CityName
+                    }
+                }
+            }
+            catch(err){
+                console.log("Error at getting name of ubication catalogue");
+                return {
+                    ...ubication,
+                    CountryName : null,
+                    StateName : null,
+                    CityName : null
+                }
+            }
+        })
+    );
+    
+    return ubicationNamesSearch;
 }
