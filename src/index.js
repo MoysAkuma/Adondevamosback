@@ -2847,6 +2847,92 @@ app.post("/Trips/Search", async(req, res, next) => {
         next(error);
     }
 });
+/*
+    Method: Search Places
+    In : Json - Out : Json
+    Date: 12/10/2025
+*/
+app.post("/Places/Search", async(req, res, next) => {
+    const { filters } = req.body;
+
+    try {
+        //Create base query
+        let query = placesclient
+            .from('places')
+            .select("id,name, address, description, ispublic, countryid, stateid, cityid")
+            .order('createddate', { ascending: false });
+
+        if (filters.name) {
+            query = query.ilike('name', `%${filters.name}%`);
+        }
+        if (filters.countryid) {
+            query = query.in('countryid', filters.countryid);
+        }
+        if (filters.stateid) {
+            query = query.in('stateid', filters.stateid);
+        }
+        if (filters.cityid) {
+            query = query.in('cityid', filters.cityid);
+        }
+
+        query = query.limit(5);
+
+        //get Places
+        const { data : dataPlaces, error : errorPlacess } = await query;
+
+        if (errorPlacess) throw res.status(500).json(errorTrips);
+        //GetUbicationNames
+        const placesWithNames = await Promise.all(
+            
+            dataPlaces.map(async (place) => {
+                try{
+                    const UbicationNames = await checkPlaceNames(
+                        place.countryid,
+                        place.stateid,
+                        place.cityid
+                    );
+                    return {
+                        id : place.id,
+                        name : place.name, 
+                        address : place.address, 
+                        description : place.description, 
+                        ispublic : place.ispublic,
+                        country: {
+                            id : place.countryid,
+                            name : UbicationNames.CountryName
+                        },
+                        state: {
+                            id : place.stateid,
+                            name : UbicationNames.StateName
+                        },
+                        city : {
+                            id : place.cityid,
+                            name : UbicationNames.CityName
+                        }
+                    }
+                }
+                catch(err){
+                    console.log("Error at getting name of ubication catalogue");
+                    return {
+                        ...place,
+                        CountryName : null,
+                        StateName : null,
+                        CityName : null
+                    }
+                }
+            })
+        );
+        
+        if (placesWithNames != null) {
+            res.status(200).json({
+                "Message" : "Reading process sucess", 
+                "info" : placesWithNames
+            });
+        }
+    } catch (error) {
+        next(error);
+    }
+});
 
 /*
     Method: GetList of owner trips Type: GET
