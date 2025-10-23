@@ -1579,6 +1579,29 @@ app.get("/Users/Search/tag=:searchText", async(req, res, next) => {
 });
 
 /*
+    Method: Search all users  Type: GET
+    In : ID - Out : Json
+    Date: 18/10/2025
+*/
+app.get("/Users", async(req, res, next) => {
+    try{
+        const { data, error } = await userclient
+        .from('users')
+        .select('id, name, email, tag, email')
+        .limit(5);
+
+        if (error) throw res.status(500).json(error);
+        if (data != null) {
+            res.status(200).json({
+                "Message": "Reading process sucess", "info":data
+            });
+        }
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
     Method: Verify if tag is available Type: GET
     In : String - Out : Json
     Date: 15/06/2025
@@ -2141,22 +2164,25 @@ async function checkPlaceNames(countryid, stateid, cityid){
 app.post("/Trips", async(req, res, next) => {
     try{
         //GetrqBody
-        const { name, creatorid, description, 
-            initialdate, finaldate, isinternational } 
+        const { name, ownerid, description, 
+            initialdate, finaldate } 
             = req.body;
 
         const { data, error } = 
         await tripsclient
         .from('trips')
-        .insert({
-            name : name,
-            ownerid : creatorid,
-            description:description,
-            initialdate:initialdate,
-            finaldate:finaldate,
-            isinternational : isinternational
-        })
-        .select();
+        .insert(
+            {
+                name : name,
+                description : description,
+                initialdate : initialdate,
+                finaldate : finaldate,
+                ownerid : ownerid,
+                hide : false
+            }
+        )
+        .select()
+        .single();
 
         if (error) throw res.status(500).json(error);
         if (data != null) {
@@ -2333,8 +2359,8 @@ app.put("/Trips/:TripID", async(req, res, next) => {
         const { TripID } = req.params;
 
         //GetrqBody
-        const { name, creatorid, description, 
-            initialdate, finaldate, isinternational } 
+        const { name, description, 
+            initialdate, finaldate } 
             = req.body;
 
         const { data, error } = 
@@ -2342,17 +2368,17 @@ app.put("/Trips/:TripID", async(req, res, next) => {
         .from('trips')
         .update({
             name : name,
-            ownerid : creatorid,
-            description:description,
-            initialdate:initialdate,
-            finaldate:finaldate,
+            description : description,
+            initialdate : initialdate,
+            finaldate : finaldate,
             isinternational : isinternational
         })
-        .select();
+        .select()
+        .single();
 
         if (error) throw res.status(500).json(error);
         if (data != null) {
-            res.status(201).json(
+            res.status(200).json(
             {
                 "Message" : "Edition process sucess", 
                 "info" : data
@@ -2363,48 +2389,7 @@ app.put("/Trips/:TripID", async(req, res, next) => {
     }
 });
 
-/*
-    Method: Edit Trip Type: PUT
-    In : Json - Out : Json
-    Date: 27/08/2025
-*/
-app.put("/Trips/:TripID", async(req, res, next) => {
-    try{
-        //Get TripID to search
-        const { TripID } = req.params;
 
-        //GetrqBody
-        const { name, creatorid, description, 
-            initialdate, finaldate, isinternational } 
-            = req.body;
-
-        const { data, error } = 
-        await tripsclient
-        .from('trips')
-        .update(
-            {
-                name : name,
-                ownerid : creatorid,
-                description:description,
-                initialdate:initialdate,
-                finaldate:finaldate,
-                isinternational : isinternational
-            }
-        )
-        .eq('id', TripID);
-
-        if (error) throw res.status(500).json(error);
-        if (data != null) {
-            res.status(201).json(
-            {
-                "Message" : "Edition process sucess", 
-                "info" : data
-            });
-        }
-    } catch (err){
-        next(err);
-    }
-});
 
 /*
     Method: Hide Trip Type: PATCH
@@ -2473,8 +2458,10 @@ app.delete("/Trips/:TripID", async(req, res, next) => {
 */
 app.post("/Trips/:TripID/Members", async(req, res, next) => {
     try{
+        
         //Get TripID to search
         const { TripID } = req.params;
+
         //GetrqBody
         const { MemberList } 
             = req.body;
@@ -2495,21 +2482,77 @@ app.post("/Trips/:TripID/Members", async(req, res, next) => {
             throw res.status(404).end();
         }
 
-        // Add TripID to each item
-        const itemsToInsert = MemberList.map(item => ({
-            ...item,
-            tripid: parseInt(TripID)
+        const upsertData = MemberList.map(member => ({
+            tripid: parseInt(tripId),
+            userid: member.userid,
+            hide: member.hide
         }));
+
+        // Perform upsert operation
+        const { data, error } = await tripsclient
+        .from('trips_members')
+        .upsert(upsertData, {
+            onConflict: 'tripid,userid', 
+            ignoreDuplicates: false
+        })
+        .select();
+        
+        if (error) {
+            console.error('Supabase upsert error:', error);
+            return res.status(500).json({ error: error.message });
+        }
+
+        res.status(201).json({
+            "Message": "Creation process sucess"
+        });        
+        
+    } catch (err){
+        next(err);
+    }
+});
+
+/*
+    Method: Edit Member List Type: POST
+    In : Json - Out : Json
+    Date: 01/09/2025
+*/
+app.put("/Trips/:TripID/Members", async(req, res, next) => {
+    try{
+        
+        //Get TripID to search
+        const { TripID } = req.params;
+        
+        //GetrqBody
+        const { MemberList } 
+            = req.body;
+
+        //Validate Tripid
+        if (!TripID || isNaN(TripID)) {
+            return res.status(400).json({ error: 'Invalid TripID' });
+        }
+        //Validate member list is array
+        if (!Array.isArray(MemberList)) {
+            return res.status(400).json({ error: 'MemberList must be an array' });
+        }
+
+        //Validate trip exist
+        const tripsexist = await checkTripExists(TripID);
+        
+        if(!tripsexist){
+            throw res.status(404).end();
+        }
+        //create 
 
         //Insert all member
         const { error } = await tripsclient
         .from('trips_members')
-        .insert(itemsToInsert);
+        .update(MemberList)
+        .eq('tripid', TripID);
         
         if (error) throw res.status(500).json(error);
 
-        res.status(201).json({
-            "Message": "Creation process sucess"
+        res.status(200).json({
+            "Message": "Editing process sucess"
         });        
         
     } catch (err){
@@ -2766,23 +2809,11 @@ async function getTripJoins(Tripid){
 
     if (errorUsernames) throw res.status(500).json(errorUsernames);
 
-    //get role name by id
-    const rolelist = memberlist.map(role => role.roleid).filter(Boolean);
-
-    //get username list by list of ids
-    const { data : roleresp, error : errorRoles } = await adminCataloguesclient
-    .from('roles')
-    .select('id, name')
-    .in('id',rolelist);
-
-    if (errorRoles) throw res.status(500).json(error);
-
     const memberToReturn = memberlist.map(member => ( {
             ...member,
             name : memberinfo.find( name => name.id === member.userid ).name || "",
             tag : memberinfo.find( name => name.id === member.userid ).tag || "",
-            email : memberinfo.find( name => name.id === member.userid ).email || "",
-            role: roleresp.find(role => role.id === member.roleid ).name || ""
+            email : memberinfo.find( name => name.id === member.userid ).email || ""
         } ));
 
     return {
