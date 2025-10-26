@@ -2123,7 +2123,7 @@ async function checkPlaceNames(countryid, stateid, cityid){
         const [countryResponse, stateResponse, citiesResponse] = await Promise.all([
         adminCataloguesclient
             .from('countries')
-            .select("name")
+            .select("name, acronym")
             .eq('id',countryid)
             .single(),
         adminCataloguesclient
@@ -2150,6 +2150,7 @@ async function checkPlaceNames(countryid, stateid, cityid){
         }
         return {
             CountryName : countryResponse.data.name,
+            CountryAcronym : countryResponse.data.acronym,
             StateName : stateResponse.data.name,
             CityName : citiesResponse.data.name
         }
@@ -2226,7 +2227,12 @@ app.get("/Trips/:TripID", async(req, res, next) => {
             finaldate : tripinfo.finaldate, 
             isinternational : tripinfo.isinternational,
             itinerary : TripJoins.itinerary,
-            memberlist : TripJoins.memberlist 
+            memberlist : TripJoins.memberlist,
+            statics : {
+                Votes : {
+                    Total: 0
+                }
+            }
         });
 
         if (error) throw res.status(500).json(error);
@@ -2302,14 +2308,21 @@ app.get("/Trips/View/News", async(req, res, next) => {
         //get places name list by list of ids
         const { data : placesname, error : errorUsernames } = await placesclient
         .from('places')
-        .select('id, name')
+        .select('id, name, countryid, stateid, cityid')
         .in('id', placelist);
 
         if (errorUsernames) throw res.status(500).json(errorUsernames);
 
+        const UbicationNames = await GetUbicationNamesByList(placesname);
+
         const itineraryToReturn = itinerarylist.map(itinerarylist => ( {
             ...itinerarylist,
             name : placesname.find( name => name.id === itinerarylist.placeid ).name || ""
+            ,Ubication : UbicationNames.find(ubication => ubication.id === itinerarylist.placeid) ? {
+            Country: UbicationNames.find(ubication => ubication.id === itinerarylist.placeid).country,
+            State: UbicationNames.find(ubication => ubication.id === itinerarylist.placeid).state,
+            City: UbicationNames.find(ubication => ubication.id === itinerarylist.placeid).city
+            } : null
         }));
         
         if (erroritinerary) throw res.status(500).json(erroritinerary);
@@ -2328,7 +2341,8 @@ app.get("/Trips/View/News", async(req, res, next) => {
                             id : rtn.id,
                             initialdate : rtn.initialdate,
                             finaldate : rtn.finaldate,
-                            name : rtn.name
+                            name : rtn.name,
+                            Ubication : rtn.Ubication
                         })
                     ),
                 statics : {
@@ -2371,8 +2385,9 @@ app.put("/Trips/:TripID", async(req, res, next) => {
             description : description,
             initialdate : initialdate,
             finaldate : finaldate,
-            isinternational : isinternational
+            lastupdateddate : new Date().toISOString()
         })
+        .eq('id', TripID)
         .select()
         .single();
 
@@ -2471,7 +2486,7 @@ app.post("/Trips/:TripID/Members", async(req, res, next) => {
             return res.status(400).json({ error: 'Invalid TripID' });
         }
         //Validate member list is array
-        if (!Array.isArray(MemberList)) {
+        if (!MemberList || !Array.isArray(MemberList)) {
             return res.status(400).json({ error: 'MemberList must be an array' });
         }
 
@@ -2541,13 +2556,26 @@ app.put("/Trips/:TripID/Members", async(req, res, next) => {
         if(!tripsexist){
             throw res.status(404).end();
         }
-        //create 
 
-        //Insert all member
-        const { error } = await tripsclient
+        //create 
+        const upsertData = MemberList.map( 
+            member => (
+                {
+                    tripid: parseInt(TripID),
+                    userid: member.userid,
+                    hide: member.hide
+                }
+            )
+        );
+
+        // Perform upsert operation
+        const { data, error } = await tripsclient
         .from('trips_members')
-        .update(MemberList)
-        .eq('tripid', TripID);
+        .upsert(upsertData, {
+            onConflict: 'tripid,userid', 
+            ignoreDuplicates: false
+        })
+        .select();
         
         if (error) throw res.status(500).json(error);
 
@@ -2585,12 +2613,12 @@ app.get("/Trips/:TripID/Members", async(req, res, next) => {
 
         const { data : memberlist, error : errorMemberlist } = await tripsclient
         .from('trips_members')
-        .select('id, userid, roleid')
+        .select('id, userid, hide')
         .eq('tripid',TripID);
         
         //Validate memberlist response
         
-        if (errorMemberlist) throw res.status(500).json(error);
+        if (errorMemberlist) throw res.status(500).json(errorMemberlist);
 
         if (memberlist.length === 0) throw res.status(404).end();
 
@@ -2603,22 +2631,13 @@ app.get("/Trips/:TripID/Members", async(req, res, next) => {
         .select('id, name')
         .in('id', userlist);
 
-        //get role name by id
-        const rolelist = memberlist.map(role => role.roleid).filter(Boolean);
-
-        //get username list by list of ids
-        const { data : roleresp, error : errorRoles } = await adminCataloguesclient
-        .from('roles')
-        .select('id, name')
-        .in('id',rolelist);
-
-        if (errorRoles) throw res.status(500).json(error);
+        if (errorUsernames) throw res.status(500).json(errorUsernames);
 
         const itemsToReturn = memberlist.map(item => ({
             userid : item.userid,
+            hide : item.hide,
             username : membername.find(user => user.id === item.userid ).name || "",
-            roleid : item.roleid,
-            rolename : roleresp.find(role => role.id === item.roleid ).name || ""
+
         }));
 
         res.status(200).json({
@@ -2773,31 +2792,41 @@ async function getTripJoins(Tripid){
     .select('id, initialdate, finaldate, placeid')
     .in('tripid', Tripid);
     
-    if (errorItinerary) throw res.status(500).json(errorItinerary);
+    if (errorItinerary) throw new Error(`Itinerary query failed: ${errorItinerary.message}`);
 
     //get placelist ids
     const placelist = itinerary.map(itinerary => itinerary.placeid).filter(Boolean);
     
-    //get places name list by list of ids
-    const { data : placesname, error : errorPlacesnames } = await placesclient
+    //get places name and ubication list by list of ids
+    const { data : placesinfo, error : errorPlacesnames } = await placesclient
     .from('places')
-    .select('id, name')
+    .select('id, name, countryid, stateid, cityid')
     .in('id', placelist);
 
-    if (errorPlacesnames) throw res.status(500).json(errorPlacesnames);
+    if (errorPlacesnames) throw new Error(`Places query failed: ${errorPlacesnames.message}`);
+
+    const UbicationNames = await GetUbicationNamesByList(placesinfo);
+   
 
     const itineraryToReturn = itinerary.map(itinerarylist => ( {
         ...itinerarylist,
-        name : placesname.find( name => name.id === itinerarylist.placeid ).name || ""
+        name : placesinfo.find( name => name.id === itinerarylist.placeid ).name || "",
+        Ubication : UbicationNames.find(ubication => ubication.id === itinerarylist.placeid) ? {
+        Country: UbicationNames.find(ubication => ubication.id === itinerarylist.placeid).country,
+        State: UbicationNames.find(ubication => ubication.id === itinerarylist.placeid).state,
+        City: UbicationNames.find(ubication => ubication.id === itinerarylist.placeid).city
+        } : null
     }));
+
     //get memberlist
     const { data : memberlist, 
         error : errorMemberlist } = await tripsclient
     .from('trips_members')
-    .select('id, userid, roleid')
+    .select('id, userid, hide')
     .in('tripid', Tripid);
     
-    if (errorMemberlist) throw res.status(500).json(errorMemberlist);
+    if (errorMemberlist) throw new Error(`Memberlist query failed: ${errorMemberlist.message}`);
+
     //get userlist ids
     const userlist = memberlist.map(user => user.userid).filter(Boolean);
 
@@ -2807,7 +2836,7 @@ async function getTripJoins(Tripid){
     .select('id, name, tag, email')
     .in('id',userlist);
 
-    if (errorUsernames) throw res.status(500).json(errorUsernames);
+    if (errorUsernames) throw new Error(`User info query failed: ${errorUsernames.message}`);
 
     const memberToReturn = memberlist.map(member => ( {
             ...member,
@@ -2971,7 +3000,8 @@ async function GetUbicationNamesByList(lstUbications){
                     id : ubication.id,
                     country: {
                         id : ubication.countryid,
-                        name : UbicationNames.CountryName
+                        name : UbicationNames.CountryName,
+                        acronym : UbicationNames.CountryAcronym
                     },
                     state: {
                         id : ubication.stateid,
