@@ -29,9 +29,15 @@ const cataloguesClient = createClient(supabaseUrl, supabaseServiceKey, {
   db: { schema: 'catalogues' }
 });
 
+// Trips client
+const clientTrips = createClient(supabaseUrl, supabaseServiceKey, {
+  db: { schema: 'catalogues' }
+});
+
 export { 
   supabase as default,
   supabase as publicSchemaClient,
   userClient,
-  cataloguesClient
+  cataloguesClient,
+  clientTrips
 };
