@@ -1,4 +1,4 @@
-import clientTrips from '../config/supabase.js';
+import {clientTrips} from '../config/supabase.js';
 
 const tripsService = {
   async createTrip(CreateTripRq) {
@@ -10,8 +10,8 @@ const tripsService = {
     .select()
     .single();
 
-    if (error) throw error;
-    return data;
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data : data };
   },
 
   async updateTrip(tripId, UpdateTripRq) {
@@ -24,18 +24,36 @@ const tripsService = {
     .select()
     .single();
 
-    if (error) throw error;
-    return data;
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data : data };
   },
 
   async getTripById(tripId) {
     const { data, error } = await clientTrips
     .from('trips')    
-    .select("*")
-    .eq('id',countryId);
+    .select("name, ownerid, description, initialdate, finaldate, isinternational")
+    .eq('id', tripId);
 
-    if (error) throw error;
-    return data;
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data : data };
+  },
+  async getItineraryByTripId(tripId) {
+    const { data, error } = await clientTrips
+    .from('trips_itinerary')    
+    .select("id, initialdate, finaldate, placeid")
+    .eq('tripid', tripId);
+
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data : data };
+  },
+  async getMembersListByTripId(tripId) {
+    const { data, error } = await clientTrips
+    .from('trips_members')
+    .select("id, userid, hide")
+    .eq('tripid', tripId);
+
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data : data };
   },
 
   async deleteTrip(tripId) {
@@ -44,18 +62,42 @@ const tripsService = {
     .delete()
     .eq('id', tripId);
 
-    if (error) throw error;
-    return data;
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data : data };
   },
-  async getAll(page = 10,limit = 10, skip = 0) {
+  async getAll() {
+    page = page < 1 ? 1 : page;
     const { data, error } = await clientTrips
     .from('trips')
-    .select("*")
-    .limit(limit)
-    .skip(skip);
+    .select("id, name, ownerid, description, initialdate, finaldate, isinternational")
+    .order('createddate', { ascending: true });
     
-    console.log(data);
-    if (error) return ({ status : 500, error: error.message});
+    if (error) return { status : 500, error: error.message };
+    
+    return { status: 200, data : data };
+  },
+  async searchTrips(filters, page = 1, limit = 10) {
+    page = page < 1 ? 1 : page;
+    let searchQuery = clientTrips
+    .from('trips')
+    .select("id, name, ownerid, description, initialdate, finaldate, isinternational")
+    .order('createddate', { ascending: true })
+    .range((page - 1) * limit, page * limit - 1)
+    .limit(limit);
+
+    if (filters.name) {
+        searchQuery = searchQuery.ilike('name', `%${filters.name}%`);
+    }
+    if (filters.initialdate) {
+        searchQuery = searchQuery.gte('initialdate', filters.initialdate);
+    }
+    if (filters.finaldate) {
+        searchQuery = searchQuery.lte('finaldate', filters.finaldate);
+    }
+
+    const { data, error } = await searchQuery;
+
+    if (error) return { status : 500, error: error.message };
     
     return { status: 200, data : data };
   }

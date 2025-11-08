@@ -1,4 +1,4 @@
-import cataloguesClient from '../config/supabase.js';
+import { cataloguesClient} from '../config/supabase.js';
 
 const countriesService = {
   async createCountry(insertData) {
@@ -25,10 +25,12 @@ const countriesService = {
 
   async getCountryById(countryId) {
     const { data, error } = await cataloguesClient
-    .from('countries')    .select("*")
+    .from('countries')
+    .select("*")
     .eq('id',countryId);
-
+    console.log(data);
     if (error) throw error;
+    console.log(error);
     return data;
   },
 
@@ -41,12 +43,12 @@ const countriesService = {
     if (error) throw error;
     return data;
   },
-  async getAll(page = 10,limit = 10, skip = 0) {
+  async getAll(startIndex = 0, endIndex = 10 ) {
     const { data, error } = await cataloguesClient
     .from('countries')
-    .select("*")
-    .limit(limit)
-    .skip(skip);
+    .select("id, name, originalname, acronym, enabled, hide, createddate")
+    .order('createddate', { ascending: true })
+    .range(startIndex, endIndex);
     
     console.log(data);
     if (error) return ({ status : 500, error: error.message});

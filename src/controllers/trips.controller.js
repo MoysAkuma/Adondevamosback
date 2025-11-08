@@ -6,14 +6,14 @@ import tripsService from '../services/trips.service.js';
 const createTrips = async (req, res, next) => {
   try{
     //GetrqBody
-    const { name, description, 
+    const { name, ownerid, description, 
             initialdate, finaldate } = req.body;
     const data = await tripsService.createCountry({
         name : name, 
         description : description, 
         initialdate : initialdate ,
         finaldate : finaldate,
-        ownerid : req.user.id,
+        ownerid : ownerid,
         hide : false
     });
     
@@ -28,9 +28,11 @@ const getTripbyID = async (req, res, next) => {
   try {
     //Get trip id to search
     const { TripID } = req.params;
-    const trip = tripsService.getTripById(TripID);
+    const trip = await tripsService.getTripById(TripID);
     
-    if (error) throw new ApiError(500,error.message);
+    if (trip.status == 500) throw new ApiError(500, trip.message);
+    if (trip.data.length === 0) throw new ApiError(404, 'Trip not found');
+    
     new ApiResponse(res).success(
       'Reading process sucess', 
       trip);
@@ -38,6 +40,7 @@ const getTripbyID = async (req, res, next) => {
     next(err);
   }
 };
+
 
 const updateTripbyID = async (req, res, next) => {
   try {

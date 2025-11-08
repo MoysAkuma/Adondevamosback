@@ -26,9 +26,8 @@ const getCountrybyID = async (req, res, next) => {
   try {
     //Get country id to search
     const { CountryID } = req.params;
-    const country = countriesService.getCountryById(CountryID);
+    const country = await countriesService.getCountryById(CountryID);
     
-    if (error) throw new ApiError(500,error.message);
     new ApiResponse(res).success(
       'Reading process sucess', 
       country);
@@ -79,11 +78,14 @@ const deleteCountrybyID = async (req, res, next) => {
 
 //Get all countries
 const getAllCountries = async (req, res) => {
-  const page = parseInt(req.query.page) || 10;
+  const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
-  const skip = (page - 1) * limit;
+  const startIndex = (page - 1) * limit;
+  const endIndex = startIndex + limit - 1;
+  console.log(startIndex, endIndex);
   try{
-    const countries = await countriesService.getAll(page, limit, skip);
+    const countries = 
+    await countriesService.getAll(startIndex, endIndex);
     console.log(countries);
     if(countries.status != 200){
       return ApiError(countries.message, countries.status )
