@@ -18,7 +18,7 @@ const createTrips = async (req, res, next) => {
     });
     
     if (data.status != 201) throw new ApiError(500, error.message);
-      new ApiResponse(res).success('Creation process sucess', data, data.status);
+      new ApiResponse(res).success('Creation process sucess', data.data, data.status);
   } catch(err){
     next(err);
   } 
@@ -35,7 +35,7 @@ const getTripbyID = async (req, res, next) => {
     
     new ApiResponse(res).success(
       'Reading process sucess', 
-      trip);
+      trip.data);
   } catch (err) {
     next(err);
   }
@@ -63,7 +63,7 @@ const updateTripbyID = async (req, res, next) => {
     if (error) throw new ApiError(500,error.message);
     new ApiResponse(res).success(
       'Updating Data sucess', 
-      editedtrip);
+      editedtrip.data);
 
   } catch (err) {
     next(err);
@@ -79,7 +79,7 @@ const deleteTripbyID = async (req, res, next) => {
     if (error) throw new ApiError(500,error.message);
     new ApiResponse(res).success(
       'Deletin process sucess', 
-      resp);
+      resp.data);
   } catch (err) {
     next(err);
   }

@@ -17,7 +17,7 @@ const router = express.Router();
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/Trip'
+ *                 $ref: '#/models/schemas/Trip'
  */
 router.get('/', 
     tripsController.getAllTrips);
@@ -93,4 +93,5 @@ router.put('/Trips/:TripID',
  */
 router.delete('/Trips/:TripID', 
     tripsController.deleteTripbyID);
+
 export default router;
