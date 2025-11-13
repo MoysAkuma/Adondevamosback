@@ -3,7 +3,7 @@ import {ApiResponse} from  '../utils/apiResponse.js'
 import tripsService from '../services/trips.service.js';
 
 //create trip
-const createTrips = async (req, res, next) => {
+const createTrip = async (req, res, next) => {
   try{
     //GetrqBody
     const { name, ownerid, description, 
@@ -91,10 +91,10 @@ const getAllTrips = async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
   try{
-    const trips = await tripsService.getAll(page, limit, skip);
+    const trips = await tripsService.getAll();
 
-    if(countries.status != 200){
-      return ApiError(countries.message, countries.status )
+    if(trips.status != 200){
+      return ApiError(trips.message, trips.status )
     }
     return new ApiResponse(res).success(
       'Reading all trips sucess', 
@@ -105,7 +105,7 @@ const getAllTrips = async (req, res) => {
 };
 
 const tripsController = {
-  createTrips,
+  createTrip,
   getTripbyID,
   updateTripbyID,
   deleteTripbyID,

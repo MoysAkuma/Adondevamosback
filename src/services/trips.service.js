@@ -66,12 +66,10 @@ const tripsService = {
     return { status: 200, data : data };
   },
   async getAll() {
-    page = page < 1 ? 1 : page;
     const { data, error } = await clientTrips
     .from('trips')
     .select("id, name, ownerid, description, initialdate, finaldate, isinternational")
-    .order('createddate', { ascending: true });
-    
+    .order('createddate', { ascending: false });
     if (error) return { status : 500, error: error.message };
     
     return { status: 200, data : data };

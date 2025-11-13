@@ -1,11 +1,3 @@
-const trip = {
-    id: String,
-    destination: String,
-    startDate: Date,
-    endDate: Date,
-    userId: String  
-}
-export default trip;
 /**
  * @swagger
  * components:
@@ -13,22 +5,53 @@ export default trip;
  *     Trip:
  *       type: object
  *       properties:
+ *          name:
+ *          type: string
  *         id:
  *           type: string
- *         destination:
+ *         description:
  *           type: string
- *         startDate:
- *           type: string
- *           format: date
- *         endDate:
+ *         initialdate:
  *           type: string
  *           format: date
- *         userId:
+ *         finaldate:
  *           type: string
+ *           format: date
+ *         isinternational:
+ *           type: boolean
  *       required:
  *         - id
- *         - destination
- *         - startDate
- *         - endDate
- *         - userId
+ *        - name
+ *        - initialdate
+ *        - finaldate
+ *       - isinternational
+ *      CreateTripRq:
+ *          type: object
+ *          properties:
+ *              id:
+ *                  type: string
+ *              description:
+ *                  type: string
+ *              startDate:
+ *                  type: string
+ *                  format: date
+ *              endDate:
+ *                  type: string
+ *                  format: date
+ *              ownerid:
+ *                  type: string
+ *              required:
+ *              - destination
+ *              - startDate
+ *              - endDate
+ *              - ownerid
+ *      GetTripByIDRs:
+ *          type: object
+ *          properties:
+ *              message:
+ *                  type: string
+ *              info:
+ *                  type: array
+ *                      items:   
+ *                          $ref: '#/components/schemas/Trip'
  */

@@ -30,7 +30,7 @@ const options = {
     security: [{
     }]
   },
-  apis: ['./src/routes/*.js', './src/models/schemas/*.js'], // Path to the API docs
+  apis: ['./src/routes/*.js', './src/models/**/*.js'], // Path to the API docs
 };
 
 const specs = swaggerJsdoc(options);

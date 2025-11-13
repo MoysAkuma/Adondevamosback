@@ -5,7 +5,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /trips:
+ * /Trips:
  *   get:
  *     summary: Get all trips
  *     tags: [Trips]
@@ -19,12 +19,12 @@ const router = express.Router();
  *               items:
  *                 $ref: '#/models/schemas/Trip'
  */
-router.get('/', 
+router.get('/Trips', 
     tripsController.getAllTrips);
 
 /**
  * @swagger
- * /trips/{TripID}:
+ * /Trips/{TripID}:
  *   get:
  *     summary: Get a trip by ID
  *     tags: [Trips]
@@ -41,13 +41,13 @@ router.get('/',
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Trip'
+ *               $ref: '#/components/schemas/GetTripByIDRs'
  */
 router.get('/Trips/:TripID', 
     tripsController.getTripbyID);
 /**
  * @swagger
- * /trips/{TripID}:
+ * /Trips/{TripID}:
  *  put:
  *   summary: Update a trip by ID
  *   tags: [Trips]
@@ -76,7 +76,7 @@ router.put('/Trips/:TripID',
     tripsController.updateTripbyID);
 /**
  * @swagger
- * /trips/{TripID}:
+ * /Trips/{TripID}:
  *   delete:
  *     summary: Delete a trip by ID
  *     tags: [Trips]
@@ -93,5 +93,37 @@ router.put('/Trips/:TripID',
  */
 router.delete('/Trips/:TripID', 
     tripsController.deleteTripbyID);
+
+/**
+ * @swagger
+ * /Trips:
+ *   post:
+ *    summary: Create a new trip
+ *   tags: [Trips]
+ *   requestBody:
+ *    required: true
+ *   content:
+ *    application/json:
+ *     schema:
+ *     $ref: '#/components/schemas/Trip'
+ *  responses:
+ *    201:
+ *    description: The created trip object
+ *   content:
+ *    application/json:
+ *    schema:
+ *    $ref: '#/components/schemas/Trip'
+ *  409:
+ *  description: Creation failed
+ * content:
+ *  application/json:
+ *   schema:
+ *   type: object
+ *  items: 
+ *   type: string
+ *  
+ */
+router.post('/Trips', 
+    tripsController.createTrip);
 
 export default router;

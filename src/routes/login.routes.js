@@ -7,20 +7,23 @@ const router = express.Router();
  * @swagger
  * /Login: 
  *  post: 
- *  summary: Log in in site Adondevamos.web
- * description: This request verify if email or tag id and password provided are registed in Adondevamos.io
- * 
- * 
+ *      summary: Log in in site Adondevamos.web
+ *      description: This request verify if email or tag id and password provided are registed in Adondevamos
+ *      tags: [Site]
+ *      requestBody:
+ *          required: true
+ *          content:
+ *              application/json:
+ *          schema:
+ *              $ref: '#/components/schemas/LoginRq'
+ *   
  * responses:
  *   200:
  *     description: Log in sucess
- *    content:  
- *      application/json:
- *       schema:    
- *        type: object
- *       items:
- *        type: string
- *       example: Created
+ *    content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/LoginRs'
  *  409:
  *   description: Log in failed
  *  content:
@@ -36,35 +39,6 @@ const router = express.Router();
 
 router.post('/Login', 
     loginController.login);
-/**
- * @swagger
- * /Verify/Email:
- *  get:   
- * summary: Verify if email is registred in Adondevamos.io
- * description: This request verify if email provided is registed in Adondevamos.io
- * 
- * responses:
- *  200:
- *   description: Email is registred
- *  content:
- *   application/json:
- *    schema:
- *    type: object
- *   items:
- *   type: string
- *  example: Email verified
- * 409:
- *  description: Email not found
- * content:
- *  application/json:
- *   schema:
- *   type: object
- *  items:  
- *  type: string
- * 
- */
-router.get('/Verify/Email', 
-    loginController.verifyEmail);
 
 /**
  * @swagger
@@ -94,5 +68,33 @@ router.get('/Verify/Email',
  */
 router.get('/check-auth', 
     loginController.checkAuth);
+/**
+ * @swagger
+ * /Logout:
+ *  get:
+ *  summary: Log out from the site
+ * description: This request logs the user out and ends the session
+ * responses:
+ * 200:
+ * description: Log out successful
+ * content:
+ * application/json:
+ * schema:
+ * type: object
+ * items:
+ * type: string
+ * example: Logged out successfully
+ * 409:
+ * description: Log out failed
+ * content:
+ * application/json:
+ * schema:
+ * type: object
+ * items:
+ * type: string
+ * example: Log out failed
+ */
+router.get('/logout', 
+    loginController.logout);
 
 export default router;
