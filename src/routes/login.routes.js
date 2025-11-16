@@ -14,8 +14,8 @@ const router = express.Router();
  *          required: true
  *          content:
  *              application/json:
- *          schema:
- *              $ref: '#/components/schemas/LoginRq'
+ *              schema:
+ *                  $ref: '#/components/schemas/LoginRq'
  *   
  * responses:
  *   200:

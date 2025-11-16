@@ -17,8 +17,8 @@ export default LoginRq;
  *         type: string
  *        description: Password of the user
  *      required:
- *      - id
- *     - password
+ *          - id
+ *          - password
  *     LoginRs:
  *       type: object
  *       properties:

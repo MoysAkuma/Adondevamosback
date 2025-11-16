@@ -54,4 +54,7 @@
  *                  type: array
  *                      items:   
  *                          $ref: '#/components/schemas/Trip'
+ *         required:
+ *         - message
+ *        - info
  */
