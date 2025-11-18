@@ -6,9 +6,9 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Adondevamos API Documentation',
+      title: 'Adondevamos.back API Documentation',
       version: '0.0.alpha',
-      description: 'API documentation for your Express application that handles adondevamos.web project.',
+      description: 'API documentation Express backend that handles adondevamos.web project.',
       contact: {
         name: 'Creator',
         email: 'moises.moran.dev@gmail.com'
@@ -20,7 +20,7 @@ const options = {
         description: 'Development server',
       },
       {
-        url: 'https://adondevamosback.onrender.com',
+        url: 'https://adondevamosback.onrender.com/v1',
         description: 'Production server',
       }
     ],

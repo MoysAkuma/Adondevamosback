@@ -2,18 +2,20 @@ import { userClient } from "../config/supabase.js";
 
 const usersService = {
   async getUserById(userId) {
+    console.log('Fetching user by ID:', userId);
     const { data, error } = await userClient
       .from('users')
       .select()
       .eq('id', userId);
     if (error) return { status: 500, error: error.message };
+    console.log(data);
     return { status: 200, data: data };
   },
 
   async getUserByEmail(email) {
     const { data, error } = await userClient
         .from('users')
-        .select("id, email, name, lastname, tagid, password, role, profilepictureurl")
+        .select("id, email, name, lastname, tagid, password")
         .eq('email', email);
     if (error) return { status: 500, error: error.message };
     return { status: 200, data: data };
@@ -22,7 +24,7 @@ const usersService = {
   async getUserByTag(tagid) {
     const { data, error } = await userClient
         .from('users')
-        .select("id, email, name, lastname, tagid, password, role, profilepictureurl")
+        .select("id, email, name, lastname, tagid, password")
         .eq('tagid', tagid);
     if (error) return { status: 500, error: error.message };
     return { status: 200, data: data };
@@ -139,6 +141,14 @@ const usersService = {
         .select("id, name, tag, lastname, password")
         .eq('tag', tag)
         .single();
+        if (error) return { status: 500, error: error.message };
+        return { status: 200, data : data || {} };
+    },
+    async searchOwnerInfo( userid, fields = "id, name, tag, email") {
+        const { data, error } = await userClient
+        .from('users')
+        .select(fields)
+        .in('id', userid);
         if (error) return { status: 500, error: error.message };
         return { status: 200, data : data || {} };
     }

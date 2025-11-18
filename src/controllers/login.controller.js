@@ -7,14 +7,13 @@ const login = async (req, res, next) => {
   try {
     //GetrqBody
     const { id, password } = req.body;
-    const isEmail = isEmail(id);
-    if (isEmail) {
-      const data = await userService.searchByEmail(id, password);
-      new ApiResponse(res).success('Creation process sucess', data.data, data.status);
-    } else {
-      const data = await userService.searchByTag(id, password);
-      new ApiResponse(res).success('Creation process sucess', data.data, data.status);
-    }
+    //Check if id is email or tag
+    const checkisEmail = isEmail(id);
+    //Search user
+    const data = (checkisEmail) ? 
+      await userService.searchByEmail(id, password) : 
+      await userService.searchByTag(id, password);
+    //Validate user found
     if(data.status != 200) throw new ApiError(500, error.message);
     if (data.data.id == null) throw new ApiError(404, 'User not found');
     const isAdmin = await userService.checkAdminRole(data.data.id);
@@ -34,15 +33,14 @@ const login = async (req, res, next) => {
 
         // Set session data
         req.session.userId = data.id;
-        req.session.isAdmin = !!datarole;
+        req.session.isAdmin = !!isAdmin;
         req.session.loginTime = new Date().toISOString();
         new ApiResponse(res).success('Creation process sucess', {
             id: data.data.id,
             tag: data.data.tag,
             role: isAdmin ? 'Admin' : 'User',
             name: data.data.name,
-            lastname: data.data.lastname,
-            sessionId: req.sessionID
+            lastname: data.data.lastname
         }, data.status);
         
     });
@@ -60,20 +58,18 @@ function isEmail(input) {
 
 const checkAuth = async (req, res, next) => {
   try {
-    if (req.session.userId) {
-        const data = await userService.searchById(req.session.userId, res);
-        if (data.status == 200 && data.data.id) {
-            new ApiResponse(res).success(
-                'Reading process sucess', 
-                {
-                    "isAuthenticated" : true
-                }
-            );
-        }
-    } else {
-        new ApiError(401, 'User not authenticated');
+    if (!req.session || !req.session.userId) {
+      return next(new ApiError(401, 'User not authenticated'));
     }
-    
+
+    const data = await userService.getUserById(req.session.userId);
+    const userExists = data && data.status === 200 && data.data &&
+      (Array.isArray(data.data) ? data.data.length > 0 : !!data.data.id);
+
+    new ApiResponse(res).success(
+      'Reading process sucess',
+      { isAuthenticated: !!userExists }
+    );
   } catch (err) {
     next(err);
   }

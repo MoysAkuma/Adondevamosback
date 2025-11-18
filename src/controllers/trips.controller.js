@@ -1,6 +1,9 @@
 import {ApiError} from  '../utils/apiError.js'
 import {ApiResponse} from  '../utils/apiResponse.js'
 import tripsService from '../services/trips.service.js';
+import placesService from '../services/places.service.js';
+import ubicationService from '../services/ubication.service.js';
+import usersService from '../services/users.service.js';
 
 //create trip
 const createTrip = async (req, res, next) => {
@@ -104,12 +107,111 @@ const getAllTrips = async (req, res) => {
   }   
 };
 
+const getNewsTrips = async (req, res) => {
+  try{
+    //get news trips
+    const trips = await tripsService.getNewsTrips();
+    if(trips.status != 200){
+      return ApiError("new trips error", trips.status )
+    }
+    console.log("trips info: ",trips.data);
+    
+    //get owners info
+    const ownerIds = trips.data.map(trip => trip.ownerid);
+    const uniqueOwnerIds = [...new Set(ownerIds)];
+    const ownersInfo = await usersService.searchOwnerInfo(uniqueOwnerIds, "id, name, tag, email");
+    
+    if(ownersInfo.status != 200){
+      return ApiError("owners info error", ownersInfo.status )
+    }
+    console.log("Owners info:", ownersInfo.data);
+    //get Intineraries
+    const tripIds = trips.data.map(trip => trip.id);
+    const itinerary = await tripsService.searchItineraryByTripIDs(tripIds);
+    if(itinerary.status != 200){
+      return ApiError("itinerary info error", itinerary.status )
+    }
+    console.log("Itinerary", itinerary.data);
+    //get places info for itinerary
+    const placeIds = itinerary.data.map(item => item.placeid);
+    const uniquePlaceIds = [...new Set(placeIds)];
+    const placesInfo = await placesService.searchPlacesByIDs(uniquePlaceIds, "id, name, countryid, stateid, cityid");
+    
+    if(placesInfo.status != 200){
+      return ApiError("places info error", placesInfo.status )
+    }
+    console.log("places info", placesInfo.data);
+    
+    //get ubication names for itinerary
+    const countriesIds = placesInfo.data.map(place => place.countryid);
+    const statesIds = placesInfo.data.map(place => place.stateid);
+    const citiesIds = placesInfo.data.map(place => place.cityid);
+
+    const UbicationNames = await ubicationService.getUbicationNamesByIDs(
+      [...new Set(countriesIds)], 
+      [...new Set(statesIds)], 
+      [...new Set(citiesIds)]
+    );
+
+    if(UbicationNames.status != 200){
+      return ApiError("ubication names error", UbicationNames.status )
+    }
+    console.log("ubications", UbicationNames.data);
+    //Map ubication names to itinerary
+    itinerary.data.forEach(item => {
+      const place = placesInfo.data.find(place => place.id === item.placeid);
+      if (place) {
+        const country = UbicationNames.data.countries.find(c => c.id === place.countryid);
+        const state = UbicationNames.data.states.find(s => s.id === place.stateid);
+        const city = UbicationNames.data.cities.find(ci => ci.id === place.cityid);
+        item.Ubication = {
+          country: country ? { id : country.id , name : country.name } : null,
+          state: state ? { id : state.id ,name : state.name } : null,
+          city: city ? { id: city.id, name : city.name} : null
+        };
+        item.place = {
+          id: place.id,
+          name: place.name
+        };
+      }
+    });
+
+    console.log(itinerary.data);
+
+    //Generate response
+    const itemsToReturn = trips.data.map(
+            item => ({
+                id : item.id, 
+                name : item.name, 
+                description : item.description, 
+                initialdate : item.initialdate, 
+                finaldate : item.finaldate, 
+                isinternational : item.isinternational,
+                statics : {
+                    Votes : {
+                        Total: 0
+                    }
+                },
+                itinerary : itinerary.data.filter(it => it.tripid === item.id),
+                owner : ownersInfo.data.find(owner => owner.id === item.ownerid)
+            })
+        );
+        console.log(itemsToReturn);
+    return new ApiResponse(res).success(
+      'Reading news trips sucess', 
+      itemsToReturn);
+  } catch(err){
+    return new ApiError(err.message, err.status);
+  } 
+};
+
 const tripsController = {
   createTrip,
   getTripbyID,
   updateTripbyID,
   deleteTripbyID,
-  getAllTrips
+  getAllTrips,
+  getNewsTrips
 };
 
 export default tripsController;

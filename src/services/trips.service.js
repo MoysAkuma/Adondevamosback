@@ -98,6 +98,25 @@ const tripsService = {
     if (error) return { status : 500, error: error.message };
     
     return { status: 200, data : data };
+  },
+  async getNewsTrips() {
+    const { data, error } = await clientTrips
+    .from('trips')
+    .select("id, name, ownerid, description, initialdate, finaldate, isinternational")
+    .order('createddate', { ascending: false })
+    .limit(3);
+    if (error) return { status : 500, error: error.message };
+
+    return { status: 200, data : data };
+  },
+  async searchItineraryByTripIDs(tripids, 
+    fields = "tripid, initialdate, finaldate, placeid") {
+    const { data, error } = await clientTrips
+    .from('trips_itinerary')
+    .select(fields)
+    .in('tripid', tripids);
+    if (error) return { status : 500, error: error.message };
+    return { status: 200, data : data };
   }
 };
 

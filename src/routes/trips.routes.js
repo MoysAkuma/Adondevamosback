@@ -5,19 +5,19 @@ const router = express.Router();
 
 /**
  * @swagger
- * /Trips:
- *   get:
- *     summary: Get all trips
- *     tags: [Trips]
- *     responses:
- *       200:
- *         description: A list of trips
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/models/schemas/Trip'
+ *  /Trips:
+ *      get:
+ *          summary: Get all trips
+ *          tags: [Trips]
+ *          responses:
+ *              200:
+ *                  description: A list of trips
+ *              content:
+ *                  application/json:
+ *                  schema:
+ *                      type: array
+ *                      items:
+ *                      $ref: '#/components/schemas/Trip'
  */
 router.get('/Trips', 
     tripsController.getAllTrips);
@@ -125,5 +125,8 @@ router.delete('/Trips/:TripID',
  */
 router.post('/Trips', 
     tripsController.createTrip);
+
+router.get('/Trips/View/News',
+    tripsController.getNewsTrips);
 
 export default router;

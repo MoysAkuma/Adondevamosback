@@ -34,10 +34,16 @@ const clientTrips = createClient(supabaseUrl, supabaseServiceKey, {
   db: { schema: 'trips' }
 });
 
+//places client
+const clientPlaces = createClient(supabaseUrl, supabaseServiceKey, {
+  db: { schema: 'places' }
+});
+
 export { 
   supabase as default,
   supabase as publicSchemaClient,
   userClient,
   cataloguesClient,
-  clientTrips
+  clientTrips,
+  clientPlaces
 };
