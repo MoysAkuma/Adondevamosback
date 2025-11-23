@@ -8,7 +8,8 @@ const router = express.Router();
  *  /Trips:
  *      get:
  *          summary: Get all trips
- *          tags: [Trips]
+ *          tags: 
+ *              - Trips
  *          responses:
  *              200:
  *                  description: A list of trips
@@ -16,8 +17,8 @@ const router = express.Router();
  *                  application/json:
  *                  schema:
  *                      type: array
- *                      items:
- *                      $ref: '#/components/schemas/Trip'
+ *                          items:
+ *                          $ref: '#/components/schemas/Trip'
  */
 router.get('/Trips', 
     tripsController.getAllTrips);

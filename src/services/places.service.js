@@ -10,10 +10,13 @@ const placesService = {
         return { status: 200, data : data };
   },
   async searchPlacesByIDs(placeIds, fields = "id, name, countryid, stateid, cityid") {
-        const { data, error } = await clientPlaces
+      //avoid duplicate place ids
+      const uniquePlaceIds = [...new Set(placeIds)];
+      //get place list
+      const { data, error } = await clientPlaces
         .from('places')
         .select(fields)
-        .in('id', placeIds);
+        .in('id', uniquePlaceIds);
         if (error) return { status: 500, error: error.message };
         return { status: 200, data : data || {} };
   }

@@ -145,10 +145,14 @@ const usersService = {
         return { status: 200, data : data || {} };
     },
     async searchOwnerInfo( userid, fields = "id, name, tag, email") {
+        //avoid duplicate user ids
+        const uniqueuserids = [...new Set(userid)];
+        
+        //get user list
         const { data, error } = await userClient
         .from('users')
         .select(fields)
-        .in('id', userid);
+        .in('id', uniqueuserids);
         if (error) return { status: 500, error: error.message };
         return { status: 200, data : data || {} };
     }

@@ -11,11 +11,18 @@ const ubicationService = {
     },
 async getUbicationNamesByIDs( countryIds = [], stateIds = [], cityIds = []) {
     const result = {};
+    //avoid duplicate ids
+    const uniqueValuesIds = { 
+      countries: [...new Set(countryIds)]
+      , states: [...new Set(stateIds)]
+      , cities: [...new Set(cityIds)]
+    };
+    
     if (countryIds.length > 0) {
         const { data: countries, error: countryError } = await cataloguesClient
         .from('countries')
         .select('id, name, acronym')
-        .in('id', countryIds);
+        .in('id', uniqueValuesIds.countries);
         if (countryError) return { status: 500, error: countryError.message };
         result.countries = countries;
     }
@@ -23,7 +30,7 @@ async getUbicationNamesByIDs( countryIds = [], stateIds = [], cityIds = []) {
         const { data: states, error: stateError } = await cataloguesClient
         .from('states')
         .select('id, name')
-        .in('id', stateIds);
+        .in('id', uniqueValuesIds.states);
         if (stateError) return { status: 500, error: stateError.message };
         result.states = states;
     }
@@ -31,7 +38,7 @@ async getUbicationNamesByIDs( countryIds = [], stateIds = [], cityIds = []) {
         const { data: cities, error: cityError } = await cataloguesClient
         .from('cities')
         .select('id, name')
-        .in('id', cityIds);
+        .in('id', uniqueValuesIds.cities);
         if (cityError) return { status: 500, error: cityError.message };
         result.cities = cities;
     }
