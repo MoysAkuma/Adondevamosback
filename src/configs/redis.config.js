@@ -2,8 +2,6 @@
 import { RedisStore } from 'connect-redis';
 import { createClient as createRedisClient } from 'redis';
 import session from 'express-session';
-import swaggerUi from 'swagger-ui-express';
-import swaggerJsdoc from 'swagger-jsdoc';
 import { env as dotenv } from '../config/env.js';
 // Redis client setup for session store
 let redisClient;

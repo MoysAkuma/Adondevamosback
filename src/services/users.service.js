@@ -32,12 +32,11 @@ const usersService = {
 
   async checkAdminRole(userId) {
     const { data, error } = await userClient
-        .from('users')
-        .select("role")
+        .from('admins')
+        .select()
         .eq('id', userId);
     if (error) return { status: 500, error: error.message };
-    if (data.length === 0) return false;
-    return data[0].role === 'Admin';
+    return { status: 200, data: ( data.length === 0 ) };
   },
   async searchByEmailAndPassword(email, password) {
     const { data, error } = await userClient

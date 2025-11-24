@@ -7,35 +7,42 @@ const login = async (req, res, next) => {
   try {
     //GetrqBody
     const { id, password } = req.body;
+    console.log(id, password);
+
     //Check if id is email or tag
     const checkisEmail = isEmail(id);
+    console.log(checkisEmail);
+    
     //Search user
     const data = (checkisEmail) ? 
       await userService.searchByEmail(id, password) : 
       await userService.searchByTag(id, password);
+    console.log(data);
+    
     //Validate user found
-    if(data.status != 200) throw new ApiError(500, error.message);
-    if (data.data.id == null) throw new ApiError(404, 'User not found');
-    const isAdmin = await userService.checkAdminRole(data.data.id);
-    if (req.session) {
-        req.session.userId = data.data.id;
-        req.session.isAdmin = isAdmin;
-        req.session.loginTime = new Date().toISOString();
+    if(data.status != 200) throw new ApiError(500, error.message || "Service error");
+    if (!data.data || data.data.id == null ) throw new ApiError(404, 'User not found');
+    
+    //check if user is admin
+    const isAdmin = (await userService.checkAdminRole(data.data.id)).data;
+    console.log(isAdmin);
+
+    //check if session is set
+    if(!req.session) {
+      return next( new ApiError(500, "Session middleware is not configured"));
     }
+    
+    //set session
+    req.session.userId = data.data.id;
+    req.session.isAdmin = !!isAdmin;
+    req.session.loginTime = new Date().toISOString();
+
     req.session.save((err) => {
         if (err) {
-            console.error('Session save error:', err);
-            return res.status(500).json({
-                success: false,
-                message: 'Login failed'
-            });
+            return next( new ApiError(500, "Session save error", err) );
         }
 
-        // Set session data
-        req.session.userId = data.id;
-        req.session.isAdmin = !!isAdmin;
-        req.session.loginTime = new Date().toISOString();
-        new ApiResponse(res).success('Creation process sucess', {
+        new ApiResponse(res).success('Login success', {
             id: data.data.id,
             tag: data.data.tag,
             role: isAdmin ? 'Admin' : 'User',

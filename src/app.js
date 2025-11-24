@@ -1,13 +1,12 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import bodyParser from'body-parser';
+import cookieParser from 'cookie-parser';
 import redisConfig from './configs/redis.config.js';
-
 import tripsRoutes from './routes/trips.routes.js';
 import errorMiddleware from './middleware/error.middleware.js'
 import login from './routes/login.routes.js';
-import bodyParser from'body-parser';
-import cookieParser from 'cookie-parser';
 import { env } from './config/env.js';
 dotenv.config();
 
@@ -16,22 +15,22 @@ const app = express();
 // Swagger documentation
 import swaggerConfig from './configs/swagger.config.js';
 
-// Middleware
-app.use(cors());
-
-
-app.use(cors({
-  origin: env.FRONT_URL,
-  methods: ['GET', 'POST', 'PUT','PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+const corsOptions = {
+  origin : (origin, callback) => { 
+    if(!origin || origin === env.FRONT_URL ) return callback(null, true);
+    return callback( new Error('Not allowed by CORS'));
+  },
+  methods: ['GET', 'POST', 'PUT','PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Request-With'],
   credentials: true
-}));
+};
 
+// Cors Set up
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Set trust proxy BEFORE session middleware
 app.set('trust proxy', 1);
-
-
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(cookieParser());
