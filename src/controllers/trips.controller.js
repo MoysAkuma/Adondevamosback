@@ -230,13 +230,51 @@ const getNewsTrips = async (req, res) => {
   } 
 };
 
+const searchTrips = async (req, res) => {
+  try{
+    //Get filters to search
+    const { filters } = req.body;
+    console.log(filters);
+    //call search
+    const foundTrips = await tripsService.searchTrips(filters);
+    console.log(foundTrips.data);
+    if (foundTrips.status == 200 ) {
+      return ApiError(foundTrips.message, foundTrips.status )
+    }
+
+    //get owner list
+    const ownerIds = foundTrips.data.map(trip => trip.ownerid);
+    const ownersInfo = await usersService.searchOwnerInfo(ownerIds);
+    
+    if(ownersInfo.status != 200){
+      return ApiError("owners info error", ownersInfo.status )
+    }
+
+    const response = foundTrips.data.map( 
+      (trip) => 
+      (
+        {
+          ...trip,
+          owner : ownersInfo.find( owner => owner.id == trip.ownerid) || {}
+        }
+      ) 
+    );
+    return new ApiResponse(res).success(
+      'Search trips sucess', 
+      foundTrips.data);
+  } catch(err){
+    return new ApiError(err.message, err.status);
+  }
+};
+
 const tripsController = {
   createTrip,
   getTripbyID,
   updateTripbyID,
   deleteTripbyID,
   getAllTrips,
-  getNewsTrips
+  getNewsTrips,
+  searchTrips
 };
 
 export default tripsController;

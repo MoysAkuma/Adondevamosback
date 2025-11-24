@@ -100,34 +100,66 @@ router.delete('/Trips/:TripID',
  * /Trips:
  *   post:
  *    summary: Create a new trip
- *   tags: [Trips]
- *   requestBody:
- *    required: true
- *   content:
- *    application/json:
- *     schema:
- *     $ref: '#/components/schemas/Trip'
- *  responses:
- *    201:
- *    description: The created trip object
- *   content:
- *    application/json:
- *    schema:
- *    $ref: '#/components/schemas/Trip'
- *  409:
- *  description: Creation failed
- * content:
- *  application/json:
- *   schema:
- *   type: object
- *  items: 
- *   type: string
+ *    tags: 
+ *          - Trips
+ *    requestBody:
+ *       required: true
+ *    content:
+ *      application/json:
+ *      schema:
+ *      $ref: '#/components/schemas/Trip'
+ *    responses:
+ *      201:
+ *          description: The created trip object
+ *          content:
+ *              application/json:
+ *              schema:
+ *                  $ref: '#/components/schemas/Trip'
+ *       409:
+ *          description: Creation failed
+ *          content:
+ *              application/json:
+ *              schema:
+ *                  type: object
+ *                  items: 
+ *                      type: string
  *  
  */
 router.post('/Trips', 
     tripsController.createTrip);
-
+/**
+ * @swagger
+ *  /Trips/View/News
+ *      get:
+ *          summary : Retrieves a list of last created trip on system 
+ *          responses:
+ *              200:
+ *                  description: The list of trips
+ *                  content:
+ *                      application/json:
+ *                      schema:
+ *                          description: Response of last created trips
+ *                          type: object
+ *                              properties:
+ *                                  message
+ *                                      type: string
+ *                                  info
+ *                                      type: array
+ *                                          items:
+ *                                              ref:
+ *                                           
+ *              409:
+ *                  description: Creation failed
+ *                  content:
+ *                      application/json:
+ *                  schema:
+ *                      type: object
+ *                  items: 
+ *                      $ref: '#/components/schemas/Trip'
+ */
 router.get('/Trips/View/News',
     tripsController.getNewsTrips);
 
+router.post('/Trips/Search',
+    tripsController.searchTrips);
 export default router;

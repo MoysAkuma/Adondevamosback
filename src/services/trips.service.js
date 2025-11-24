@@ -74,14 +74,13 @@ const tripsService = {
     
     return { status: 200, data : data };
   },
-  async searchTrips(filters, page = 1, limit = 10) {
-    page = page < 1 ? 1 : page;
+  async searchTrips(filters) {
+    
     let searchQuery = clientTrips
     .from('trips')
     .select("id, name, ownerid, description, initialdate, finaldate, isinternational")
     .order('createddate', { ascending: true })
-    .range((page - 1) * limit, page * limit - 1)
-    .limit(limit);
+    .limit(5);
 
     if (filters.name) {
         searchQuery = searchQuery.ilike('name', `%${filters.name}%`);
