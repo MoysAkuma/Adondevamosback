@@ -18,7 +18,7 @@ const router = express.Router();
  *                  schema:
  *                      type: array
  *                          items:
- *                          $ref: '#/components/schemas/Trip'
+ *                              $ref: '#/components/schemas/Trip'
  */
 router.get('/Trips', 
     tripsController.getAllTrips);

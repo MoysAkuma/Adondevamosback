@@ -137,17 +137,10 @@ const getNewsTrips = async (req, res) => {
     if( placesInfo.status != 200 ){
       return ApiError("places info error", placesInfo.status )
     }
-    
-    //get ubication names for itinerary
-    const countriesIds = placesInfo.data.map(place => place.countryid);
-    const statesIds = placesInfo.data.map(place => place.stateid);
-    const citiesIds = placesInfo.data.map(place => place.cityid);
 
     const UbicationNames = 
     await ubicationService.getUbicationNamesByIDs(
-      countriesIds, 
-      statesIds, 
-      citiesIds
+      placesInfo.data
     );
 
     if(UbicationNames.status != 200){
@@ -234,34 +227,43 @@ const searchTrips = async (req, res) => {
   try{
     //Get filters to search
     const { filters } = req.body;
-    console.log(filters);
+    
     //call search
     const foundTrips = await tripsService.searchTrips(filters);
-    console.log(foundTrips.data);
-    if (foundTrips.status == 200 ) {
+    
+    if (foundTrips.status != 200 ) {
       return ApiError(foundTrips.message, foundTrips.status )
     }
 
     //get owner list
     const ownerIds = foundTrips.data.map(trip => trip.ownerid);
+    
     const ownersInfo = await usersService.searchOwnerInfo(ownerIds);
     
+
     if(ownersInfo.status != 200){
       return ApiError("owners info error", ownersInfo.status )
     }
 
-    const response = foundTrips.data.map( 
-      (trip) => 
-      (
-        {
-          ...trip,
-          owner : ownersInfo.find( owner => owner.id == trip.ownerid) || {}
-        }
-      ) 
+    //Generate response
+    const dataToReturn = foundTrips.data.map(
+      item =>
+        (
+          {
+            id : item.id,
+            name : item.name,
+            description : item.description,
+            initialdate : item.initialdate,
+            finaldate : item.finaldate,
+            isinternational : item.isinternational,
+            owner : ownersInfo.data.find(owner => owner.id === item.ownerid)
+          }
+        )
     );
+    
     return new ApiResponse(res).success(
       'Search trips sucess', 
-      foundTrips.data);
+      dataToReturn);
   } catch(err){
     return new ApiError(err.message, err.status);
   }

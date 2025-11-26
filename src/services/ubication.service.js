@@ -9,7 +9,15 @@ const ubicationService = {
     if (error) return { status: 500, error: error.message };
     return { status: 200, data: data };
     },
-async getUbicationNamesByIDs( countryIds = [], stateIds = [], cityIds = []) {
+    /**
+     * Get PlaceList with countryid, stateid and cityid in each, return a list of names
+     */
+async getUbicationNamesByIDs( placeList ) {
+    //get ubication names for itinerary
+    const countryIds = placeList.map(place => place.countryid);
+    const stateIds = placeList.map(place => place.stateid);
+    const cityIds = placeList.map(place => place.cityid);
+
     const result = {};
     //avoid duplicate ids
     const uniqueValuesIds = { 
