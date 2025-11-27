@@ -1,11 +1,11 @@
 import { userClient } from "../config/supabase.js";
 
 const usersService = {
-  async getUserById(userId) {
+  async getUserById(userId, fields = "*") {
     console.log('Fetching user by ID:', userId);
     const { data, error } = await userClient
       .from('users')
-      .select()
+      .select(fields)
       .eq('id', userId);
     if (error) return { status: 500, error: error.message };
     console.log(data);

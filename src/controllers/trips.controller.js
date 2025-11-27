@@ -32,7 +32,7 @@ const getTripbyID = async (req, res, next) => {
     //Get trip id to search
     const { TripID } = req.params;
     const trip = await tripsService.getTripById(TripID);
-    
+
     if (trip.status == 500) throw new ApiError(500, trip.message);
     if (trip.data.length === 0) throw new ApiError(404, 'Trip not found');
     
@@ -147,40 +147,7 @@ const getNewsTrips = async (req, res) => {
       return ApiError("ubication names error", UbicationNames.status )
     }
     
-    //Map ubication names to itinerary
-    itinerary.data.forEach(item => {
-      const place = placesInfo.data.find(place => place.id === item.placeid);
-      if (place) {
-        const country = UbicationNames.data.countries.find(c => c.id === place.countryid);
-        const state = UbicationNames.data.states.find(s => s.id === place.stateid);
-        const city = UbicationNames.data.cities.find(ci => ci.id === place.cityid);
-        item.Ubication = 
-          {
-            Country : country ? 
-              { 
-                id : country.id , 
-                name : country.name, 
-                acronym : country.acronym 
-              } 
-              : null,
-            State : state ? 
-            { 
-              id : state.id ,
-              name : state.name 
-            } 
-            : null,
-            City: city ? { 
-              id: city.id, 
-              name : city.name
-            } 
-            : null
-        };
-        item.place = {
-          id: place.id,
-          name: place.name
-        };
-      }
-    });
+    const matchPlacesWithUbicationIds = matchUbicationNames(placesInfo, UbicationNames);
 
     //Generate response
     const itemsToReturn = trips.data.map(
@@ -205,7 +172,9 @@ const getNewsTrips = async (req, res) => {
                   {
                     initialdate : retItinerary.initialdate,
                     finaldate : retItinerary.finaldate,
-                    place : retItinerary.place,
+                    place : matchPlacesWithUbicationIds.data.find(
+                      place => place.id === retItinerary.placeid
+                    ),
                     Ubication : retItinerary.Ubication
                   }
                 )
@@ -268,6 +237,8 @@ const searchTrips = async (req, res) => {
     return new ApiError(err.message, err.status);
   }
 };
+
+
 
 const tripsController = {
   createTrip,

@@ -52,6 +52,7 @@ async getUbicationNamesByIDs( placeList ) {
     }
     return { status: 200, data: result };
   }
+
 };
 
 export default ubicationService; 
