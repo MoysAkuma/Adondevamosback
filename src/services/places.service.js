@@ -1,49 +1,35 @@
-import { clientPlaces } from '../config/supabase.js';
+import PlacesRepository from '../repositories/places.repository.js';
+import { clientPlaces } from '../config/supabase.js'; // adjust to your actual supabase client export
+
+const placesRepo = new PlacesRepository({ placesClient: clientPlaces });
 
 const placesService = {
-  async getPlaceById(placeId) {
-        const { data, error } = await clientPlaces
-        .from('places')    
-        .select("name, description, countryid, stateid, cityid, address, ispublic")
-        .eq('id', placeId);
-        if (error) return { status: 500, error: error.message };
-        return { status: 200, data : data };
+  async createPlace(rq) {
+    return await placesRepo.createPlace(rq);
   },
-  async searchPlacesByIDs(placeIds, fields = "id, name, countryid, stateid, cityid") {
-      //avoid duplicate place ids
-      const uniquePlaceIds = [...new Set(placeIds)];
-      //get place list
-      const { data, error } = await clientPlaces
-        .from('places')
-        .select(fields)
-        .in('id', uniquePlaceIds);
-        if (error) return { status: 500, error: error.message };
-        return { status: 200, data : data || {} };
-  }, 
-  async searchPlaces(filters) {
-    let query = clientPlaces.from('places')
-    .select("name, description, countryid, stateid, cityid, address, ispublic")
-    .order('createddate', { ascending: false });
 
-    //Apply filters
-    if (filters.name) {
-      query = query.ilike('name', `%${filters.name}%`);
-    } 
-    if (filters.countryid) {
-      query = query.eq('countryid', filters.countryid);
-    }
-    if (filters.stateid) {
-      query = query.eq('stateid', filters.stateid);
-    }
-    if (filters.cityid) {
-      query = query.eq('cityid', filters.cityid);
-    }
+  async updatePlace(id, rq) {
+    return await placesRepo.updatePlace(id, rq);
+  },
 
-    const { data, error } = await query;
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data : data || {} };
+  async deletePlace(id) {
+    return await placesRepo.deletePlace(id);
+  },
+
+  async getPlaceById(id) {
+    const base = await placesRepo.getPlaceByIdRaw(id);
+    if (base.status !== 200) return base;
+    if (!base.data || base.data.length === 0) return { status: 404, data: null };
+    return { status: 200, data: base.data[0] };
+  },
+
+  async searchPlacesByIDs(ids, fields = 'id,name,countryid,stateid,cityid') {
+    return await placesRepo.searchPlacesByIDs(ids, fields);
+  },
+
+  async searchPlaces(filters = {}, fields = 'id,name,countryid,stateid,cityid') {
+    return await placesRepo.searchPlaces(filters, fields);
   }
-
 };
 
 export default placesService;

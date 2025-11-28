@@ -1,234 +1,122 @@
-import { clientTrips, userClient } from '../config/supabase.js';
-import ubicationService from './ubication.service.js';
+import TripsRepository from '../repositories/trips.repository.js';
 import placesService from './places.service.js';
+import ubicationService from './ubication.service.js';
+import { clientTrips, userClient } from '../config/supabase.js';
+
+const tripsRepo = new TripsRepository({ tripsClient: clientTrips, usersClient: userClient });
 
 const tripsService = {
-  async createTrip(CreateTripRq) {
-    const { data, error } = await clientTrips
-    .from('trips')
-    .insert(
-      CreateTripRq
-    )
-    .select()
-    .single();
-
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data : data };
+  async createTrip(createTripRq) {
+    return await tripsRepo.createTrip(createTripRq);
   },
 
-  async updateTrip(tripId, UpdateTripRq) {
-    const { data, error } = await clientTrips
-    .from('trips')
-    .update(
-      UpdateTripRq
-    )
-    .eq('id', tripId)
-    .select()
-    .single();
-
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data : data };
-  },
-
-  async getTripById(tripId) {
-    //Get info of trip
-    const { data, error } = await clientTrips
-    .from('trips')    
-    .select("name, ownerid, description, initialdate, finaldate, isinternational")
-    .eq('id', tripId);
-   
-    //validate error
-    if (error) return { status: 500, error: error.message };
-
-    //If no data found, return empty object
-    if (data.length === 0) return { status: 200, data : [] };
-    
-    //Get owner info
-    const {data : ownerInfo, error : errorOwnerInfo} = await userClient
-      .from('users')
-      .select("id, name, lastname, email, tag")
-      .eq('id', data[0].ownerid);
-    
-    if(ownerInfo.length === 0) return { status: 500, error: 'Owner info not found' };
-
-    if (errorOwnerInfo) return { status: 500, error: ownerInfo.error.message };
-    
-    //get itinerary
-    const { data: dataItinerary, error : errorItinerary } = await clientTrips
-    .from('trips_itinerary')
-    .select("initialdate, finaldate, placeid")
-    .eq('tripid', tripId);
-
-    //get place list from itinerary
-    const placeIds = dataItinerary.map( item => item.placeid );
-    const placesList = await placesService.searchPlacesByIDs(placeIds, 
-      "id, name, countryid, stateid, cityid");
-    if (placesList.status == 500) return { status: 500, error: placesList.error };
-    
-    if (errorItinerary) return { status: 500, error: errorItinerary.message };
-
-    //get ubication names for itinerary places
-    const ubicationNames = await ubicationService.getUbicationNamesByIDs(placesList.data);
-    
-    if (ubicationNames.status == 500) return { status: 500, error: ubicationNames.error };
-    
-    //map ubication names to itinerary
-    const itineraryWithUbicationNames = 
-    this.matchUbicationNames({ data: placesList.data }, ubicationNames);
-    
-    //get member list
-    const membersList = await this.getMembersListByTripId(tripId);
-    
-    if (membersList.status == 500) return { status: 500, error: membersList.error };
-    
-    //get users info for members
-    const memberUserIds = membersList.data.map( member => member.userid );
-    
-    const ownersInfo = await userClient
-      .from('users')
-      .select("id, name, lastname, email")
-      .in('id', memberUserIds);
-    
-    if (ownersInfo.error) return { status: 500, error: ownersInfo.error.message };
-    
-    membersList.data = membersList.data.map( member => {
-      return {
-        id : member.userid,
-        hide : member.hide,
-        user : ownersInfo.data.find( user => user.id === member.userid ) || {}
-      };
-    });
-    
-    
-    //Prepare return data
-    const returnData = {
-      name : data[0].name,
-      description : data[0].description,
-      initialdate : data[0].initialdate,
-      finaldate : data[0].finaldate,
-      isinternational : data[0].isinternational,
-      itinerary : itineraryWithUbicationNames,
-      owner : {
-        id : ownerInfo[0].id,
-        name : ownerInfo[0].name,
-        lastname : ownerInfo[0].lastname,
-        email : ownerInfo[0].email
-      },
-      members : membersList.data
-    };
-
-    return { status: 200, data : returnData };
-  },
-  async getItineraryByTripId(tripId) {
-    const { data, error } = await clientTrips
-    .from('trips_itinerary')    
-    .select("id, initialdate, finaldate, placeid")
-    .eq('tripid', tripId);
-
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data : data };
-  },
-  async getMembersListByTripId(tripId) {
-    const { data, error } = await clientTrips
-    .from('trips_members')
-    .select("id, userid, hide")
-    .eq('tripid', tripId);
-
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data : data };
+  async updateTrip(tripId, updateTripRq) {
+    return await tripsRepo.updateTrip(tripId, updateTripRq);
   },
 
   async deleteTrip(tripId) {
-    const { data, error } = await clientTrips
-    .from('trips')
-    .delete()
-    .eq('id', tripId);
+    return await tripsRepo.deleteTrip(tripId);
+  },
 
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data : data };
+  async getTripById(tripId) {
+    // base trip
+    const base = await tripsRepo.getTripByIdRaw(tripId);
+    if (base.status !== 200) return base;
+    if (!base.data || base.data.length === 0) return { status: 404, data: null };
+
+    const tripRow = base.data[0];
+
+    // owner
+    const owner = await tripsRepo.getOwnerById(tripRow.ownerid);
+    if (owner.status !== 200) return owner;
+    if (!owner.data || owner.data.length === 0) return { status: 404, data: null };
+    // itinerary raw
+    const itinerary = await tripsRepo.getItineraryByTripId(tripId);
+    if (itinerary.status !== 200) return itinerary;
+
+    // place IDs
+    const placeIds = (itinerary.data || []).map(i => i.placeid);
+    let placesList = { status: 200, data: [] };
+    if (placeIds.length > 0) {
+      placesList = await placesService.searchPlacesByIDs(placeIds, 'id,name,countryid,stateid,cityid');
+      if (placesList.status !== 200) return placesList;
+    }
+
+    // ubication names
+    const ubicationNames = await ubicationService.getUbicationNamesByIDs(placesList.data);
+    if (ubicationNames.status !== 200) return ubicationNames;
+
+    // map itinerary with ubication names
+    const itineraryWithUbicationNames = this.matchUbicationNames({ data: placesList.data }, ubicationNames);
+
+    // members
+    const membersList = await tripsRepo.getMembersListByTripId(tripId);
+    if (membersList.status !== 200) return membersList;
+
+    // member user details
+    const memberUserIds = (membersList.data || []).map(m => m.userid);
+    let usersInfo = { status: 200, data: [] };
+    if (memberUserIds.length > 0) {
+      usersInfo = await tripsRepo.getUsersByIds(memberUserIds);
+      if (usersInfo.status !== 200) return usersInfo;
+    }
+
+    // attach user info to members
+    const userMap = new Map(usersInfo.data.map(u => [u.id, u]));
+    const membersEnriched = (membersList.data || []).map(m => ({
+      id: m.id,
+      hide: m.hide,
+      userid: m.userid,
+      user: userMap.get(m.userid) || null
+    }));
+
+    const returnData = {
+      id: tripRow.id,
+      name: tripRow.name,
+      description: tripRow.description,
+      initialdate: tripRow.initialdate,
+      finaldate: tripRow.finaldate,
+      isinternational: tripRow.isinternational,
+      itinerary: itineraryWithUbicationNames,
+      owner: owner.data[0],
+      members: membersEnriched
+    };
+
+    return { status: 200, data: returnData };
   },
-  async getAll() {
-    const { data, error } = await clientTrips
-    .from('trips')
-    .select("id, name, ownerid, description, initialdate, finaldate, isinternational")
-    .order('createddate', { ascending: false });
-    if (error) return { status : 500, error: error.message };
-    
-    return { status: 200, data : data };
+
+  async getItineraryByTripId(tripId) {
+    return await tripsRepo.getItineraryByTripId(tripId);
   },
+
+  async getMembersListByTripId(tripId) {
+    return await tripsRepo.getMembersListByTripId(tripId);
+  },
+
+  async getAll(filters = {}) {
+    return await tripsRepo.searchTrips(filters, 'id,name,ownerid,initialdate,finaldate');
+  },
+
   async searchTrips(filters) {
-    
-    let searchQuery = clientTrips
-    .from('trips')
-    .select("id, name, ownerid, description, initialdate, finaldate, isinternational")
-    .order('createddate', { ascending: true })
-    .limit(5);
-
-    if (filters.name) {
-        searchQuery = searchQuery.ilike('name', `%${filters.name}%`);
-    }
-    if (filters.initialdate) {
-        searchQuery = searchQuery.gte('initialdate', filters.initialdate);
-    }
-    if (filters.finaldate) {
-        searchQuery = searchQuery.lte('finaldate', filters.finaldate);
-    }
-
-    const { data, error } = await searchQuery;
-
-    if (error) return { status : 500, error: error.message };
-    
-    return { status: 200, data : data };
+    return await tripsRepo.searchTrips(filters);
   },
-  async getNewsTrips() {
-    const { data, error } = await clientTrips
-    .from('trips')
-    .select("id, name, ownerid, description, initialdate, finaldate, isinternational")
-    .order('createddate', { ascending: false })
-    .limit(3);
-    if (error) return { status : 500, error: error.message };
 
-    return { status: 200, data : data };
+  async getNewsTrips(limit = 10) {
+    return await tripsRepo.getNewsTrips(limit);
   },
-  async searchItineraryByTripIDs(tripids, 
-    fields = "tripid, initialdate, finaldate, placeid") {
-    const { data, error } = await clientTrips
-    .from('trips_itinerary')
-    .select(fields)
-    .in('tripid', tripids);
-    if (error) return { status : 500, error: error.message };
-    return { status: 200, data : data };
-  }
-  , matchUbicationNames (places, ubicationNames) {
-      return places.data.map( place => {
-      //find country name
-      const country = ubicationNames.data.countries.find( c => c.id === place.countryid);
-      const state = ubicationNames.data.states.find( s => s.id === place.stateid);
-      const city = ubicationNames.data.cities.find( ci => ci.id === place.cityid);
-      return {
-          id: place.id,
-          name: place.name,
-          initialdate: place.initialdate,
-          finaldate: place.finaldate,
-          Country: country ? 
-          { 
-              id: country.id, 
-              name : country.name, 
-              acronym : country.acronym
-          } : null,
-          State: state ? 
-          { 
-              id: state.id,
-              name : state.name
-          } : null,
-          City: city ?
-          { 
-              id: city.id,
-              name : city.name
-          } : null
-      };
-    }
-  );
+
+  async searchItineraryByTripIDs(tripIds, fields = 'tripid,initialdate,finaldate,placeid') {
+    return await tripsRepo.searchItineraryByTripIDs(tripIds, fields);
+  },
+
+  matchUbicationNames(places, ubicationNames) {
+    const nameMap = new Map(
+      (ubicationNames.data || []).map(u => [u.id, u])
+    );
+    return (places.data || []).map(p => ({
+      ...p,
+      ubication: nameMap.get(p.id) || null
+    }));
   }
 };
 
