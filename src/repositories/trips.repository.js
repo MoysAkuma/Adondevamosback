@@ -71,7 +71,7 @@ class TripsRepository {
     return { status: 200, data };
   }
 
-  async getUsersByIds(ids, fields = 'id,name,lastname,email') {
+  async getUsersByIds(ids, fields = 'id,name,lastname,email,tag') {
     const { data, error } = await this.usersClient
       .from('users')
       .select(fields)

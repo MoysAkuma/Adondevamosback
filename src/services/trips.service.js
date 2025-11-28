@@ -30,10 +30,11 @@ const tripsService = {
     const owner = await tripsRepo.getOwnerById(tripRow.ownerid);
     if (owner.status !== 200) return owner;
     if (!owner.data || owner.data.length === 0) return { status: 404, data: null };
+
     // itinerary raw
     const itinerary = await tripsRepo.getItineraryByTripId(tripId);
     if (itinerary.status !== 200) return itinerary;
-
+console.log('Itinerary data:', itinerary.data);
     // place IDs
     const placeIds = (itinerary.data || []).map(i => i.placeid);
     let placesList = { status: 200, data: [] };
@@ -48,7 +49,17 @@ const tripsService = {
 
     // map itinerary with ubication names
     const itineraryWithUbicationNames = this.matchUbicationNames({ data: placesList.data }, ubicationNames);
-
+    
+    //combine itinerary data with place and ubication info
+    itinerary.data = (itinerary.data || []).map(item => {
+      const placeInfo = itineraryWithUbicationNames.find(p => p.id === item.placeid);
+      return {
+        initialdate: item.initialdate,
+        finaldate: item.finaldate,
+        place: placeInfo
+      };
+    });
+    console.log('Enriched Itinerary data:', itinerary.data);
     // members
     const membersList = await tripsRepo.getMembersListByTripId(tripId);
     if (membersList.status !== 200) return membersList;
@@ -77,9 +88,14 @@ const tripsService = {
       initialdate: tripRow.initialdate,
       finaldate: tripRow.finaldate,
       isinternational: tripRow.isinternational,
-      itinerary: itineraryWithUbicationNames,
+      itinerary: itinerary.data,
       owner: owner.data[0],
-      members: membersEnriched
+      members: membersEnriched,
+      statics: {
+        Votes: {
+          Total: 0
+        }
+      }
     };
 
     return { status: 200, data: returnData };
@@ -110,13 +126,35 @@ const tripsService = {
   },
 
   matchUbicationNames(places, ubicationNames) {
-    const nameMap = new Map(
-      (ubicationNames.data || []).map(u => [u.id, u])
-    );
-    return (places.data || []).map(p => ({
-      ...p,
-      ubication: nameMap.get(p.id) || null
-    }));
+    
+    return places.data.map( place => {
+      //find country name
+        const country = ubicationNames.data.countries.find( c => c.id === place.countryid);
+        const state = ubicationNames.data.states.find( s => s.id === place.stateid);
+        const city = ubicationNames.data.cities.find( ci => ci.id === place.cityid);
+        return {
+            id: place.id,
+            name: place.name,
+            initialdate: place.initialdate,
+            finaldate: place.finaldate,
+            Country: country ? 
+            { 
+                id: country.id, 
+                name : country.name, 
+                acronym : country.acronym
+            } : null,
+            State: state ? 
+            { 
+                id: state.id,
+                name : state.name
+            } : null,
+            City: city ?
+            { 
+                id: city.id,
+                name : city.name
+            } : null
+        };
+    });
   }
 };
 
