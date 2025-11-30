@@ -13,20 +13,13 @@ const getPlaceByID = async (req, res, next) => {
 
     const place = await placesService.getPlaceById(PlaceID);
     
-    if (place.status == 500) return new ApiError(500, place.message);
+    if (place.status != 200) return new ApiError(place.status, place.message);
     
     if (!place.data) return new ApiError(404, 'Place not found');
     
-    const ubicationNames = await ubicationService.getUbicationNamesByIDs(place.data);
-    console.log(ubicationNames);
-    if (ubicationNames.status == 500) return new ApiError(500, ubicationNames.message);
-    
-    //map names to place
-    const placeWithUbicationNames = matchUbicationNames(place, ubicationNames);
-    
     return new ApiResponse(res).success(
       'Reading process sucess', 
-      placeWithUbicationNames[0] ? placeWithUbicationNames[0] : {});
+      place.data ? place.data : {});
   } catch (err) {
     return new ApiError(err.message, err.status);
   }

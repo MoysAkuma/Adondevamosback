@@ -1,7 +1,9 @@
 import PlacesRepository from '../repositories/places.repository.js';
-import { clientPlaces } from '../config/supabase.js'; // adjust to your actual supabase client export
+import { mapPlacesWithUbicationNames } from '../mappers/ubication.mapper.js';
+import ubicationService from './ubication.service.js';
+import { clientPlaces, cataloguesClient } from '../config/supabase.js'; // adjust to your actual supabase client export
 
-const placesRepo = new PlacesRepository({ placesClient: clientPlaces });
+const placesRepo = new PlacesRepository({ placesClient: clientPlaces, catalogClient: cataloguesClient });
 
 const placesService = {
   async createPlace(rq) {
@@ -19,8 +21,29 @@ const placesService = {
   async getPlaceById(id) {
     const base = await placesRepo.getPlaceByIdRaw(id);
     if (base.status !== 200) return base;
+    
     if (!base.data || base.data.length === 0) return { status: 404, data: null };
-    return { status: 200, data: base.data[0] };
+    
+    //get ubication names
+    const ubicationNames = await ubicationService.getUbicationNamesByIDs(base.data);
+    
+    if (ubicationNames.status !== 200) return ubicationNames;
+    const placeWithUbicationNames = mapPlacesWithUbicationNames(base.data, ubicationNames.data);
+    
+    //get facilities
+    const facilities = await placesRepo.getFacilitiesByPlaceId(id);
+
+    if (facilities.status !== 200) return facilities;
+
+    //unset countryid, stateid, cityid from placeWithUbicationNames
+    placeWithUbicationNames.forEach(place => {
+      delete place.countryid;
+      delete place.stateid;
+      delete place.cityid;
+    });
+
+    placeWithUbicationNames[0].facilities = facilities.data;
+    return { status: 200, data: placeWithUbicationNames[0] };
   },
 
   async searchPlacesByIDs(ids, fields = 'id,name,countryid,stateid,cityid') {
