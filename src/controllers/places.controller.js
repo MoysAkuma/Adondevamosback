@@ -2,7 +2,7 @@ import {ApiError} from  '../utils/apiError.js'
 import {ApiResponse} from  '../utils/apiResponse.js'
 import placesService from '../services/places.service.js';
 import ubicationService from '../services/ubication.service.js';
-
+import { mapPlacesWithUbicationNames } from '../mappers/ubication.mapper.js';
 /**
  *  Recibes PlaceID as param and returns place info
  */
@@ -42,7 +42,7 @@ const searchPlaces = async (req, res, next) => {
     if (ubicationNames.status == 500) return new ApiError(500, ubicationNames.message);
     
     //map names to places
-    const placesWithUbicationNames = matchUbicationNames(foundedPlaces, ubicationNames);
+    const placesWithUbicationNames = mapPlacesWithUbicationNames(foundedPlaces.data, ubicationNames.data);
 
     return new ApiResponse(res).success(
       'Reading process sucess', 
@@ -52,38 +52,6 @@ const searchPlaces = async (req, res, next) => {
     return new ApiError(err.message, err.status);
   }
 };
-
-const matchUbicationNames = (places, ubicationNames) => {
- return places.data.map( place => {
-      //find country name
-        const country = ubicationNames.data.countries.find( c => c.id === place.countryid);
-        const state = ubicationNames.data.states.find( s => s.id === place.stateid);
-        const city = ubicationNames.data.cities.find( ci => ci.id === place.cityid);
-        return {
-            id: place.id,
-            name: place.name,
-            address: place.address,
-            description: place.description,
-            ispublic: place.ispublic,
-            Country: country ? 
-            { 
-                id: country.id, 
-                name : country.name, 
-                acronym : country.acronym
-            } : null,
-            State: state ? 
-            { 
-                id: state.id,
-                name : state.name
-            } : null,
-            City: city ?
-            { 
-                id: city.id,
-                name : city.name
-            } : null
-        };
-    });
-}
 
 const placesController = {
     getPlaceByID,

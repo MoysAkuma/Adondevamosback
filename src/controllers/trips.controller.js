@@ -198,41 +198,15 @@ const searchTrips = async (req, res) => {
     const { filters } = req.body;
     
     //call search
-    const foundTrips = await tripsService.searchTrips(filters);
+    const foundedTrips = await tripsService.searchTrips(filters);
     
-    if (foundTrips.status != 200 ) {
-      return ApiError(foundTrips.message, foundTrips.status )
+    if (foundedTrips.status != 200 ) {
+      return ApiError(foundedTrips.message, foundedTrips.status )
     }
-
-    //get owner list
-    const ownerIds = foundTrips.data.map(trip => trip.ownerid);
-    
-    const ownersInfo = await usersService.searchOwnerInfo(ownerIds);
-    
-
-    if(ownersInfo.status != 200){
-      return ApiError("owners info error", ownersInfo.status )
-    }
-
-    //Generate response
-    const dataToReturn = foundTrips.data.map(
-      item =>
-        (
-          {
-            id : item.id,
-            name : item.name,
-            description : item.description,
-            initialdate : item.initialdate,
-            finaldate : item.finaldate,
-            isinternational : item.isinternational,
-            owner : ownersInfo.data.find(owner => owner.id === item.ownerid)
-          }
-        )
-    );
     
     return new ApiResponse(res).success(
       'Search trips sucess', 
-      dataToReturn);
+      foundedTrips.data);
   } catch(err){
     return new ApiError(err.message, err.status);
   }

@@ -2,6 +2,7 @@ import TripsRepository from '../repositories/trips.repository.js';
 import placesService from './places.service.js';
 import ubicationService from './ubication.service.js';
 import { clientTrips, userClient } from '../config/supabase.js';
+import { mapPlacesWithUbicationNames } from '../mappers/ubication.mapper.js';
 
 const tripsRepo = new TripsRepository({ tripsClient: clientTrips, usersClient: userClient });
 
@@ -34,7 +35,7 @@ const tripsService = {
     // itinerary raw
     const itinerary = await tripsRepo.getItineraryByTripId(tripId);
     if (itinerary.status !== 200) return itinerary;
-console.log('Itinerary data:', itinerary.data);
+
     // place IDs
     const placeIds = (itinerary.data || []).map(i => i.placeid);
     let placesList = { status: 200, data: [] };
@@ -48,7 +49,7 @@ console.log('Itinerary data:', itinerary.data);
     if (ubicationNames.status !== 200) return ubicationNames;
 
     // map itinerary with ubication names
-    const itineraryWithUbicationNames = this.matchUbicationNames({ data: placesList.data }, ubicationNames);
+    const itineraryWithUbicationNames = mapPlacesWithUbicationNames(placesList.data, ubicationNames.data);
     
     //combine itinerary data with place and ubication info
     itinerary.data = (itinerary.data || []).map(item => {
@@ -59,7 +60,7 @@ console.log('Itinerary data:', itinerary.data);
         place: placeInfo
       };
     });
-    console.log('Enriched Itinerary data:', itinerary.data);
+    
     // members
     const membersList = await tripsRepo.getMembersListByTripId(tripId);
     if (membersList.status !== 200) return membersList;
@@ -114,7 +115,26 @@ console.log('Itinerary data:', itinerary.data);
   },
 
   async searchTrips(filters) {
-    return await tripsRepo.searchTrips(filters);
+    //get trip list
+    const foundedTrips = await tripsRepo.searchTrips(filters, 
+      'id,name,description,initialdate,finaldate,isinternational,ownerid');
+    if( foundedTrips.status != 200 ) {
+      return ApiError("trips search error", foundedTrips.status )
+    }
+    //get owners info
+    const ownerIds = [...new Set(foundedTrips.data.map(trip => trip.ownerid))];
+    const ownersInfo = await tripsRepo.getUsersByIds(ownerIds, 'id,name,lastname,email,tag');
+    if(ownersInfo.status != 200){
+      return ApiError("owners info error", ownersInfo.status )
+    }
+    const ownerMap = new Map(ownersInfo.data.map(o => [o.id, o]));
+    //attach owner info to trips
+    foundedTrips.data = foundedTrips.data.map(trip => ({
+      ...trip,
+      owner: ownerMap.get(trip.ownerid) || null
+    }));
+    
+    return { status: 200, data: foundedTrips.data };
   },
 
   async getNewsTrips(limit = 10) {
@@ -123,38 +143,6 @@ console.log('Itinerary data:', itinerary.data);
 
   async searchItineraryByTripIDs(tripIds, fields = 'tripid,initialdate,finaldate,placeid') {
     return await tripsRepo.searchItineraryByTripIDs(tripIds, fields);
-  },
-
-  matchUbicationNames(places, ubicationNames) {
-    
-    return places.data.map( place => {
-      //find country name
-        const country = ubicationNames.data.countries.find( c => c.id === place.countryid);
-        const state = ubicationNames.data.states.find( s => s.id === place.stateid);
-        const city = ubicationNames.data.cities.find( ci => ci.id === place.cityid);
-        return {
-            id: place.id,
-            name: place.name,
-            initialdate: place.initialdate,
-            finaldate: place.finaldate,
-            Country: country ? 
-            { 
-                id: country.id, 
-                name : country.name, 
-                acronym : country.acronym
-            } : null,
-            State: state ? 
-            { 
-                id: state.id,
-                name : state.name
-            } : null,
-            City: city ?
-            { 
-                id: city.id,
-                name : city.name
-            } : null
-        };
-    });
   }
 };
 

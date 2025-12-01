@@ -82,10 +82,23 @@ class TripsRepository {
 
   async searchTrips(filters = {}, fields = 'id,name,ownerid,initialdate,finaldate') {
     let query = this.tripsClient.from('trips').select(fields);
-    Object.entries(filters).forEach(([k, v]) => {
-      if (Array.isArray(v)) query = query.in(k, v);
-      else query = query.eq(k, v);
-    });
+    
+    if (filters.name) {
+      query = query.ilike('name', `%${filters.name}%`);
+    }
+    
+    if (filters.ownerid) {
+      query = query.eq('ownerid', filters.ownerid);
+    }
+
+    if (filters.initialdate) {
+      query = query.gte('initialdate', filters.initialdate);
+    }
+
+    if (filters.finaldate) {
+      query = query.lte('finaldate', filters.finaldate);
+    }
+    
     const { data, error } = await query;
     if (error) return { status: 500, error };
     return { status: 200, data };
