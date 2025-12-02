@@ -107,7 +107,7 @@ const getAllTrips = async (req, res) => {
   }   
 };
 
-const getNewsTrips = async (req, res) => {
+const getNewTrips = async (req, res) => {
   try{
     //get news trips
     const trips = await tripsService.getNewsTrips();
@@ -220,7 +220,7 @@ const tripsController = {
   updateTripbyID,
   deleteTripbyID,
   getAllTrips,
-  getNewsTrips,
+  getNewTrips,
   searchTrips
 };
 

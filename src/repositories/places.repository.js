@@ -54,12 +54,22 @@ class PlacesRepository {
     return { status: 200, data };
   }
 
-  async searchPlaces(filters = {}, fields = 'id,name,countryid,stateid,cityid') {
-    let query = this.placesClient.from('places').select(fields);
-    Object.entries(filters).forEach(([k, v]) => {
-      if (Array.isArray(v)) query = query.in(k, v);
-        else query = query.eq(k, v);
-    });
+  async searchPlaces(filters = {}, fields = 'id,name,countryid,stateid,cityid,address') {
+    let query = 
+    this.placesClient.from('places').select(fields).limit(5);
+    
+    if (filters.name) {
+      query = query.ilike('name', `%${filters.name}%`);
+    }
+    if (filters.countryid) {
+      query = query.eq('countryid', filters.countryid);
+    }
+    if (filters.stateid) {
+      query = query.eq('stateid', filters.stateid);
+    }
+    if (filters.cityid) {
+      query = query.eq('cityid', filters.cityid);
+    }
     const { data, error } = await query;
     if (error) return { status: 500, error };
     return { status: 200, data };

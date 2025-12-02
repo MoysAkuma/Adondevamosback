@@ -129,7 +129,7 @@ router.post('/Trips',
     tripsController.createTrip);
 /**
  * @swagger
- *  /Trips/View/News
+ *  /Trips/View/New:
  *      get:
  *          summary : Retrieves a list of last created trip on system 
  *          responses:
@@ -157,8 +157,8 @@ router.post('/Trips',
  *                  items: 
  *                      $ref: '#/components/schemas/Trip'
  */
-router.get('/Trips/View/News',
-    tripsController.getNewsTrips);
+router.get('/Trips/View/New',
+    tripsController.getNewTrips);
 
 router.post('/Trips/Search',
     tripsController.searchTrips);

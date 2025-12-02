@@ -104,11 +104,12 @@ class TripsRepository {
     return { status: 200, data };
   }
 
-  async getNewsTrips(limit = 10, fields = 'id,name,initialdate,finaldate') {
+  async getNewsTrips(limit = 5, 
+    fields = 'id,name,initialdate,finaldate') {
     const { data, error } = await this.tripsClient
       .from('trips')
       .select(fields)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
       .limit(limit);
     if (error) return { status: 500, error };
     return { status: 200, data };
