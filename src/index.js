@@ -111,7 +111,7 @@ app.set('json spaces', 2);
 // Swagger setup
 const swaggerOptions = {
   swaggerDefinition: {
-    myapi: '3.0.0',
+        openapi: '3.0.0',
     info: {
       title: 'Adondevamos.back',
       version: 'Alpha',
@@ -120,10 +120,10 @@ const swaggerOptions = {
     servers: [
       {
         url: process.env.FRONT_URL,
-      },0
+        }
     ],
   },
-  apis: ['*.js'], // files containing annotations as above
+    apis: ['./routes/*.js', './routes/**/*.js'], // files containing annotations as above
 };
 
 const swaggerDocs = swaggerJsDoc(swaggerOptions);

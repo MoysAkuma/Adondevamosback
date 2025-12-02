@@ -16,9 +16,20 @@ A donde vamos backed project to interact to Adondevamos.web project made by @Moy
 ## Prerequisites
 
 - Node.js (version X.X or higher)
-- npm (version X.X or higher) or yarn
-- @supabase/supabase-js (version ^2.49.4)
+- npm (version X.X or higher)
+- express (v4.21.2 or higher)
+- @supabase/supabase-js (version 2.49.4 or higher)
 - dotenv (version ^16.5.0)
+- Body-parser (version 2.2.0 or higher)
+- redis (version 5.8.3 or higher)
+- connect-redis (version 9.0.0 or higher)
+- cookie-parser (version 1.4.7 or higher)
+- cors (version 2.8.5 or higher)
+- express-session (version 1.18.2 or higher)
+- whatwg-url (version 14.2.0 or higher)
+- swagger-jsdoc (version 6.2.8 or higher)
+- swagger-ui-express (version 14.2.0 or higher)
+
 
 ## Installation
 
@@ -26,408 +37,79 @@ A donde vamos backed project to interact to Adondevamos.web project made by @Moy
    ```bash
    git clone https://github.com/MoysAkuma/Adondevamosback
    cd adondevamosback
+
 ## EndPoints
-- POST  Create country
-    
-    Request
-    
-    ```bash
-    curl --location 'localhost:3000/Country' \
-    --data '{
-        "name": "Peru", 
-        "originalname":"Peru", 
-        "acronym":"PER"
-    }'
-    ```
-
-    Response
-
-    ```bash
-    {
-        "Message": "Creation process sucess",
-        "info": [
-            {
-                "id": 4,
-                "createddate": "2025-05-25T19:20:08.278003+00:00",
-                "name": "Peru",
-                "originalname": "Peru",
-                "hide": false,
-                "enabled": true,
-                "acronym": "PER"
-            }
-        ]
-    }
-    ```
-- GET Country
-    
-    Request
-    ```bash
-    curl --location 'localhost:3000/Country/1'
-    ```
-    Response
-    ```bash
-    {
-        "Message": "Reading process sucess",
-        "info": [
-            {
-                "name": "Mexico",
-                "originalname": "Mexico",
-                "acronym": "MX",
-                "enabled": true,
-                "hide": false
-            }
-        ]
-    }
-    ```
-- Update country
-    
-    Request
-    ```bash
-    curl --location --request PUT 'localhost:3000/Country/Update/2' \
-    --header 'Content-Type: application/json' \
-    --data '{
-        "name": "Japan", 
-        "originalname":"Nihon", 
-        "acronym":"JP",
-        "hide":false,
-        "enabled":true
-    }'
-    ```
-    Response
-    ```bash
-    {
-        "Message": "Edition process sucess",
-        "info": [
-        {
-            "id": 2,
-            "createddate": "2025-05-16T02:11:31.173921+00:00",
-            "name": "Japan",
-            "originalname": "Nihon",
-            "hide": false,
-            "enabled": true,
-            "acronym": "JP"
-        }
-        ]
-    }
-    ```
-- DELETE NAME
-    
-    Request
-    ```bash
-    curl --location --request DELETE 'localhost:3000/Country/4'
-    ```
-
-- GET ALL Countries
-    
-    Request
-    
-    ```bash
-    curl --location 'localhost:3000/Countries'
-    ```
-    
-    Response
-    
-    ```bash
-    {
-        "Message": "Reading process sucess",
-        "info": [
-        {
-            "name": "Mexico",
-            "originalname": "Mexico",
-            "acronym": "MX",
-            "enabled": true,
-            "hide": false
-        },
-        {
-            "name": "Japan",
-            "originalname": "Nihon",
-            "acronym": "JP",
-            "enabled": true,
-            "hide": false
-        }
-        ]
-    }
-    ```
-
-- POST STATE
-    
-    Request
-    ```bash
-    curl --location 'localhost:3000/State' \
-    --header 'Content-Type: application/json' \
-    --data '{
-        "name": "Sinaloa", 
-        "originalname":"Sinaloa", 
-        "countryid":1,
-        "enabled":true,
-        "hide":true
-    }'
-    ```
-    Response
-    ```bash
-    {
-    "Message": "Creation process sucess",
-    "info": [
-        {
-            "id": 1,
-            "createddate": "2025-05-25T20:02:32.937454+00:00",
-            "name": "Sinaloa",
-            "originalname": "Sinaloa",
-            "countryid": 1,
-            "enabled": true,
-            "hide": true
-        }
-    ]
-    }
-    ```
-
-- GET State
-    
-    Request
-    ```bash
-    curl --location 'localhost:3000/State/1'
-    ```
-    Response
-    ```bash
-    {
-    "Message": "Reading process sucess",
-    "info": [
-        {
-            "name": "Sinaloa",
-            "originalname": "Sinaloa",
-            "countryid": 1,
-            "enabled": true,
-            "hide": true
-        }
-    ]
-    }
-    ```
-- PUT State
-    
-    Request
-    ```bash
-    curl --location --request PUT 'localhost:3000/State/2' \
-    --header 'Content-Type: application/json' \
-    --data '{
-        "name": "Ciudad de Mexico", 
-        "originalname":"Ciudad de Mexico", 
-        "countryid":1,
-        "enabled":true,
-        "hide":true
-    }'
-    ```
-    Response
-    ```bash
-    {
-    "Message": "Edition process sucess",
-    "info": [
-        {
-            "id": 2,
-            "createddate": "2025-05-25T20:05:09.290674+00:00",
-            "name": "Ciudad de Mexico",
-            "originalname": "Ciudad de Mexico",
-            "countryid": 1,
-            "enabled": true,
-            "hide": true
-        }
-    ]
-    }
-    ```
-- Delete state
-    
-    Request
-    ```bash
-    curl --location --request DELETE 'localhost:3000/State/2'
-    ```
-    Response
-    ```bash
-    
-    ```
-- Get All States
-    
-    Request
-    ```bash
-    curl --location 'localhost:3000/States'
-    ```
-    Response
-    ```bash
-    curl --location 'localhost:3000/Country/1'
-    ```
-
-- GET STATES by CountryID
-    
-    Request
-    ```bash
-    curl --location 'localhost:3000/States/ByCountryID/1'
-    ```
-    Response
-    ```bash
-    {
-    "Message": "Reading process sucess",
-    "info": [
-        {
-            "name": "Sinaloa",
-            "originalname": "Sinaloa",
-            "countryid": 1,
-            "enabled": true,
-            "hide": true
-        }
-    ]
-    }
-    ```
-
-- Create CITY
-    
-    Request
-    ```bash
-    curl --location 'localhost:3000/City' \
-    --header 'Content-Type: application/json' \
-    --data '{
-        "name":"Mazatlan", 
-        "originalname":"Mazatlan", 
-        "countryid":1,
-        "stateid":1, 
-        "enabled":true, 
-        "hide":false
-    }'
-    ```
-    Response
-    ```bash
-    {
-    "Message": "Creation process sucess",
-    "info": [
-        {
-            "id": 2,
-            "createddate": "2025-05-25T21:05:31.286448+00:00",
-            "countryid": 1,
-            "stateid": 1,
-            "name": "Mazatlan",
-            "originalname": "Mazatlan",
-            "enabled": true,
-            "hide": false
-        }
-    ]
-    }
-    ```
-
-- READ CITY
-    
-    Request
-    ```bash
-    curl --location 'localhost:3000/City/2'
-    ```
-    Response
-    ```bash
-    {
-    "Message": "Reading process sucess",
-    "info": [
-        {
-            "name": "Mazatlan",
-            "originalname": "Mazatlan",
-            "countryid": 1,
-            "stateid": 1,
-            "enabled": true,
-            "hide": false
-        }
-    ]
-    }
-    ```
-
-- PUT City
-    
-    Request
-    ```bash
-    curl --location --request PUT 'localhost:3000/City/1' \
-    --header 'Content-Type: application/json' \
-    --data '{
-        "name":"Culiacan", 
-        "originalname":"Culiacan", 
-        "countryid":1,
-        "stateid":1, 
-        "enabled":true, 
-        "hide":false
-    }'
-    ```
-    Response
-    ```bash
-    {
-    "Message": "Edition process sucess",
-    "info": [
-        {
-            "id": 1,
-            "createddate": "2025-05-25T21:05:07.586292+00:00",
-            "countryid": 1,
-            "stateid": 1,
-            "name": "Culiacan",
-            "originalname": "Culiacan",
-            "enabled": true,
-            "hide": false
-        }
-    ]
-    }
-    ```
-- GET Cities
-    
-    Request
-    ```bash
-    curl --location 'localhost:3000/Cities'
-    ```
-    Response
-    ```bash
-    {
-    "Message": "Reading process sucess",
-    "info": [
-        {
-            "name": "Culiacan",
-            "originalname": "Culiacan",
-            "countryid": 1,
-            "stateid": 1,
-            "enabled": true,
-            "hide": false
-        }
-    ]
-    }
-    ```
-- METHOD NAME
-    
-    Request
-    ```bash
-    
-    ```
-    Response
-    ```bash
-    
-    ```
-
-- METHOD NAME
-    
-    Request
-    ```bash
-    
-    ```
-    Response
-    ```bash
-    
-    ```
-
-- METHOD NAME
-    
-    Request
-    ```bash
-    
-    ```
-    Response
-    ```bash
-    
-    ```
-
-- METHOD NAME
-    
-    Request
-    ```bash
-    
-    ```
-    Response
-    ```bash
-    
-    ```
+    - /v1/login
+	    A post method to auth and user, returns 409 if credentials are not valid.
+     - /v1/check-auth
+	    A get method to check if session is still valid
+    - /v1/Logout
+	    A post method to delete session of user
+    - /v1/Countries
+	    Post method to create a new country and get method retrieves last 5 created countries
+    - /v1/Countries/:CountryID
+	    Put method to update all information of a created country, Get retrieves a single record by Id, delete eliminates a record by ID.
+    - /v1/Countries/:CountryID/Hide
+	    A patch method to change value of hide to false
+    - /v1/Countries/:CountryID/Show
+	    A patch method to change value of hide to true
+    - /v1/States
+	    Post method create a new state, Get retrieves a list of 5 created place by creation date 
+    - /v1/States/:StateID
+	    Put method update all info of a state, Get retrieves a single state info by id, delete eliminate a record by id.
+    - /v1/States/ByCountryID/:countryid
+	    A get method to retrieves all states by countryid
+    - /v1/Cities
+	    Post method create a new city, Get retrieves a list of 5 created cities by creation date
+    - /v1/Cities/:cityID
+	    Put method update all info of a city by id, Get retrieves a single city info by id, delete eliminate a record by id.
+    - /v1/Cities/ByState/:stateid
+	    A get method to retrieves a list of cities by a state
+    - /v1/Facilities
+	    Get method retrieves a list of created facilities, Post create a new record of facilities.
+    - /v1/Facilities/:facilityID
+	    Put method update all info of a facility by id, Get retrieves a single facility info by id, delete eliminate a record by id.
+    - /v1/Facilities/:facilityID/Hide
+	    A patch method to hide a facility by id
+    - /v1/Facilities/:facilityID/Show
+	    A patch method to show a facility by id
+    - /v1/Users/:UserID
+    	Get method retrieves info of a user, Put updates info of a user by id, delete eliminate a record by id.
+    - /v1/Users/Password/Change
+	    A patch method to change password
+    - /v1/Users/:UserID/Show
+	    A patch method to show a user
+    - /v1/Users/:UserID/Hide
+	    A patch method to hide a user
+    - /v1/Users/Search/tag=:searchText
+	    A get method to search a list of users that matches name or description of a given text
+    - /v1/Places
+	    Get method retrieves a list of created places by creation date, Post method creates a new place.
+    - /v1/Users/Verify/Email/:email
+	    A get method to verify if an email is available in sistem
+    - /v1/Places/Search/name=:PlaceName
+	    A get method to search a list of places that matches name or description of a given text
+    - /v1/Places/:PlaceID
+	    Get method retrieves info of a created place by id, Put method update all info by id, delete eliminate a record that matches with id.
+    - /v1/Places/:PlaceID/Facilities
+	    Get method retrieves a list of facilities that placeid field matches of an id
+    - /v1/View/Places/:PlaceID/Facilities
+	A get method to search multiple info of a facility to show at system
+    - /v1/Places/:PlaceID/Facilities/:FacilityID
+	    TBD
+    - /v1/Places/Ubications/:CountryID/:StateID/:CityID
+	    A get method to get Country name, State name and city name by id
+    - /v1/Trips
+	    Get method retrieves a list of last created places by creation date, Post create a new trip.
+    - /v1/Trips/:TripID
+	    Get method retrieves info of a created trip by id, Put method update all info by id, delete eliminate a record that matches with id.
+    - /v1/Trips/View/News
+	    A gett method to retrieves a list of 5 last created trips
+    - /v1/Trips/:TripID/Members
+	    Get method retrieves all members that matches tripid field of members list, Put update all info of a list of members of a given id.
+    - /v1/Trips/:TripID/Itinerary
+	    Get method retrieves itinerary that matches tripid field of itineraries, Put update an itinerary of a given id.
+    - /v1/Trips/Search
+        post method to search by filters
+    - /v1/Places/Search
+        post method to search by filters

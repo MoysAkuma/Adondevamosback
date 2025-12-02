@@ -5,7 +5,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /Login:a
+ * /Login:
  *   post:
  *     summary: Log in in site Adondevamos.web
  *     description: This request verify if email or tag id and password provided are registed in Adondevamos.io
