@@ -2,9 +2,11 @@
   "name": "adondevamosback",
   "version": "Alpha",
   "description": "a backend project in nodejs to manage a website",
-  "main": "src/index.js",
+  "main": "src/app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js"
   },
   "keywords": [],
   "author": "@Moysakuma",
@@ -25,6 +27,6 @@
     "whatwg-url": "^14.2.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.9"
+    "nodemon": "^3.1.11"
   }
 }
