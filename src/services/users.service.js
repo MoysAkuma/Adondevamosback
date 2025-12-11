@@ -1,15 +1,21 @@
+import usersRepository from "../repositories/users.repository.js";
+import ubicationService from './ubication.service.js';
 import { userClient } from "../config/supabase.js";
+import { matchUbicationNames } from "../mappers/ubication.mapper.js";
+
+const usersRepositoryInstance = new usersRepository({ userClient });
 
 const usersService = {
-  async getUserById(userId, fields = "*") {
-    console.log('Fetching user by ID:', userId);
-    const { data, error } = await userClient
-      .from('users')
-      .select(fields)
-      .eq('id', userId);
-    if (error) return { status: 500, error: error.message };
-    console.log(data);
-    return { status: 200, data: data };
+  async getUserById(userId, fields = "name, lastname, email, tag, countryid, stateid, cityid") {
+    const user = await usersRepositoryInstance.getUserById(userId, fields);
+    if (user.status != 200) return { status: 500, error: user.error || "Service error" };
+    
+    // ubication names
+    const ubicationNames = await ubicationService.getUbicationNamesByIDs( user.data );
+    if (ubicationNames.status !== 200) return ubicationNames;
+    const userWithUbicationNames = matchUbicationNames( user, ubicationNames );
+
+    return { status: 200, data: userWithUbicationNames || {} };
   },
 
   async getUserByEmail(email) {

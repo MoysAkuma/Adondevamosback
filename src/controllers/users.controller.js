@@ -1,4 +1,5 @@
 import {ApiResponse} from  '../utils/apiResponse.js'
+import {ApiError} from  '../utils/apiError.js'
 import usersService from '../services/users.service.js'
 
 const createUser = async (req, res, next) => {
@@ -36,12 +37,14 @@ const getUserByID = async (req, res, next) => {
     try{
         //Get user id to search
         const { UserID } = req.params;
-        const user = usersService.getUserById(UserID);
+        const user = await usersService.getUserById(UserID, 
+            "name, lastname, email, tag, description, countryid, stateid, cityid, enabled, hide");
         
-        if (!!user) throw new ApiError(500, "Failed");
+        if (user.status != 200 ) throw new ApiError(500, "Failed");
+
         new ApiResponse(res).success(
         'Reading process sucess', 
-        user);
+        user.data);
     }
     catch(error){
         next(error);
@@ -171,4 +174,7 @@ const searchUserByIDs = async (req, res, next) => {
         next(error);
     }
 
+};
+export default {
+    getUserByID
 };

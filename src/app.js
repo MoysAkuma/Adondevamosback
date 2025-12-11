@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import redisConfig from './configs/redis.config.js';
 import tripsRoutes from './routes/trips.routes.js';
 import placesRoutes from './routes/places.routes.js';
+import usersRoutes from './routes/users.routes.js';
 import errorMiddleware from './middleware/error.middleware.js'
 import login from './routes/login.routes.js';
 import { env } from './config/env.js';
@@ -46,6 +47,7 @@ redisConfig(app);
 app.use('/v1', tripsRoutes);
 app.use('/v1', login);
 app.use('/v1', placesRoutes);
+app.use('/v1', usersRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
