@@ -15,7 +15,7 @@ const usersService = {
     if (ubicationNames.status !== 200) return ubicationNames;
     const userWithUbicationNames = matchUbicationNames( user, ubicationNames );
 
-    return { status: 200, data: userWithUbicationNames || {} };
+    return { status: 200, data: userWithUbicationNames.data || {} };
   },
 
   async getUserByEmail(email) {

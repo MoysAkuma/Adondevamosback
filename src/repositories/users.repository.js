@@ -20,6 +20,15 @@ class usersRepository {
     if (error) return { status: 500, error: error.message };
     return { status: 200, data: data };
   }
+  
+  async getPasswordByEmail(email) { 
+    const { data, error } = await this.userClient
+        .from('users')
+        .select("password")
+        .eq('email', email);
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data: data };
+  }
 };
 
 export default usersRepository;
