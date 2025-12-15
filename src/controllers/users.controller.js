@@ -2,6 +2,7 @@ import {ApiResponse} from  '../utils/apiResponse.js'
 import {ApiError} from  '../utils/apiError.js'
 import usersService from '../services/users.service.js'
 
+
 const getUserByID = async (req, res, next) => {
     try{
         //Get user id to search
@@ -22,13 +23,12 @@ const getUserByID = async (req, res, next) => {
 
 const recoverPassword = async (req, res, next) => {
     try{
-        const { email } = req.params;
-        const user = await usersService.getPasswordByEmail(email);
-        if (user.status != 200 ) throw new ApiError(500, "Failed to recover password");
+        const { email } = req.body;
+        const recoverPassword = await usersService.recoverPassword(email);
+        
+        if (recoverPassword.status != 200) throw new ApiError(500, "Failed to recover password");
 
-        new ApiResponse(res).success(
-        'Password recovery sucess', 
-        user.data[0]);
+        new ApiResponse(res).success('Password recovery email sent successfully',null);
     }
     catch(error){
         next(error);
@@ -36,5 +36,6 @@ const recoverPassword = async (req, res, next) => {
 };
 
 export default {
-    getUserByID
+    getUserByID,
+    recoverPassword
 };

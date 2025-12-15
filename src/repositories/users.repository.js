@@ -13,10 +13,12 @@ class usersRepository {
   } 
 
   async getUserByEmail(email) {
+    console.log(email);
     const { data, error } = await this.userClient
         .from('users')
-        .select("id, email, name, lastname, tagid, password")
+        .select("id, name, tag, password")
         .eq('email', email);
+    console.log(data, error);
     if (error) return { status: 500, error: error.message };
     return { status: 200, data: data };
   }

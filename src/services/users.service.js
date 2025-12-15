@@ -2,6 +2,7 @@ import usersRepository from "../repositories/users.repository.js";
 import ubicationService from './ubication.service.js';
 import { userClient } from "../config/supabase.js";
 import { matchUbicationNames } from "../mappers/ubication.mapper.js";
+import { sendPasswordRecoveryEmail } from '../configs/email.config.js'
 
 const usersRepositoryInstance = new usersRepository({ userClient });
 
@@ -16,6 +17,23 @@ const usersService = {
     const userWithUbicationNames = matchUbicationNames( user, ubicationNames );
 
     return { status: 200, data: userWithUbicationNames.data || {} };
+  },
+  async recoverPassword(email) {
+    //get email and password
+    const userData = await usersRepositoryInstance.getUserByEmail(email);
+    
+    if (userData.status != 200) return { status: 500, error: userData.error || "Service error" };
+    
+    const password = userData.data[0].password;
+    
+    //send email
+    try {
+      await sendPasswordRecoveryEmail(email, password, userData.data[0].name);
+      return { status: 200, data: null };
+    } catch (error) {
+      return { status: 500, error: "Failed to send recovery email" };
+    }
+
   },
 
   async getUserByEmail(email) {

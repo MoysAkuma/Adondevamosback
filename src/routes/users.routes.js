@@ -6,4 +6,7 @@ const router = express.Router();
 router.get('/Users/:UserID', 
     usersController.getUserByID);
 
+router.post('/Users/RecoverPassword',
+    usersController.recoverPassword);
+
 export default router;
