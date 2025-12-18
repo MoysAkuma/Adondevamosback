@@ -24,7 +24,7 @@ const userClient = createClient(supabaseUrl, supabaseKey, {
   db: { schema: 'users' }
 });
 
-// User client
+// catalogues client
 const cataloguesClient = createClient(supabaseUrl, supabaseServiceKey, {
   db: { schema: 'catalogues' }
 });

@@ -2,7 +2,7 @@ import usersRepository from "../repositories/users.repository.js";
 import ubicationService from './ubication.service.js';
 import { userClient } from "../config/supabase.js";
 import { matchUbicationNames } from "../mappers/ubication.mapper.js";
-import { sendPasswordRecoveryEmail } from '../configs/email.config.js'
+import { sendPasswordRecoveryEmail } from '../config/email.config.js'
 
 const usersRepositoryInstance = new usersRepository({ userClient });
 
@@ -43,6 +43,15 @@ const usersService = {
         .eq('email', email);
     if (error) return { status: 500, error: error.message };
     return { status: 200, data: data };
+  },
+  async getUserByField(field, value) {
+    if (field !== 'email' && field !== 'tag') {
+      return { status: 400, error: "Invalid field for verification" };
+    }
+    const user = await usersRepositoryInstance.getUsersByField(field, value);
+    
+    return { status: user.status };
+
   },
 
   async getUserByTag(tagid) {

@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { env } from '../config/env.js';
+import { env } from './env.js';
 
 // Create reusable transporter
 const transporter = nodemailer.createTransport({

@@ -8,5 +8,8 @@ router.get('/Users/:UserID',
 
 router.post('/Users/RecoverPassword',
     usersController.recoverPassword);
+    
+router.get('/Users/Verify/:field/:value',
+    usersController.verify);
 
 export default router;

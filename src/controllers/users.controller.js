@@ -34,8 +34,24 @@ const recoverPassword = async (req, res, next) => {
         next(error);
     }
 };
+const verify = async (req, res, next) => {
+    console.log("verifying user");
+    try{
+        //Get field to search
+        const { field, value } = req.params;
+        console.log(field, value);
+        const verifyData = await usersService.getUserByField(field, value);
+        if (verifyData.status != 200 ) throw new ApiError(verifyData.status, "Failed to verify user");
+
+        new ApiResponse(res).success('Verification process sucess', {});
+    }   
+    catch(error){
+        next(error);
+    }
+};
 
 export default {
     getUserByID,
-    recoverPassword
+    recoverPassword,
+    verify
 };

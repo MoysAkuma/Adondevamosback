@@ -2,7 +2,7 @@
 import { RedisStore } from 'connect-redis';
 import { createClient as createRedisClient } from 'redis';
 import session from 'express-session';
-import { env as dotenv } from '../config/env.js';
+import { env as dotenv } from './env.js';
 // Redis client setup for session store
 let redisClient;
 let redisStore;

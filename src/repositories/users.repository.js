@@ -20,6 +20,7 @@ class usersRepository {
         .eq('email', email);
     console.log(data, error);
     if (error) return { status: 500, error: error.message };
+    if (data.lenght === 0) return { status: 404, error: "User not found" };
     return { status: 200, data: data };
   }
   
@@ -30,6 +31,16 @@ class usersRepository {
         .eq('email', email);
     if (error) return { status: 500, error: error.message };
     return { status: 200, data: data };
+  }
+  async getUsersByField(field, value) {
+    const { data, error } = await this.userClient
+        .from('users')
+        .select("id")
+        .eq(field, value);
+    if (error) return { status: 500, error: error.message };
+    if (data.length === 0) return { status: 404, error: "User not found" };
+
+    return { status: 200 };
   }
 };
 
