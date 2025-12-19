@@ -11,5 +11,7 @@ router.post('/Users/RecoverPassword',
     
 router.get('/Users/Verify/:field/:value',
     usersController.verify);
+router.post('/Users',
+    usersController.createUser);
 
 export default router;

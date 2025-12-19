@@ -42,6 +42,28 @@ class usersRepository {
 
     return { status: 200 };
   }
+  async createUser(CreateUserRq) {
+    /*const { data, error } = await this.userClient
+      .from('users')
+      .insert(
+        {
+            name: CreateUserRq.name,
+            tag : CreateUserRq.tag, 
+            lastname : CreateUserRq.lastname, 
+            secondname: CreateUserRq.secondname,
+            password : CreateUserRq.password, 
+            countryid: CreateUserRq.countryid,
+            stateid : CreateUserRq.stateid,
+            cityid : CreateUserRq.cityid,
+            description : CreateUserRq.description,
+            email : CreateUserRq.email,         
+            enabled : true,
+            hide : false
+        })
+      .select();
+    if (error) return { status: 500, error: error.message };*/
+    return { status: 201, data: data };
+  }
 };
 
 export default usersRepository;

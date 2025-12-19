@@ -50,8 +50,42 @@ const verify = async (req, res, next) => {
     }
 };
 
+const createUser = async (req, res, next) => {
+    try{
+        //GetrqBody
+        const { name, tag, description, lastname, 
+            secondname,password, email, 
+            countryid, stateid, cityid } = req.body;
+        //validate name, email, tag, password
+        if (!name || !email || !tag || !password) {
+            throw new ApiError(400, "Name, email, tag and password are required");
+        }
+        
+        const data = await usersService.createUser({
+            name : name,
+            secondname : secondname,
+            lastname : lastname,
+            email : email,
+            tag : tag,
+            password : password,
+            description : description,
+            countryid : countryid,
+            stateid : stateid,
+            cityid : cityid,
+            enabled : true,
+            hide : false
+        });
+        if (data.status != 201) throw new ApiError(500, "Failed to create user");
+
+        new ApiResponse(res).success('Creation process sucess', data.data, data.status);
+    } catch(error){
+        next(error);
+    }
+};
+
 export default {
     getUserByID,
     recoverPassword,
-    verify
+    verify,
+    createUser
 };

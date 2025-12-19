@@ -2,7 +2,7 @@ import usersRepository from "../repositories/users.repository.js";
 import ubicationService from './ubication.service.js';
 import { userClient } from "../config/supabase.js";
 import { matchUbicationNames } from "../mappers/ubication.mapper.js";
-import { sendPasswordRecoveryEmail } from '../config/email.config.js'
+import { sendPasswordRecoveryEmail, sendCreateAccountEmail } from '../config/email.config.js'
 
 const usersRepositoryInstance = new usersRepository({ userClient });
 
@@ -35,7 +35,6 @@ const usersService = {
     }
 
   },
-
   async getUserByEmail(email) {
     const { data, error } = await userClient
         .from('users')
@@ -50,10 +49,9 @@ const usersService = {
     }
     const user = await usersRepositoryInstance.getUsersByField(field, value);
     
-    return { status: user.status };
+    return user;
 
   },
-
   async getUserByTag(tagid) {
     const { data, error } = await userClient
         .from('users')
@@ -62,7 +60,6 @@ const usersService = {
     if (error) return { status: 500, error: error.message };
     return { status: 200, data: data };
   },
-
   async checkAdminRole(userId) {
     const { data, error } = await userClient
         .from('admins')
@@ -92,34 +89,27 @@ const usersService = {
     return { status: 200, data: data[0] || {} };
   },
   async createUser(CreateUserRq) {
-    //GetrqBody
-    const { name, tag, description, lastname, 
-        secondname,password, email, 
-        countryid, stateid, cityid
-    } = CreateUserRq;
-    
-    const { data, error } = await userClient
-      .from('users')
-      .insert(
-        {
-            name: name,
-            tag : tag, 
-            lastname : lastname, 
-            secondname: secondname, 
-            password : password, 
-            countryid: countryid,
-            stateid : stateid,
-            cityid : cityid,
-            description : description,
-            email : email,         
-            enabled : true,
-            hide : false
-        })
-        .select()
-        .single();
-    if (error) return { status: 500, error: error.message };
-    
-    return { status: 201, data : data};
+    //check if email or tag already exists
+    const checkUserEmail = await usersRepositoryInstance.getUsersByField('email', CreateUserRq.email);
+    if (checkUserEmail.status === 200) {
+      return { status: 409, error: "Email already exists" };
+    }
+
+    const checkUserTag = await usersRepositoryInstance.getUsersByField('tag', CreateUserRq.tag);
+    if (checkUserTag.status === 200) {
+      return { status: 409, error: "Tag already exists" };
+    }
+
+    const user = await usersRepositoryInstance.createUser(CreateUserRq);
+    console.log(user.data);
+    // ubication names
+    const ubicationNames = await ubicationService.getUbicationNamesByIDs( user.data );
+    if (ubicationNames.status !== 200) return ubicationNames;
+    const userWithUbicationNames = matchUbicationNames( user, ubicationNames );
+
+    //send welcome email
+    await sendCreateAccountEmail( user.data.email, user.data.tag, user.data.name, user.data.ubication );
+    return user;
   },
     async updateUser(userId, UpdateUserRq) { 
         const { data, error } = await userClient
