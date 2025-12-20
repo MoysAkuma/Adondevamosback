@@ -52,6 +52,7 @@ const verify = async (req, res, next) => {
 
 const createUser = async (req, res, next) => {
     try{
+        console.log("Creating user Controller");
         //GetrqBody
         const { name, tag, description, lastname, 
             secondname,password, email, 

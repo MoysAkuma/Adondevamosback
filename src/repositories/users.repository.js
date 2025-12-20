@@ -33,10 +33,12 @@ class usersRepository {
     return { status: 200, data: data };
   }
   async getUsersByField(field, value) {
+    const normalizedField = field.toLowerCase();
+    const normalizedValue = typeof value === 'string' ? value.toLowerCase() : value;
     const { data, error } = await this.userClient
         .from('users')
         .select("id")
-        .eq(field, value);
+        .ilike(normalizedField, normalizedValue);
     if (error) return { status: 500, error: error.message };
     if (data.length === 0) return { status: 404, error: "User not found" };
 
@@ -62,7 +64,7 @@ class usersRepository {
         })
       .select();
     if (error) return { status: 500, error: error.message };*/
-    return { status: 201, data: data };
+    return { status: 201, data: [] };
   }
 };
 
