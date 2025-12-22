@@ -89,7 +89,6 @@ const usersService = {
     return { status: 200, data: data[0] || {} };
   },
   async createUser(CreateUserRq) {
-    console.log("Creating user Service");
     //check if email or tag already exists
     const checkUserEmail = await usersRepositoryInstance.getUsersByField('email', CreateUserRq.email);
     if (checkUserEmail.status === 200) {
@@ -102,17 +101,24 @@ const usersService = {
     }
 
     const user = await usersRepositoryInstance.createUser(CreateUserRq);
-    console.log("User created:", user);
+    if (user.status != 201) return { status: 500, error: user.error || "Service error" };
+
     // ubication names
     const ubicationNames = await ubicationService.getUbicationNamesByIDs( user.data );
     if (ubicationNames.status !== 200) return ubicationNames;
     const userWithUbicationNames = matchUbicationNames( user, ubicationNames );
-
+    console.log("Ubication Names:", userWithUbicationNames); 
+    const infoToMail = userWithUbicationNames.data[0];
+    console.log("Info to mail:", infoToMail);
+    
     //send welcome email
-    await sendCreateAccountEmail( /*user.data.email*/ 'moises141294@hotmail.com', 
-      user.data.tag, 
-      user.data.name, 
-      user.data.ubication );
+    await sendCreateAccountEmail( infoToMail.email, 
+      infoToMail.tag, 
+      infoToMail.name + " " + infoToMail.lastname, 
+      infoToMail.City.name + ", " + 
+      infoToMail.State.name + ", " + 
+      infoToMail.Country.name );
+
     return userWithUbicationNames;
   },
     async updateUser(userId, UpdateUserRq) { 

@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
 import { env } from './env.js';
 
-// Create reusable transporter
+
 const transporter = nodemailer.createTransport({
   host: env.EMAIL_HOST,
   port: env.EMAIL_PORT,
@@ -86,7 +86,10 @@ export async function sendPasswordRecoveryEmail(to, password, userName = 'User')
  * @param {string} userName - User name
  * @param {string} tag - User tag
  */
-export async function sendCreateAccountEmail(to, tag, userName = 'User', Ubication = '') {
+export async function sendCreateAccountEmail(to, 
+  tag, 
+  userName = 'User', 
+  Ubication = '') {
   const mailOptions = {
     from: `"${env.EMAIL_FROM_NAME}" <${env.EMAIL_FROM}>`,
     to,
@@ -98,9 +101,9 @@ export async function sendCreateAccountEmail(to, tag, userName = 'User', Ubicati
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background-color: #4CAF50; color: white; padding: 20px; text-align: center; }
-            .content { background-color: #f9f9f9; padding: 20px; border-radius: 5px; margin-top: 20px; }
-            .info { background-color: #fff; padding: 15px; border-left: 4px solid #4CAF50; margin: 20px 0; }
+            .header { background-color: #4c79adff; color: white; padding: 20px; text-align: center; }
+            .content { background-color: #e8ebc3ff; padding: 20px; border-radius: 5px; margin-top: 20px; }
+            .info { background-color: #b9f5e6ff; padding: 15px; border-left: 4px solid #4CAF50; margin: 20px 0; }
             .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
             .warning { color: #ff9800; font-weight: bold; }
           </style>
@@ -114,7 +117,7 @@ export async function sendCreateAccountEmail(to, tag, userName = 'User', Ubicati
               <p>Hello <strong>${userName}</strong>,</p>
               <p>Your account has been successfully created. Here are your account details:</p>
               <div class="info">
-                <strong>Tag:</strong> ${tag}<br>
+                <strong>Tag:</strong> ${tag}<br/>
                 <strong>Ubication:</strong> ${Ubication}
               </div>
             </div>
@@ -130,11 +133,11 @@ export async function sendCreateAccountEmail(to, tag, userName = 'User', Ubicati
 
   try {
     const info = await transporter.sendMail(mailOptions);
-    console.log('Password recovery email sent:', info.messageId);
+    console.log('Create New User Account email sent:', info.messageId);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('Error sending password recovery email:', error);
-    throw new Error('Failed to send recovery email');
+    console.error('Error sending Create New User Account email:', error);
+    throw new Error('Failed to send Create New User Account email');
   }
 }
 

@@ -45,7 +45,7 @@ class usersRepository {
     return { status: 200 };
   }
   async createUser(CreateUserRq) {
-    /*const { data, error } = await this.userClient
+    const { data, error } = await this.userClient
       .from('users')
       .insert(
         {
@@ -63,8 +63,8 @@ class usersRepository {
             hide : false
         })
       .select();
-    if (error) return { status: 500, error: error.message };*/
-    return { status: 201, data: [] };
+    if (error) return { status: 500, error: error.message };
+    return { status: 201, data: data };
   }
 };
 
