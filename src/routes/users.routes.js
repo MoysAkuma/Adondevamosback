@@ -15,4 +15,7 @@ router.get('/Users/Verify/:field/:value',
 router.post('/Users',
     usersController.createUser);
 
+router.put('/Users/:UserID',
+    usersController.editUser);
+
 export default router;

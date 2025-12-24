@@ -66,6 +66,32 @@ class usersRepository {
     if (error) return { status: 500, error: error.message };
     return { status: 201, data: data };
   }
+  async updateUser(userId, UpdateUserRq) {
+    // Build update object with only provided fields
+    const updateData = {};
+    if (UpdateUserRq.name !== undefined) updateData.name = UpdateUserRq.name;
+    if (UpdateUserRq.lastname !== undefined) updateData.lastname = UpdateUserRq.lastname;
+    if (UpdateUserRq.secondname !== undefined) updateData.secondname = UpdateUserRq.secondname;
+    if (UpdateUserRq.countryid !== undefined) updateData.countryid = UpdateUserRq.countryid;
+    if (UpdateUserRq.stateid !== undefined) updateData.stateid = UpdateUserRq.stateid;
+    if (UpdateUserRq.cityid !== undefined) updateData.cityid = UpdateUserRq.cityid;
+    if (UpdateUserRq.description !== undefined) updateData.description = UpdateUserRq.description;
+    
+
+    if (UpdateUserRq.tag !== undefined) updateData.tag = UpdateUserRq.tag;
+    if (UpdateUserRq.password !== undefined) updateData.password = UpdateUserRq.password;
+    if (UpdateUserRq.email !== undefined) updateData.email = UpdateUserRq.email;
+    console.log("Update Data:", userId);
+    const { data, error } = await this.userClient
+      .from('users')
+      .update(updateData)
+      .eq("id", userId)
+      .select();
+      
+    console.log(data, error);
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data: data };
+  }
 };
 
 export default usersRepository;

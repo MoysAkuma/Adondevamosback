@@ -121,18 +121,15 @@ const usersService = {
 
     return userWithUbicationNames;
   },
-    async updateUser(userId, UpdateUserRq) { 
-        const { data, error } = await userClient
-        .from('users')
-        .update(
-            UpdateUserRq
-        )
-        .eq('id', userId)
-        .select()
-        .single();
-        if (error) return { status: 500, error: error.message };
-        return { status: 200, data : data};
-    },
+  async updateUser(userId, UpdateUserRq) { 
+    const userExists = await usersRepositoryInstance.getUserById(userId);
+    if (userExists.status !== 200) {
+      return { status: 404, error: "User not found" };
+    }
+    const user = await usersRepositoryInstance.updateUser(userId, UpdateUserRq);
+    if (user.status != 200) return { status: 500, error: user.error || "Service error" };
+    return user;
+  },
     async searchByText(text) {
         const { data, error } = await userClient
         .from('users')

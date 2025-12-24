@@ -85,9 +85,44 @@ const createUser = async (req, res, next) => {
     }
 };
 
+const editUser = async (req, res, next) => {
+    try{
+        console.log("Editing user");
+        //Get user id to search
+        const { UserID } = req.params;
+        //GetrqBody
+        const { name, description, lastname, secondname,
+            countryid, stateid, cityid } = req.body;
+
+        //validate name, email, tag, password
+        if (!name || !lastname || !countryid || !stateid || !cityid) {
+            throw new ApiError(400, "Name, last name, country, state, and city are required");
+        }
+        
+        const data = await usersService.updateUser(
+            UserID,
+            {
+                name : name,
+                secondname : secondname,
+                lastname : lastname,
+                description : description,
+                countryid : countryid,
+                stateid : stateid,
+                cityid : cityid
+            }
+        );
+        if (data.status != 200) throw new ApiError(data.status, "Failed to edit user");
+
+        new ApiResponse(res).success('Editing process success', data.data, data.status);
+    } catch(error){
+        next(error);
+    }
+};
+
 export default {
     getUserByID,
     recoverPassword,
     verify,
-    createUser
+    createUser,
+    editUser
 };
