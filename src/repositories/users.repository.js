@@ -81,15 +81,15 @@ class usersRepository {
     if (UpdateUserRq.tag !== undefined) updateData.tag = UpdateUserRq.tag;
     if (UpdateUserRq.password !== undefined) updateData.password = UpdateUserRq.password;
     if (UpdateUserRq.email !== undefined) updateData.email = UpdateUserRq.email;
-    console.log("Update Data:", userId);
+    
     const { data, error } = await this.userClient
       .from('users')
       .update(updateData)
-      .eq("id", userId)
+      .eq('id', userId)
       .select();
-      
-    console.log(data, error);
+    
     if (error) return { status: 500, error: error.message };
+    if (!data || data.length === 0) return { status: 404, error: "User not found or not updated" };
     return { status: 200, data: data };
   }
 };

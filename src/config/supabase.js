@@ -20,7 +20,7 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
 });
 
 // User client
-const userClient = createClient(supabaseUrl, supabaseKey, {
+const userClient = createClient(supabaseUrl, supabaseServiceKey, {
   db: { schema: 'users' }
 });
 
