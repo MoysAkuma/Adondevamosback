@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const env = {
+export const env = {
   ENV: process.env.ENV,
   PORT: process.env.PORT,
   SUPABASE_URL: process.env.SUPABASE_URL,
@@ -15,7 +15,12 @@ const env = {
   PORT : process.env.PORT,
   FRONT_URL: process.env.FRONT_URL,
   SECRET: process.env.SECRET,
-  NODE_ENV: process.env.NODE_ENV
+  NODE_ENV: process.env.NODE_ENV,
+  EMAIL_HOST: process.env.EMAIL_HOST,
+  EMAIL_PORT: process.env.EMAIL_PORT || 587,
+  EMAIL_SECURE: process.env.EMAIL_SECURE || 'false',
+  EMAIL_USER: process.env.EMAIL_USER,
+  EMAIL_PASSWORD: process.env.EMAIL_PASSWORD,
+  EMAIL_FROM: process.env.EMAIL_FROM,
+  EMAIL_FROM_NAME: process.env.EMAIL_FROM_NAME || 'AdondeVamos'
 };
-
-export { env };

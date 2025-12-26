@@ -7,17 +7,14 @@ const login = async (req, res, next) => {
   try {
     //GetrqBody
     const { id, password } = req.body;
-    console.log(id, password);
 
     //Check if id is email or tag
     const checkisEmail = isEmail(id);
-    console.log(checkisEmail);
     
     //Search user
     const data = (checkisEmail) ? 
       await userService.searchByEmail(id, password) : 
       await userService.searchByTag(id, password);
-    console.log(data);
     
     //Validate user found
     if(data.status != 200) throw new ApiError(500, error.message || "Service error");
@@ -25,7 +22,6 @@ const login = async (req, res, next) => {
     
     //check if user is admin
     const isAdmin = (await userService.checkAdminRole(data.data.id)).data;
-    console.log(isAdmin);
 
     //check if session is set
     if(!req.session) {
@@ -68,14 +64,12 @@ const checkAuth = async (req, res, next) => {
     if (!req.session || !req.session.userId) {
       return next(new ApiError(401, 'User not authenticated'));
     }
-
+   
     const data = await userService.getUserById(req.session.userId);
-    const userExists = data && data.status === 200 && data.data &&
-      (Array.isArray(data.data) ? data.data.length > 0 : !!data.data.id);
-
+    
     new ApiResponse(res).success(
       'Reading process sucess',
-      { isAuthenticated: !!userExists }
+      { isAuthenticated: data.status === 200 }
     );
   } catch (err) {
     next(err);

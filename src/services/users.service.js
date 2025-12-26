@@ -1,17 +1,40 @@
+import usersRepository from "../repositories/users.repository.js";
+import ubicationService from './ubication.service.js';
 import { userClient } from "../config/supabase.js";
+import { matchUbicationNames } from "../mappers/ubication.mapper.js";
+import { sendPasswordRecoveryEmail, sendCreateAccountEmail } from '../config/email.config.js'
+
+const usersRepositoryInstance = new usersRepository({ userClient });
 
 const usersService = {
-  async getUserById(userId, fields = "*") {
-    console.log('Fetching user by ID:', userId);
-    const { data, error } = await userClient
-      .from('users')
-      .select(fields)
-      .eq('id', userId);
-    if (error) return { status: 500, error: error.message };
-    console.log(data);
-    return { status: 200, data: data };
-  },
+  async getUserById(userId, fields = "name, lastname, email, tag, countryid, stateid, cityid") {
+    const user = await usersRepositoryInstance.getUserById(userId, fields);
+    if (user.status != 200) return { status: 500, error: user.error || "Service error" };
+    
+    // ubication names
+    const ubicationNames = await ubicationService.getUbicationNamesByIDs( user.data );
+    if (ubicationNames.status !== 200) return ubicationNames;
+    const userWithUbicationNames = matchUbicationNames( user, ubicationNames );
 
+    return { status: 200, data: userWithUbicationNames.data || {} };
+  },
+  async recoverPassword(email) {
+    //get email and password
+    const userData = await usersRepositoryInstance.getUserByEmail(email);
+    
+    if (userData.status != 200) return { status: 500, error: userData.error || "Service error" };
+    
+    const password = userData.data[0].password;
+    
+    //send email
+    try {
+      await sendPasswordRecoveryEmail(email, password, userData.data[0].name);
+      return { status: 200, data: null };
+    } catch (error) {
+      return { status: 500, error: "Failed to send recovery email" };
+    }
+
+  },
   async getUserByEmail(email) {
     const { data, error } = await userClient
         .from('users')
@@ -20,7 +43,15 @@ const usersService = {
     if (error) return { status: 500, error: error.message };
     return { status: 200, data: data };
   },
+  async getUserByField(field, value) {
+    if (field !== 'email' && field !== 'tag') {
+      return { status: 400, error: "Invalid field for verification" };
+    }
+    const user = await usersRepositoryInstance.getUsersByField(field, value);
+    
+    return user;
 
+  },
   async getUserByTag(tagid) {
     const { data, error } = await userClient
         .from('users')
@@ -29,7 +60,6 @@ const usersService = {
     if (error) return { status: 500, error: error.message };
     return { status: 200, data: data };
   },
-
   async checkAdminRole(userId) {
     const { data, error } = await userClient
         .from('admins')
@@ -59,47 +89,47 @@ const usersService = {
     return { status: 200, data: data[0] || {} };
   },
   async createUser(CreateUserRq) {
-    //GetrqBody
-    const { name, tag, description, lastname, 
-        secondname,password, email, 
-        countryid, stateid, cityid
-    } = CreateUserRq;
+    //check if email or tag already exists
+    const checkUserEmail = await usersRepositoryInstance.getUsersByField('email', CreateUserRq.email);
+    if (checkUserEmail.status === 200) {
+      return { status: 409, error: "Email already exists" };
+    }
+
+    const checkUserTag = await usersRepositoryInstance.getUsersByField('tag', CreateUserRq.tag);
+    if (checkUserTag.status === 200) {
+      return { status: 409, error: "Tag already exists" };
+    }
+
+    const user = await usersRepositoryInstance.createUser(CreateUserRq);
+    if (user.status != 201) return { status: 500, error: user.error || "Service error" };
+
+    // ubication names
+    const ubicationNames = await ubicationService.getUbicationNamesByIDs( user.data );
+    if (ubicationNames.status !== 200) return ubicationNames;
+    const userWithUbicationNames = matchUbicationNames( user, ubicationNames );
+    console.log("Ubication Names:", userWithUbicationNames); 
+    const infoToMail = userWithUbicationNames.data[0];
+    console.log("Info to mail:", infoToMail);
     
-    const { data, error } = await userClient
-      .from('users')
-      .insert(
-        {
-            name: name,
-            tag : tag, 
-            lastname : lastname, 
-            secondname: secondname, 
-            password : password, 
-            countryid: countryid,
-            stateid : stateid,
-            cityid : cityid,
-            description : description,
-            email : email,         
-            enabled : true,
-            hide : false
-        })
-        .select()
-        .single();
-    if (error) return { status: 500, error: error.message };
-    
-    return { status: 201, data : data};
+    //send welcome email
+    await sendCreateAccountEmail( infoToMail.email, 
+      infoToMail.tag, 
+      infoToMail.name + " " + infoToMail.lastname, 
+      infoToMail.City.name + ", " + 
+      infoToMail.State.name + ", " + 
+      infoToMail.Country.name );
+
+    return userWithUbicationNames;
   },
-    async updateUser(userId, UpdateUserRq) { 
-        const { data, error } = await userClient
-        .from('users')
-        .update(
-            UpdateUserRq
-        )
-        .eq('id', userId)
-        .select()
-        .single();
-        if (error) return { status: 500, error: error.message };
-        return { status: 200, data : data};
-    },
+  async updateUser(userId, UpdateUserRq) { 
+    const userExists = await usersRepositoryInstance.getUserById(userId);
+    if (userExists.status !== 200) {
+      return { status: 404, error: "User not found" };
+    }
+    const user = await usersRepositoryInstance.updateUser(userId, UpdateUserRq);
+    if (user.status != 200) return { status: 500, error: user.error || "Service error" };
+    return user;
+  },
     async searchByText(text) {
         const { data, error } = await userClient
         .from('users')

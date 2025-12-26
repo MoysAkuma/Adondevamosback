@@ -2,9 +2,11 @@
   "name": "adondevamosback",
   "version": "Alpha",
   "description": "a backend project in nodejs to manage a website",
-  "main": "src/index.js",
+  "main": "src/app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js"
   },
   "keywords": [],
   "author": "@Moysakuma",
@@ -19,12 +21,13 @@
     "dotenv": "^16.5.0",
     "express": "^4.21.2",
     "express-session": "^1.18.2",
+    "nodemailer": "^7.0.11",
     "redis": "^5.8.3",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "whatwg-url": "^14.2.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.9"
+    "nodemon": "^3.1.11"
   }
 }
