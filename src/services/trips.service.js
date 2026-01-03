@@ -1,10 +1,16 @@
 import TripsRepository from '../repositories/trips.repository.js';
 import placesService from './places.service.js';
 import ubicationService from './ubication.service.js';
-import { clientTrips, userClient } from '../config/supabase.js';
+import { clientTrips, userClient, votesClient } from '../config/supabase.js';
 import { mapPlacesWithUbicationNames } from '../mappers/ubication.mapper.js';
 
-const tripsRepo = new TripsRepository({ tripsClient: clientTrips, usersClient: userClient });
+const tripsRepo = new TripsRepository(
+  { 
+    tripsClient: clientTrips, 
+    usersClient: userClient,
+    votesClient: votesClient
+  }
+);
 
 const tripsService = {
   async createTrip(createTripRq) {
@@ -81,6 +87,12 @@ const tripsService = {
       userid: m.userid,
       user: userMap.get(m.userid) || null
     }));
+    
+    //get votes summary
+    const votesSummary = await tripsRepo.getVotesSummaryByTripId(tripId);
+    
+    if (votesSummary.status !== 200) return votesSummary;
+    
 
     const returnData = {
       id: tripRow.id,
@@ -94,7 +106,7 @@ const tripsService = {
       members: membersEnriched,
       statics: {
         Votes: {
-          Total: 0
+          Total: votesSummary.data[0].total
         }
       }
     };

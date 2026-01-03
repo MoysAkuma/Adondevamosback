@@ -1,8 +1,9 @@
 // Repository isolates all Supabase (DB) calls for trips domain.
 class TripsRepository {
-  constructor({ tripsClient, usersClient }) {
+  constructor({ tripsClient, usersClient, votesClient }) {
     this.tripsClient = tripsClient;
     this.usersClient = usersClient;
+    this.votesClient = votesClient;
   }
 
   async createTrip(payload) {
@@ -122,6 +123,16 @@ class TripsRepository {
       .in('tripid', tripIds);
     if (error) return { status: 500, error };
     return { status: 200, data };
+  }
+  async getVotesSummaryByTripId(tripId) {
+    const { data, error } = await this.votesClient
+      .from('trips')
+      .select('value')
+      .eq('tripid', tripId)
+      .eq('value', true);
+    if (error) return { status: 500, error };
+    const total = data ? data.length : 0;
+    return { status: 200, data: [{ total }] };
   }
 }
 
