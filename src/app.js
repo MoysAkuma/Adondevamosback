@@ -8,6 +8,7 @@ import tripsRoutes from './routes/trips.routes.js';
 import placesRoutes from './routes/places.routes.js';
 import usersRoutes from './routes/users.routes.js';
 import cataloguesRoutes from './routes/catalogues.routes.js';
+import votesRoutes from './routes/votes.routes.js';
 import errorMiddleware from './middleware/error.middleware.js'
 import login from './routes/login.routes.js';
 import { env } from './config/env.js';
@@ -50,6 +51,7 @@ app.use('/v1', login);
 app.use('/v1', placesRoutes);
 app.use('/v1', usersRoutes);
 app.use('/v1', cataloguesRoutes);
+app.use('/v1', votesRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

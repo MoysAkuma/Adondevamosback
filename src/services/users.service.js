@@ -107,9 +107,9 @@ const usersService = {
     const ubicationNames = await ubicationService.getUbicationNamesByIDs( user.data );
     if (ubicationNames.status !== 200) return ubicationNames;
     const userWithUbicationNames = matchUbicationNames( user, ubicationNames );
-    console.log("Ubication Names:", userWithUbicationNames); 
+    
     const infoToMail = userWithUbicationNames.data[0];
-    console.log("Info to mail:", infoToMail);
+    
     
     //send welcome email
     await sendCreateAccountEmail( infoToMail.email, 

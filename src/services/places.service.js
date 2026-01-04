@@ -1,9 +1,14 @@
 import PlacesRepository from '../repositories/places.repository.js';
 import { mapPlacesWithUbicationNames } from '../mappers/ubication.mapper.js';
 import ubicationService from './ubication.service.js';
-import { clientPlaces, cataloguesClient } from '../config/supabase.js'; // adjust to your actual supabase client export
+import { clientPlaces, cataloguesClient, votesClient } from '../config/supabase.js'; // adjust to your actual supabase client export
 
-const placesRepo = new PlacesRepository({ placesClient: clientPlaces, catalogClient: cataloguesClient });
+const placesRepo = new PlacesRepository(
+  { 
+    placesClient: clientPlaces, 
+    catalogClient: cataloguesClient,
+    votesClient: votesClient 
+  });
 
 const placesService = {
   async createPlace(rq) {
@@ -43,6 +48,16 @@ const placesService = {
     });
 
     placeWithUbicationNames[0].facilities = facilities.data;
+    
+    //get votes
+    const votes = await placesRepo.getVotesByPlaceIdSummary(id);
+    if (votes.status !== 200) return votes;
+    placeWithUbicationNames[0].statics = {
+        Votes: {
+          Total: votes.data[0].total
+        }
+      };
+
     return { status: 200, data: placeWithUbicationNames[0] };
   },
 
@@ -59,6 +74,16 @@ const placesService = {
     const ubicationNames = await ubicationService.getUbicationNamesByIDs(base.data);
     if (ubicationNames.status !== 200) return ubicationNames;
     const placesWithUbicationNames = mapPlacesWithUbicationNames(base.data, ubicationNames.data);
+
+    //get votes
+    const votes = await placesRepo.getVotesByPlaces(
+      placesWithUbicationNames.map(place => place.id)
+    );
+    if (votes.status !== 200) return votes;
+    //map votes to places
+    placesWithUbicationNames.forEach(place => {
+      place.votes = votes.data.filter(vote => vote.placeid === place.id);
+    });
     
     //unset countryid, stateid, cityid from placesWithUbicationNames
     placesWithUbicationNames.forEach(place => {

@@ -13,12 +13,11 @@ class usersRepository {
   } 
 
   async getUserByEmail(email) {
-    console.log(email);
+    
     const { data, error } = await this.userClient
         .from('users')
         .select("id, name, tag, password")
         .eq('email', email);
-    console.log(data, error);
     if (error) return { status: 500, error: error.message };
     if (data.lenght === 0) return { status: 404, error: "User not found" };
     return { status: 200, data: data };

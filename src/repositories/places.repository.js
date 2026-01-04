@@ -1,8 +1,9 @@
 // Encapsulates all Supabase access for places.
 class PlacesRepository {
-  constructor({ placesClient, catalogClient }) {
+  constructor({ placesClient, catalogClient, votesClient }) {
     this.placesClient = placesClient;
     this.catalogClient = catalogClient;
+    this.votesClient = votesClient;
   }
 
   async createPlace(payload) {
@@ -94,6 +95,18 @@ class PlacesRepository {
     if (facilitiesError) return { status: 500, error: facilitiesError };
 
     return { status: 200, data: facilitiesData };
+  }
+  async getVotesByPlaceIdSummary(placeId) {
+    
+    const { data, error } = 
+    await this.votesClient
+      .from('places')
+      .select('value')
+      .eq('placeid', placeId)
+      .eq('value', true);
+    if (error) return { status: 500, error: error.message };
+    const total = data ? data.length : 0;
+    return { status: 200, data: [{ total : total }] };
   }
 }
 
