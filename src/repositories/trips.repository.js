@@ -116,7 +116,8 @@ class TripsRepository {
     return { status: 200, data };
   }
 
-  async searchItineraryByTripIDs(tripIds, fields = 'tripid,initialdate,finaldate,placeid') {
+  async searchItineraryByTripIDs(tripIds, 
+    fields = 'tripid,initialdate,finaldate,placeid') {
     const { data, error } = await this.tripsClient
       .from('trips_itinerary')
       .select(fields)
@@ -125,7 +126,8 @@ class TripsRepository {
     return { status: 200, data };
   }
   async getVotesSummaryByTripId(tripId) {
-    const { data, error } = await this.votesClient
+    const { data, error } = await 
+    this.votesClient
       .from('trips')
       .select('value')
       .eq('tripid', tripId)
@@ -133,6 +135,21 @@ class TripsRepository {
     if (error) return { status: 500, error };
     const total = data ? data.length : 0;
     return { status: 200, data: [{ total }] };
+  }
+  async getUserVoteByTripIdAndUserId(tripId, userId) {
+    const {data, error} = await 
+    this.votesClient
+      .from('trips')
+      .select('value')
+      .eq('tripid', tripId)
+      .eq('userid', userId)
+      .eq('value', true);
+
+    if (error) return { status: 500, error };
+    if (!data || data.length === 0) {
+      return { status: 200, data: { value: false } };
+    }
+    return { status: 200, data: { value: true } };
   }
 }
 

@@ -4,21 +4,77 @@ const votesRepositoryInstance = new VotesRepository({ votesClient });
 
 const votesService = {
   createVote: async (userId, voteData) => {
-    /*const verifyVoteExists = await votesRepositoryInstance.verifyVoteExists(
-      userId,
-      voteData.tripid,
-        voteData.placeid
-    );
-
-    if (verifyVoteExists.status === 200 && verifyVoteExists.data.exists) {
-      return { status: 409, error: "Vote already exists" };
-    }*/
-    if (voteData.tripid && !voteData.placeid ) {
-      return await votesRepositoryInstance.createVoteTrips(userId, voteData);
+    if (voteData.tripid && 
+      !voteData.placeid ) {
+      //valida if vote exists and change or create
+      const userVotedTrip = await 
+      votesRepositoryInstance.getUserVoteByTripIdAndUserId(voteData.tripid, 
+        userId);
+      console.log(userVotedTrip);
+      switch (userVotedTrip.status) {
+        case 500:
+          return userVotedTrip;
+          break;
+        case 200:
+          //update vote
+          console.log("Updating vote for trip", userVotedTrip.data.value);
+          return await votesRepositoryInstance.updateVoteTrips(
+            userId, 
+            !userVotedTrip.data.value,
+            voteData.tripid );
+          break;
+        case 404:
+          return await votesRepositoryInstance.createVoteTrips(
+            userId, 
+            voteData);
+          break;
+      }
+      
     } else if (voteData.tripid && voteData.placeid) {
-      return await votesRepositoryInstance.createVoteItinerary(userId, voteData);
+      //vote itinerary
+      const userVotedItinerary = await 
+      votesRepositoryInstance.getUserVoteByItineraryTripIdPlaceIdAndUserId(
+        voteData.tripid, voteData.placeid, userId);
+      switch (userVotedItinerary.status) {
+        case 500:
+          return userVotedItinerary;
+          break;
+        case 200:
+          //update vote
+          return await votesRepositoryInstance.updateVoteItinerary(
+            userId, 
+            !userVotedItinerary.data[0].value,
+            voteData.tripid,
+            voteData.placeid );
+          break;
+        case 404:
+          return await votesRepositoryInstance.createVoteItinerary(
+            userId, 
+            voteData);
+          break;
+      }
     } else if (!voteData.tripid && voteData.placeid) {
-      return await votesRepositoryInstance.createVotePlace(userId, voteData);
+      const userVotedPlace = await 
+      votesRepositoryInstance.getUserVoteByPlaceIdAndUserId(
+        voteData.placeid, userId);
+
+      switch (userVotedPlace.status) {
+        case 500:
+          return userVotedPlace;
+          break;
+        case 200:
+          //update vote
+          return await votesRepositoryInstance.updateVotePlace(
+            userId, 
+            !userVotedPlace.data[0].value,
+            voteData.placeid );
+          break;
+        case 404:
+          return await votesRepositoryInstance.createVotePlace(
+            userId, 
+            voteData);
+          break;
+      }
     }
     
     return { status: 400, error: "Invalid vote data" };

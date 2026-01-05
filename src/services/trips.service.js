@@ -25,7 +25,7 @@ const tripsService = {
     return await tripsRepo.deleteTrip(tripId);
   },
 
-  async getTripById(tripId) {
+  async getTripById(tripId, userid = null) {
     // base trip
     const base = await tripsRepo.getTripByIdRaw(tripId);
     if (base.status !== 200) return base;
@@ -90,10 +90,14 @@ const tripsService = {
     
     //get votes summary
     const votesSummary = await tripsRepo.getVotesSummaryByTripId(tripId);
-    
     if (votesSummary.status !== 200) return votesSummary;
     
-
+    //validate if the user has voted
+    let userVote = { status: 200, data: { value: false } };
+    if (userid) {
+      userVote = await tripsRepo.getUserVoteByTripIdAndUserId(tripId, userid);
+      if (userVote.status !== 200) return userVote;
+    }
     const returnData = {
       id: tripRow.id,
       name: tripRow.name,
@@ -108,7 +112,8 @@ const tripsService = {
         Votes: {
           Total: votesSummary.data[0].total
         }
-      }
+      },
+      userVoted: userVote.data.value || false
     };
 
     return { status: 200, data: returnData };

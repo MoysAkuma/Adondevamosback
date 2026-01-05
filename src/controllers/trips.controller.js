@@ -31,7 +31,11 @@ const getTripbyID = async (req, res, next) => {
   try {
     //Get trip id to search
     const { TripID } = req.params;
-    const trip = await tripsService.getTripById(TripID);
+
+    //Get userid from header
+    const userid = req.headers.userid || req.headers['user-id'];
+    
+    const trip = await tripsService.getTripById(TripID, userid);
 
     if (trip.status == 500) throw new ApiError(500, trip.message);
     if (trip.data.length === 0) throw new ApiError(404, 'Trip not found');
@@ -43,7 +47,6 @@ const getTripbyID = async (req, res, next) => {
     next(err);
   }
 };
-
 
 const updateTripbyID = async (req, res, next) => {
   try {

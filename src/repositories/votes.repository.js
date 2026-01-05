@@ -87,6 +87,34 @@ class VotesRepository {
         const exists = data && data.length > 0;
         return { status: 200, data: { exists } };
     }
+    async getUserVoteByTripIdAndUserId(tripId, userId) {
+        const {data, error} = await 
+        this.votesClient
+          .from('trips')
+          .select('value')
+          .eq('tripid', tripId)
+          .eq('userid', userId)
+          .single();
+        if (error) return { status: 500, error };
+        if (!data) {
+          return { status: 404 };
+        }
+        
+        return { status: 200, data: { value: data.value } };
+    }
+    async updateVoteTrips(userId, value, tripId) {
+        let query = this.votesClient
+            .from('trips');
+       
+        query = query.update(
+            { value: value, lastupdateddate: new Date() })
+            .eq('userid', userId)
+            .eq('tripid', tripId);
+        
+        const { data, error } = await query.select();
+        if (error) return { status: 500, error: error.message };
+        return { status: 200, data: data[0] };
+    }
 };
 
 export default VotesRepository;

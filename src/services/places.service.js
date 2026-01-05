@@ -75,15 +75,6 @@ const placesService = {
     if (ubicationNames.status !== 200) return ubicationNames;
     const placesWithUbicationNames = mapPlacesWithUbicationNames(base.data, ubicationNames.data);
 
-    //get votes
-    const votes = await placesRepo.getVotesByPlaces(
-      placesWithUbicationNames.map(place => place.id)
-    );
-    if (votes.status !== 200) return votes;
-    //map votes to places
-    placesWithUbicationNames.forEach(place => {
-      place.votes = votes.data.filter(vote => vote.placeid === place.id);
-    });
     
     //unset countryid, stateid, cityid from placesWithUbicationNames
     placesWithUbicationNames.forEach(place => {
