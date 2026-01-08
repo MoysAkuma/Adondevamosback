@@ -23,7 +23,7 @@ const placesService = {
     return await placesRepo.deletePlace(id);
   },
 
-  async getPlaceById(id) {
+  async getPlaceById(id, userid = null) {
     const base = await placesRepo.getPlaceByIdRaw(id);
     if (base.status !== 200) return base;
     
@@ -57,6 +57,16 @@ const placesService = {
           Total: votes.data[0].total
         }
       };
+    //validate if user has voted place
+    let userVote = { status: 200, data: { value: false } };
+    if (userid) {
+      
+      userVote = 
+      await placesRepo.getUserVoteByPlaceIdAndUserId(id, userid);
+      if (userVote.status !== 200) return userVote;
+    }
+    
+    placeWithUbicationNames[0].userVote = userVote.data.value;
 
     return { status: 200, data: placeWithUbicationNames[0] };
   },

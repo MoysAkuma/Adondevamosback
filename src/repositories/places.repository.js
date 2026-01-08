@@ -108,6 +108,21 @@ class PlacesRepository {
     const total = data ? data.length : 0;
     return { status: 200, data: [{ total : total }] };
   }
+  async getUserVoteByPlaceIdAndUserId(placeId, userId) {
+    const {data, error} = await 
+    this.votesClient
+      .from('places')
+      .select('id,value')
+      .eq('placeid', placeId)
+      .eq('userid', userId)
+      .eq('value', true);
+    
+    if (error) return { status: 500, error };
+    if (!data || data.length === 0) {
+      return { status: 200, data: { value: false } };
+    }
+    return { status: 200, data: { value: true } };
+  }
 }
 
 export default PlacesRepository;

@@ -8,18 +8,21 @@ const votesService = {
       !voteData.placeid ) {
       //valida if vote exists and change or create
       const userVotedTrip = await 
-      votesRepositoryInstance.getUserVoteByTripIdAndUserId(voteData.tripid, 
+        votesRepositoryInstance.getUserVoteByTripIdAndUserId(voteData.tripid, 
         userId);
+      
       switch (userVotedTrip.status) {
         case 500:
           return userVotedTrip;
           break;
         case 200:
           //update vote
+          let info = userVotedTrip.data;
           return await votesRepositoryInstance.updateVoteTrips(
             userId, 
-            !userVotedTrip.data.value,
-            voteData.tripid );
+            !info.value,
+            voteData.tripid,
+            info.id );
           break;
         case 404:
           return await votesRepositoryInstance.createVoteTrips(
@@ -35,13 +38,14 @@ const votesService = {
         voteData.tripid, voteData.placeid, userId);
       switch (userVotedItinerary.status) {
         case 500:
-          return userVotedItinerary;
+            return userVotedItinerary;
           break;
         case 200:
+          let info = userVotedItinerary.data;
           //update vote
           return await votesRepositoryInstance.updateVoteItinerary(
             userId, 
-            !userVotedItinerary.data[0].value,
+            !info.value,
             voteData.tripid,
             voteData.placeid );
           break;
@@ -55,17 +59,19 @@ const votesService = {
       const userVotedPlace = await 
       votesRepositoryInstance.getUserVoteByPlaceIdAndUserId(
         voteData.placeid, userId);
-
+        
       switch (userVotedPlace.status) {
         case 500:
           return userVotedPlace;
           break;
         case 200:
+          let info = userVotedPlace.data;
           //update vote
           return await votesRepositoryInstance.updateVotePlace(
             userId, 
-            !userVotedPlace.data[0].value,
-            voteData.placeid );
+            !info.value,
+            voteData.placeid, 
+            info.id );
           break;
         case 404:
           return await votesRepositoryInstance.createVotePlace(
@@ -81,6 +87,23 @@ const votesService = {
   updateVote: async (userId, voteData) => {
     const result = await votesRepositoryInstance.updateVote(userId, voteData);
     return result;
-  }
+  },
+  getVotesByTrip: async (tripId) => {
+    const result = await votesRepositoryInstance.getVotesByTripId(tripId);
+    
+    return {
+      status: 200 ,
+      data: {
+      summary : result.data.length > 0 ? result.data.length : 0
+    }};
+  },
+  getVotesByPlace: async (placeId) => {
+    const result = await votesRepositoryInstance.getVotesByPlaceId(placeId);
+    return {
+      status: 200 ,
+      data: {
+      summary : result.data.length > 0 ? result.data.length : 0
+    }};
+  } 
 };
 export default votesService;

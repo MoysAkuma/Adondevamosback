@@ -91,30 +91,106 @@ class VotesRepository {
         const {data, error} = await 
         this.votesClient
           .from('trips')
-          .select('value')
+          .select('id,value')
           .eq('tripid', tripId)
-          .eq('userid', userId);
-          console.log(data);
-        if (error) return { status: 500, error };
-        if (!data.value) {
-          return { status: 404 };
-        }
+          .eq('userid', userId)
+          .single();
+        if (error) return { status: 404 };
         
-        return { status: 200, data: { value: data.value } };
+        return { status: 200, data: data };
     }
-    async updateVoteTrips(userId, value, tripId) {
+    async updateVoteTrips(userId, value = false, tripId, voteId) {
         let query = this.votesClient
             .from('trips');
        
         query = query.update(
-            { value: value, lastupdateddate: new Date() })
+            { 
+                value: value, 
+                lastupdateddate: new Date() 
+            })
             .eq('userid', userId)
-            .eq('tripid', tripId);
+            .eq('tripid', tripId)
+            .eq('id', voteId);
         
+        const { data, error } = await query.select();
+        
+        if (error) return { status: 500, error: error.message };
+        return { status: 200, data: data[0] };
+    }
+    async getVotesByTripId(tripId, 
+        fields = 'id, value, userid') {
+        const { data, error } = await this.votesClient
+            .from('trips')
+            .select(fields)
+            .eq('value', true)
+            .eq('tripid', tripId);
+        if (error) return { status: 500, error: error.message };
+        return { status: 200, data: data };
+    }
+    async getUserVoteByPlaceIdAndUserId(placeId, userId) {
+        const {data, error} = await 
+        this.votesClient
+          .from('places')
+          .select('id,value')
+          .eq('placeid', placeId)
+          .eq('userid', userId)
+          .single();
+        if (error) return { status: 404 };
+        return { status: 200, data: data };
+    }
+    async updateVoteItinerary(userId, value = false, tripId, placeId) {
+        let query = this.votesClient
+            .from('trips_itineraries');
+        query = query.update(
+            { 
+                value: value,
+                lastupdateddate: new Date() 
+            })
+            .eq('userid', userId)
+            .eq('tripid', tripId)
+            .eq('placeid', placeId);
         const { data, error } = await query.select();
         if (error) return { status: 500, error: error.message };
         return { status: 200, data: data[0] };
     }
+    async getUserVoteByItineraryTripIdPlaceIdAndUserId(tripId, placeId, userId) {
+        const {data, error} = await 
+        this.votesClient
+            .from('trips_itineraries') 
+            .select('id,value')
+            .eq('tripid', tripId)
+            .eq('placeid', placeId)
+            .eq('userid', userId)
+            .single();
+        if (error) return { status: 404 };
+        return { status: 200, data: data };
+    } 
+    async updateVotePlace(userId, value = false, placeId, voteId) {
+        let query = this.votesClient
+            .from('places');
+        query = query.update(
+            { 
+                value: value,
+                lastupdateddate: new Date()
+            })
+            .eq('userid', userId)
+            .eq('placeid', placeId)
+            .eq('id', voteId);
+        const { data, error } = await query.select();
+        if (error) return { status: 500, error: error.message };
+        return { status: 200, data: data[0] };
+    }
+    async getVotesByPlaceId(placeId, 
+        fields = 'id, value, userid') {
+        const { data, error } = await this.votesClient
+            .from('places')
+            .select(fields)
+            .eq('value', true)
+            .eq('placeid', placeId);
+        if (error) return { status: 500, error: error.message };
+        return { status: 200, data: data };
+    }
+
 };
 
 export default VotesRepository;
