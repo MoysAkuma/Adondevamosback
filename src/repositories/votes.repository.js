@@ -93,10 +93,10 @@ class VotesRepository {
           .from('trips')
           .select('value')
           .eq('tripid', tripId)
-          .eq('userid', userId)
-          .single();
+          .eq('userid', userId);
+          console.log(data);
         if (error) return { status: 500, error };
-        if (!data) {
+        if (!data.value) {
           return { status: 404 };
         }
         

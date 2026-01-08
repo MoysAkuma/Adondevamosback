@@ -23,6 +23,9 @@ class TripsRepository {
       .eq('id', id)
       .select()
       .single();
+
+    console.log(error);
+    console.log(data);
     if (error) return { status: 500, error };
     return { status: 200, data };
   }

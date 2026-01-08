@@ -10,14 +10,12 @@ const votesService = {
       const userVotedTrip = await 
       votesRepositoryInstance.getUserVoteByTripIdAndUserId(voteData.tripid, 
         userId);
-      console.log(userVotedTrip);
       switch (userVotedTrip.status) {
         case 500:
           return userVotedTrip;
           break;
         case 200:
           //update vote
-          console.log("Updating vote for trip", userVotedTrip.data.value);
           return await votesRepositoryInstance.updateVoteTrips(
             userId, 
             !userVotedTrip.data.value,
