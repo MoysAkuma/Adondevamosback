@@ -11,7 +11,10 @@ const getPlaceByID = async (req, res, next) => {
     //Get place id to search
     const { PlaceID } = req.params;
 
-    const place = await placesService.getPlaceById(PlaceID);
+    //Get userid from header
+    const userid = req.headers.userid || req.headers['user-id'];
+
+    const place = await placesService.getPlaceById(PlaceID, userid);
     
     if (place.status != 200) return new ApiError(place.status, place.message);
     

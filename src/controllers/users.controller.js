@@ -35,11 +35,11 @@ const recoverPassword = async (req, res, next) => {
     }
 };
 const verify = async (req, res, next) => {
-    console.log("verifying user");
+    
     try{
         //Get field to search
         const { field, value } = req.params;
-        console.log(field, value);
+    
         const verifyData = await usersService.getUserByField(field, value);
         if (verifyData.status != 200 ) throw new ApiError(verifyData.status, "Failed to verify user");
 
@@ -87,7 +87,6 @@ const createUser = async (req, res, next) => {
 
 const editUser = async (req, res, next) => {
     try{
-        console.log("Editing user");
         //Get user id to search
         const { UserID } = req.params;
         //GetrqBody

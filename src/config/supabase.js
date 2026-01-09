@@ -39,11 +39,17 @@ const clientPlaces = createClient(supabaseUrl, supabaseServiceKey, {
   db: { schema: 'places' }
 });
 
+//votes client
+const votesClient = createClient(supabaseUrl, supabaseServiceKey, {
+  db: { schema: 'votes' }
+});
+
 export { 
   supabase as default,
   supabase as publicSchemaClient,
   userClient,
   cataloguesClient,
   clientTrips,
-  clientPlaces
+  clientPlaces,
+  votesClient
 };

@@ -9,6 +9,10 @@ class ApiResponse {
       info:data
     });
   }
+
+  successNoData(statusCode = 200) {
+    this.res.status(statusCode).send();
+  }
 }
 
 export { ApiResponse };

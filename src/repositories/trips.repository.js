@@ -1,8 +1,9 @@
 // Repository isolates all Supabase (DB) calls for trips domain.
 class TripsRepository {
-  constructor({ tripsClient, usersClient }) {
+  constructor({ tripsClient, usersClient, votesClient }) {
     this.tripsClient = tripsClient;
     this.usersClient = usersClient;
+    this.votesClient = votesClient;
   }
 
   async createTrip(payload) {
@@ -22,6 +23,7 @@ class TripsRepository {
       .eq('id', id)
       .select()
       .single();
+
     if (error) return { status: 500, error };
     return { status: 200, data };
   }
@@ -115,13 +117,40 @@ class TripsRepository {
     return { status: 200, data };
   }
 
-  async searchItineraryByTripIDs(tripIds, fields = 'tripid,initialdate,finaldate,placeid') {
+  async searchItineraryByTripIDs(tripIds, 
+    fields = 'tripid,initialdate,finaldate,placeid') {
     const { data, error } = await this.tripsClient
       .from('trips_itinerary')
       .select(fields)
       .in('tripid', tripIds);
     if (error) return { status: 500, error };
     return { status: 200, data };
+  }
+  async getVotesSummaryByTripId(tripId) {
+    const { data, error } = await 
+    this.votesClient
+      .from('trips')
+      .select('value')
+      .eq('tripid', tripId)
+      .eq('value', true);
+    if (error) return { status: 500, error };
+    const total = data ? data.length : 0;
+    return { status: 200, data: [{ total }] };
+  }
+  async getUserVoteByTripIdAndUserId(tripId, userId) {
+    const {data, error} = await 
+    this.votesClient
+      .from('trips')
+      .select('value')
+      .eq('tripid', tripId)
+      .eq('userid', userId)
+      .eq('value', true);
+
+    if (error) return { status: 500, error };
+    if (!data || data.length === 0) {
+      return { status: 200, data: { value: false } };
+    }
+    return { status: 200, data: { value: true } };
   }
 }
 

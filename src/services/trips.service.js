@@ -1,10 +1,16 @@
 import TripsRepository from '../repositories/trips.repository.js';
 import placesService from './places.service.js';
 import ubicationService from './ubication.service.js';
-import { clientTrips, userClient } from '../config/supabase.js';
+import { clientTrips, userClient, votesClient } from '../config/supabase.js';
 import { mapPlacesWithUbicationNames } from '../mappers/ubication.mapper.js';
 
-const tripsRepo = new TripsRepository({ tripsClient: clientTrips, usersClient: userClient });
+const tripsRepo = new TripsRepository(
+  { 
+    tripsClient: clientTrips, 
+    usersClient: userClient,
+    votesClient: votesClient
+  }
+);
 
 const tripsService = {
   async createTrip(createTripRq) {
@@ -19,7 +25,7 @@ const tripsService = {
     return await tripsRepo.deleteTrip(tripId);
   },
 
-  async getTripById(tripId) {
+  async getTripById(tripId, userid = null) {
     // base trip
     const base = await tripsRepo.getTripByIdRaw(tripId);
     if (base.status !== 200) return base;
@@ -81,7 +87,17 @@ const tripsService = {
       userid: m.userid,
       user: userMap.get(m.userid) || null
     }));
-
+    
+    //get votes summary
+    const votesSummary = await tripsRepo.getVotesSummaryByTripId(tripId);
+    if (votesSummary.status !== 200) return votesSummary;
+    
+    //validate if the user has voted
+    let userVote = { status: 200, data: { value: false } };
+    if (userid) {
+      userVote = await tripsRepo.getUserVoteByTripIdAndUserId(tripId, userid);
+      if (userVote.status !== 200) return userVote;
+    }
     const returnData = {
       id: tripRow.id,
       name: tripRow.name,
@@ -94,9 +110,10 @@ const tripsService = {
       members: membersEnriched,
       statics: {
         Votes: {
-          Total: 0
+          Total: votesSummary.data[0].total
         }
-      }
+      },
+      userVoted: userVote.data.value || false
     };
 
     return { status: 200, data: returnData };
