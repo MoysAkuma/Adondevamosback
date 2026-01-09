@@ -55,11 +55,13 @@ class TripsRepository {
     return { status: 200, data };
   }
 
-  async getItineraryByTripId(tripId, fields = 'id,initialdate,finaldate,placeid') {
+  async getItineraryByTripId(tripId, 
+    fields = 'id,initialdate,finaldate,placeid') {
     const { data, error } = await this.tripsClient
       .from('trips_itinerary')
       .select(fields)
       .eq('tripid', tripId);
+    
     if (error) return { status: 500, error };
     return { status: 200, data };
   }
@@ -151,6 +153,31 @@ class TripsRepository {
       return { status: 200, data: { value: false } };
     }
     return { status: 200, data: { value: true } };
+  }
+  async createItinerary(tripId, itineraryData) {
+    const payload = itineraryData.map(item => ({
+      initialdate: item.initialdate,
+      finaldate: item.finaldate,
+      placeid: item.placeid
+    }));
+    const { data, error } = await this.tripsClient
+      .from('trips_itinerary')
+      .insert(
+        payload.map(item => ({ ...item, 
+          tripid: tripId }))
+      )
+      .select();
+    if (error) return { status: 500, error };
+    return { status: 201, data };
+  }
+  
+  async deleteItineraryItem(id) {
+    const { data, error } = await this.tripsClient
+      .from('trips_itinerary')
+      .delete()
+      .eq('id', id);
+    if (error) return { status: 500, error };
+    return { status: 200, data };
   }
 }
 
