@@ -36,18 +36,11 @@ const usersService = {
 
   },
   async getUserByEmail(email) {
-    const { data, error } = await userClient
-        .from('users')
-        .select("id, email, name, lastname, tagid, password")
-        .eq('email', email);
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data: data };
+    const user = await usersRepositoryInstance.getUserByEmail(email);
+    return user;
   },
-  async getUserByField(field, value) {
-    if (field !== 'email' && field !== 'tag') {
-      return { status: 400, error: "Invalid field for verification" };
-    }
-    const user = await usersRepositoryInstance.getUsersByField(field, value);
+  async getUserByField(field, value, fieldsToReturn = "id, name, lastname, email, tag, description, countryid, stateid, cityid, enabled, hide") {
+    const user = await usersRepositoryInstance.getUsersByField(field, value, fieldsToReturn);
     
     return user;
 

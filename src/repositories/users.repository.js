@@ -13,7 +13,6 @@ class usersRepository {
   } 
 
   async getUserByEmail(email) {
-    
     const { data, error } = await this.userClient
         .from('users')
         .select("id, name, tag, password")
@@ -31,17 +30,20 @@ class usersRepository {
     if (error) return { status: 500, error: error.message };
     return { status: 200, data: data };
   }
-  async getUsersByField(field, value) {
+  async getUsersByField(field, value, 
+    fields = "id, name, lastname, email, tag, description, countryid, stateid, cityid, enabled, hide") {
     const normalizedField = field.toLowerCase();
-    const normalizedValue = typeof value === 'string' ? value.toLowerCase() : value;
+    const normalizedValue = typeof value === 'string' ? `%${value.toLowerCase()}%` : `%${value}%`;
+    
     const { data, error } = await this.userClient
         .from('users')
-        .select("id")
+        .select(fields)
         .ilike(normalizedField, normalizedValue);
+    
     if (error) return { status: 500, error: error.message };
-    if (data.length === 0) return { status: 404, error: "User not found" };
+    if (data.length === 0) return { status: 404, error: "Users not found" };
 
-    return { status: 200 };
+    return { status: 200, data : data };
   }
   async createUser(CreateUserRq) {
     const { data, error } = await this.userClient
@@ -90,6 +92,17 @@ class usersRepository {
     if (error) return { status: 500, error: error.message };
     if (!data || data.length === 0) return { status: 404, error: "User not found or not updated" };
     return { status: 200, data: data };
+  }
+  async searchUsersByField(field, value) {
+    const normalizedField = field.toLowerCase();
+    const normalizedValue = `%${value.toLowerCase()}%`;
+    const { data, error } = await this.userClient
+        .from('users')
+        .select("id, name, lastname, email, tag, description, countryid, stateid, cityid, enabled, hide")
+        .ilike(normalizedField, normalizedValue)
+        .limit(5);
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data : data };
   }
 };
 

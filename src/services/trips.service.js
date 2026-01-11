@@ -180,7 +180,7 @@ const tripsService = {
       await tripsRepo.deleteItineraryItem(item.id);
     }
     if (itineraryData.length === 0) {
-      return { status: 200, data: [] };
+      return { status: 201, data: [] };
     }
     return await tripsRepo.createItinerary(tripId, itineraryData);
   }

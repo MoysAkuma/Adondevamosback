@@ -15,6 +15,10 @@ router.get('/Users/Verify/:field/:value',
 router.post('/Users',
     usersController.createUser);
 
+router.get(
+    '/Users/Search/:field/:value',
+    usersController.searchUsersByField
+);
 router.put('/Users/:UserID',
     usersController.editUser);
 

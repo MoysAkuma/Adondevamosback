@@ -123,6 +123,19 @@ class PlacesRepository {
     }
     return { status: 200, data: { value: true } };
   }
+  async searchPlacesByField(field, name, 
+    fields = 'id,name,countryid,stateid,cityid') {
+    let query = 
+    this.placesClient.from('places').select(fields).limit(5);
+    if (field && name) {
+      query = query.ilike(field, `%${name}%`);
+    }
+    console.log(query.toString());
+    console.log(field, name);
+    const { data, error } = await query;
+    if (error) return { status: 500, error };
+    return { status: 200, data };
+  }
 }
 
 export default PlacesRepository;

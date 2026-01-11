@@ -118,10 +118,28 @@ const editUser = async (req, res, next) => {
     }
 };
 
+const searchUsersByField = async (req, res, next) => {
+    try{
+        //Get field to search
+        const { field, value } = req.params;
+        if ( !field || !value ) {
+            throw new ApiError(400, "Field and value are required for search");
+        }
+        const searchData = await usersService.getUserByField(field, value,
+            "id, tag, name, lastname, email");
+        if (searchData.status != 200 ) throw new ApiError(searchData.status, "Failed to search users");
+        new ApiResponse(res).success('Search process sucess', searchData.data);
+    }
+    catch(error){
+        next(error);
+    }
+};
+
 export default {
     getUserByID,
     recoverPassword,
     verify,
     createUser,
-    editUser
+    editUser,
+    searchUsersByField
 };
