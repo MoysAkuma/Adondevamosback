@@ -130,8 +130,7 @@ class PlacesRepository {
     if (field && name) {
       query = query.ilike(field, `%${name}%`);
     }
-    console.log(query.toString());
-    console.log(field, name);
+
     const { data, error } = await query;
     if (error) return { status: 500, error };
     return { status: 200, data };

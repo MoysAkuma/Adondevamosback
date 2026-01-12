@@ -97,7 +97,7 @@ const placesService = {
     fields = 'id,name,countryid,stateid,cityid') {
     
     const base = await placesRepo.searchPlacesByField(field, name, fields);
-    console.log(base);
+    
     if (base.status !== 200) return base;
     if (!base.data || base.data.length === 0) return { status: 200, data: [] };
     //get ubication names

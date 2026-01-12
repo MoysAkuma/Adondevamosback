@@ -205,7 +205,7 @@ class TripsRepository {
   async getMembersListByTripIds(tripIds) {
     const { data, error } = await this.tripsClient
       .from('trips_members')
-      .select('tripid,userid,hide')
+      .select('id,tripid,userid,hide')
       .in('tripid', tripIds);
     if (error) return { status: 500, error };
     return { status: 200, data };

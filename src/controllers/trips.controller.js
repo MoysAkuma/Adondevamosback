@@ -238,7 +238,7 @@ const updateItinerary = async (req, res, next) => {
     //GetrqBody
     const { Itinerary } = req.body;
     const data = await tripsService.updateItinerary(TripID, Itinerary);
-    console.log(data);
+    
     if (data.status != 201) throw new ApiError(data.status, "Failed to update itinerary");
       new ApiResponse(res).success('Itinerary update process sucess', data.data, data.status);
   }
