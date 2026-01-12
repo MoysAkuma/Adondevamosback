@@ -179,6 +179,37 @@ class TripsRepository {
     if (error) return { status: 500, error };
     return { status: 200, data };
   }
+  async createMemberList(tripId, membersData) {
+    const payload = membersData.map(item => ({
+      userid: item.userid,
+      hide: item.hide || false
+    }));
+    const { data, error } = await this.tripsClient
+      .from('trips_members')
+      .insert(
+        payload.map(item => ({ ...item, 
+          tripid: tripId }))
+      )
+      .select();
+    if (error) return { status: 500, error };
+    return { status: 201, data };
+  }
+  async deleteMemberItem(id) {
+    const { data, error } = await this.tripsClient
+      .from('trips_members')
+      .delete()
+      .eq('id', id);
+    if (error) return { status: 500, error };
+    return { status: 200, data };
+  }
+  async getMembersListByTripIds(tripIds) {
+    const { data, error } = await this.tripsClient
+      .from('trips_members')
+      .select('tripid,userid,hide')
+      .in('tripid', tripIds);
+    if (error) return { status: 500, error };
+    return { status: 200, data };
+  }
 }
 
 export default TripsRepository;

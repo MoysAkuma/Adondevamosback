@@ -183,8 +183,25 @@ const tripsService = {
       return { status: 201, data: [] };
     }
     return await tripsRepo.createItinerary(tripId, itineraryData);
+  },
+  async createMemberList(tripId, membersData) {
+    return await tripsRepo.createMemberList(tripId, membersData);
+  },
+  async updateMemberList(tripId, membersData) {
+    //get existing members list
+    const existingMembers = 
+    await tripsRepo.getMembersListByTripIds([tripId]);
+    if (existingMembers.status !== 200) return existingMembers;
+    
+    //delete existing members entries
+    for (const item of existingMembers.data) {
+      await tripsRepo.deleteMemberItem(item.id);
+    }
+    if (membersData.length === 0) {
+      return { status: 201, data: [] };
+    }
+    return await tripsRepo.createMemberList(tripId, membersData);
   }
-
 };
 
 export default tripsService;

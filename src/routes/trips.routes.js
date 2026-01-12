@@ -133,4 +133,10 @@ router.post('/Trips/:TripID/Itinerary',
 router.put('/Trips/:TripID/Itinerary',
     tripsController.updateItinerary);
 
+router.post('/Trips/:TripID/Members',
+    tripsController.createMemberList);
+
+router.put('/Trips/:TripID/Members',
+    tripsController.updateMemberList);
+
 export default router;
