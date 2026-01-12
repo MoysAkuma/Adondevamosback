@@ -60,6 +60,11 @@ const tripsService = {
     //combine itinerary data with place and ubication info
     itinerary.data = (itinerary.data || []).map(item => {
       const placeInfo = itineraryWithUbicationNames.find(p => p.id === item.placeid);
+      itineraryWithUbicationNames.forEach(place => {
+        delete place.countryid;
+        delete place.stateid;
+        delete place.cityid;
+      });
       return {
         initialdate: item.initialdate,
         finaldate: item.finaldate,
@@ -160,6 +165,42 @@ const tripsService = {
 
   async searchItineraryByTripIDs(tripIds, fields = 'tripid,initialdate,finaldate,placeid') {
     return await tripsRepo.searchItineraryByTripIDs(tripIds, fields);
+  },
+  async createItinerary(tripId, itineraryData) {
+    return await tripsRepo.createItinerary(tripId, itineraryData);
+  },
+  async updateItinerary(tripId, itineraryData) {
+    //get existing itinerary
+    const existingItinerary = await tripsRepo.getItineraryByTripId(tripId);
+    
+    if (existingItinerary.status !== 200) return existingItinerary;
+    
+    //delete existing itinerary entries
+    for (const item of existingItinerary.data) {
+      await tripsRepo.deleteItineraryItem(item.id);
+    }
+    if (itineraryData.length === 0) {
+      return { status: 201, data: [] };
+    }
+    return await tripsRepo.createItinerary(tripId, itineraryData);
+  },
+  async createMemberList(tripId, membersData) {
+    return await tripsRepo.createMemberList(tripId, membersData);
+  },
+  async updateMemberList(tripId, membersData) {
+    //get existing members list
+    const existingMembers = 
+    await tripsRepo.getMembersListByTripIds([tripId]);
+    if (existingMembers.status !== 200) return existingMembers;
+    
+    //delete existing members entries
+    for (const item of existingMembers.data) {
+      await tripsRepo.deleteMemberItem(item.id);
+    }
+    if (membersData.length === 0) {
+      return { status: 201, data: [] };
+    }
+    return await tripsRepo.createMemberList(tripId, membersData);
   }
 };
 

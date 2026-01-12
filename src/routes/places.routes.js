@@ -9,5 +9,7 @@ router.get('/Places/:PlaceID',
 router.post('/Places/Search',
     placesController.searchPlaces);
 
+router.get('/Places/Search/:field/:name',
+    placesController.searchPlacesByField);
 
 export default router;

@@ -217,6 +217,68 @@ const searchTrips = async (req, res) => {
   }
 };
 
+const createItinerary = async (req, res, next) => {
+  try{
+    //Get trip id to search
+    const { TripID } = req.params;
+    //GetrqBody
+    const { Itinerary } = req.body;
+    const data = await tripsService.createItinerary(TripID, Itinerary);
+    if (data.status != 201) throw new ApiError(500, "Failed to create itinerary");
+      new ApiResponse(res).success('Itinerary creation process sucess', data.data, data.status);
+  } catch(err){
+    next(err);
+  }
+};
+
+const updateItinerary = async (req, res, next) => {
+  try{
+    //Get trip id to search
+    const { TripID } = req.params;
+    //GetrqBody
+    const { Itinerary } = req.body;
+    const data = await tripsService.updateItinerary(TripID, Itinerary);
+    
+    if (data.status != 201) throw new ApiError(data.status, "Failed to update itinerary");
+      new ApiResponse(res).success('Itinerary update process sucess', data.data, data.status);
+  }
+  catch(err){
+    next(err);
+  }
+};
+
+const createMemberList = async (req, res, next) => {
+  try{
+    //Get trip id to search
+    const { TripID } = req.params;
+    //GetrqBody
+    const { Members } = req.body;
+
+    const data = await tripsService.createMemberList(TripID, Members);
+    if (data.status != 201) throw new ApiError(500, "Failed to create member list");
+      new ApiResponse(res).success('Member list creation process sucess', data.data, data.status);
+  } catch(err){
+    next(err);
+  }
+};
+
+const updateMemberList = async (req, res, next) => {
+  try{
+    //Get trip id to search
+    const { TripID } = req.params;
+
+    //GetrqBody
+    const { Members } = req.body;
+    
+    const data = await tripsService.updateMemberList(TripID, Members);
+    if (data.status != 201) throw new ApiError(500, 
+      "Failed to update member list");
+      new ApiResponse(res).success('Member list update process sucess');
+  }
+  catch(err){
+    next(err);
+  }
+};
 
 
 const tripsController = {
@@ -226,7 +288,11 @@ const tripsController = {
   deleteTripbyID,
   getAllTrips,
   getNewTrips,
-  searchTrips
+  searchTrips,
+  createItinerary,
+  updateItinerary,
+  createMemberList,
+  updateMemberList
 };
 
 export default tripsController;

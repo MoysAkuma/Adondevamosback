@@ -126,4 +126,17 @@ router.get('/Trips/View/New',
 
 router.post('/Trips/Search',
     tripsController.searchTrips);
+
+router.post('/Trips/:TripID/Itinerary',
+    tripsController.createItinerary);
+
+router.put('/Trips/:TripID/Itinerary',
+    tripsController.updateItinerary);
+
+router.post('/Trips/:TripID/Members',
+    tripsController.createMemberList);
+
+router.put('/Trips/:TripID/Members',
+    tripsController.updateMemberList);
+
 export default router;

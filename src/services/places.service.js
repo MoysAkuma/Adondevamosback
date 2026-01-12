@@ -85,7 +85,26 @@ const placesService = {
     if (ubicationNames.status !== 200) return ubicationNames;
     const placesWithUbicationNames = mapPlacesWithUbicationNames(base.data, ubicationNames.data);
 
+    //unset countryid, stateid, cityid from placesWithUbicationNames
+    placesWithUbicationNames.forEach(place => {
+      delete place.countryid;
+      delete place.stateid;
+      delete place.cityid;
+    });
+    return { status: 200, data: placesWithUbicationNames };
+  },
+  async searchPlacesByField(field, name, 
+    fields = 'id,name,countryid,stateid,cityid') {
     
+    const base = await placesRepo.searchPlacesByField(field, name, fields);
+    
+    if (base.status !== 200) return base;
+    if (!base.data || base.data.length === 0) return { status: 200, data: [] };
+    //get ubication names
+    const ubicationNames = 
+    await ubicationService.getUbicationNamesByIDs(base.data);
+    if (ubicationNames.status !== 200) return ubicationNames;
+    const placesWithUbicationNames = mapPlacesWithUbicationNames(base.data, ubicationNames.data);
     //unset countryid, stateid, cityid from placesWithUbicationNames
     placesWithUbicationNames.forEach(place => {
       delete place.countryid;

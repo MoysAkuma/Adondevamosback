@@ -49,8 +49,26 @@ const searchPlaces = async (req, res, next) => {
   }
 };
 
+const searchPlacesByField = async (req, res, next) => {
+  try {
+    //Get name filter
+    const { field, name } = req.params;
+    
+    const foundedPlaces = await placesService.searchPlacesByField(field, name);
+
+    if (foundedPlaces.status != 200) return new ApiError(foundedPlaces.status, foundedPlaces.message);
+
+    return new ApiResponse(res).success(
+      'Reading process sucess', 
+      foundedPlaces.data ? foundedPlaces.data : {});
+  } catch (err) {
+    return new ApiError(err.message, err.status);
+  }
+};
+
 const placesController = {
     getPlaceByID,
-    searchPlaces
+    searchPlaces,
+    searchPlacesByField
 };
 export default placesController;
