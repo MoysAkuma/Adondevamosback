@@ -23,6 +23,13 @@ class cataloguesRepository {
         if (error) return { status: 500, error: error.message };
         return { status: 200, data: data };
     }
+    async getAllFacilities(fields = 'id, name,code') {
+        const { data, error } = await this.cataloguesClient
+            .from('facilities')
+            .select(fields);
+        if (error) return { status: 500, error: error.message };
+        return { status: 200, data: data };
+    }
 };
 
 export default cataloguesRepository;
