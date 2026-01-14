@@ -18,7 +18,7 @@ const getAllCatalogues = async (req, res, next) => {
     }
 };
 
-const getCountries = async (req, res, next) => {
+const getAllCountries = async (req, res, next) => {
     try {
         const countries = await cataloguesService.getAllCountries();
         if (countries.status !== 200) {
@@ -33,7 +33,7 @@ const getCountries = async (req, res, next) => {
     }
 };
 
-const getStates = async (req, res, next) => {
+const getAllStates = async (req, res, next) => {
     try {
         const states = await cataloguesService.getAllStates();
         if (states.status !== 200) {
@@ -48,7 +48,7 @@ const getStates = async (req, res, next) => {
         next(error);
     }
 };
-const getCities = async (req, res, next) => {
+const getAllCities = async (req, res, next) => {
     try {
         const cities = await cataloguesService.getAllCities();
         if (cities.status !== 200) {
@@ -62,7 +62,7 @@ const getCities = async (req, res, next) => {
         next(error);
     }   
 };
-const getFacilities = async (req, res, next) => {
+const getAllFacilities = async (req, res, next) => {
     try {
         const facilities = await cataloguesService.getAllFacilities();
         if (facilities.status !== 200) {
@@ -76,12 +76,40 @@ const getFacilities = async (req, res, next) => {
         next(error);
     }
 };
+const updateCatalogueOption = async (req, res, next) => {
+    try {
+        console.log("Update Catalogue Option called", req.params);
+        const { option, id } = req.params;
+        const data = req.body;
+        
+        if (!['country', 'state', 'city', 'facility'].includes(option)) {
+            throw new ApiError(400, "Invalid option provided");
+        }
+        
+        if (!id || isNaN(id)) {
+            throw new ApiError(400, "Invalid ID provided");
+        }
+        
+        const result = 
+        await cataloguesService.updateCatalogueOption(option, id, data);
+        if (result.status !== 200) {
+            throw new ApiError(result.status, `Failed to update ${option}`);
+        }
+        new ApiResponse(res).success(
+            `${option} updated successfully`,
+            result.data
+        );
+    } catch (error) {
+        next(error);
+    }
+};
 
 
 export default {
     getAllCatalogues,
-    getCountries,
-    getStates,
-    getCities,
-    getFacilities
+    getAllCountries,
+    getAllStates,
+    getAllCities,
+    getAllFacilities,
+    updateCatalogueOption
 };   

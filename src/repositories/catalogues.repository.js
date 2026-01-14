@@ -23,12 +23,45 @@ class cataloguesRepository {
         if (error) return { status: 500, error: error.message };
         return { status: 200, data: data };
     }
-    async getAllFacilities(fields = 'id, name,code') {
+    async getAllFacilities(fields = 'id, name,code, hide') {
         const { data, error } = await this.cataloguesClient
             .from('facilities')
-            .select(fields);
+            .select(fields)
+            .order('id', { ascending: true });
         if (error) return { status: 500, error: error.message };
         return { status: 200, data: data };
+    }
+    async updateFacilityField(data, id) {
+        const { error } = await this.cataloguesClient
+            .from('facilities')
+            .update(data)
+            .eq('id', id);
+        if (error) return { status: 500, error: error.message };
+        return { status: 200, data: "Facility updated successfully" };
+    }
+    async updateCountryField(data, id) {
+        const { error } = await this.cataloguesClient
+            .from('countries')
+            .update(data)
+            .eq('id', id);
+        if (error) return { status: 500, error: error.message };
+        return { status: 200, data: "Country updated successfully" };
+    }
+    async updateStateField(data, id) {
+        const { error } = await this.cataloguesClient
+            .from('states')
+            .update(data)
+            .eq('id', id);
+        if (error) return { status: 500, error: error.message };
+        return { status: 200, data: "State updated successfully" };
+    }
+    async updateCityField(data, id) {
+        const { error } = await this.cataloguesClient
+            .from('cities')
+            .update(data)
+            .eq('id', id);
+        if (error) return { status: 500, error: error.message };
+        return { status: 200, data: "City updated successfully" };
     }
 };
 

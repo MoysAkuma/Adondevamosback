@@ -4,6 +4,21 @@ import cataloguesController from '../controllers/catalogues.controller.js'
 const router = express.Router();
 
 router.get('/Catalogues/all', 
-    cataloguesController.getAllCatalogues);
+cataloguesController.getAllCatalogues);
+
+router.get('/Catalogues/countries', 
+cataloguesController.getAllCountries);
+
+router.get('/Catalogues/states',
+cataloguesController.getAllStates);
+
+router.get('/Catalogues/cities',
+cataloguesController.getAllCities);
+
+router.get('/Catalogues/facilities',
+cataloguesController.getAllFacilities);
+
+router.patch('/Catalogues/:option/:id',
+cataloguesController.updateCatalogueOption);
 
 export default router;

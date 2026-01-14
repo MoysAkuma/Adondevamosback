@@ -38,7 +38,24 @@ const cataloguesService = {
     async getAllFacilities()
     {
         return await cataloguesRepo.getAllFacilities();
+    },
+    async updateCatalogueOption(option, id, data)
+    {
+        
+        switch(option) {
+            case 'country':
+                return await cataloguesRepo.updateCountryField(data, id);
+            case 'state':
+                return await cataloguesRepo.updateStateField(data, id);
+            case 'city':
+                return await cataloguesRepo.updateCityField(data, id);
+            case 'facility':
+                return await cataloguesRepo.updateFacilityField(data, id);
+            default:
+                return { status: 400, error: "Invalid option" };
+        }
     }
+
 };
 
 
