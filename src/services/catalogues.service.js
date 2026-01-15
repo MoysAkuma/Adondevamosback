@@ -54,6 +54,21 @@ const cataloguesService = {
             default:
                 return { status: 400, error: "Invalid option" };
         }
+    },
+    async createCatalogueOption(option, data)
+    {
+        switch(option) {
+            case 'country':
+                return await cataloguesRepo.createCountry(data);
+            case 'state':
+                return await cataloguesRepo.createState(data);
+            case 'city':
+                return await cataloguesRepo.createCity(data);
+            case 'facility':
+                return await cataloguesRepo.createFacility(data);
+            default:
+                return { status: 400, error: "Invalid option" };
+        }
     }
 
 };

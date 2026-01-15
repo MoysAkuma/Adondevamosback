@@ -18,6 +18,9 @@ cataloguesController.getAllCities);
 router.get('/Catalogues/facilities',
 cataloguesController.getAllFacilities);
 
+router.post('/Catalogues/:option',
+cataloguesController.createCatalogueOption);
+
 router.patch('/Catalogues/:option/:id',
 cataloguesController.updateCatalogueOption);
 

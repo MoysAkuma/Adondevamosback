@@ -104,6 +104,29 @@ const updateCatalogueOption = async (req, res, next) => {
     }
 };
 
+const createCatalogueOption = async (req, res, next) => {
+    try {
+        const { option } = req.params;
+        const data = req.body;
+        
+        if (!['country', 'state', 'city', 'facility'].includes(option)) {
+            throw new ApiError(400, "Invalid option provided");
+        }
+        const result = 
+        await cataloguesService.createCatalogueOption(option, data);
+        if (result.status !== 201) {
+            throw new ApiError(result.status, `Failed to create ${option}`);
+        }
+
+        new ApiResponse(res).success(
+            `${option} created successfully`
+        );
+
+    } catch (error) {
+        next(error);
+    }
+};
+
 
 export default {
     getAllCatalogues,
@@ -111,5 +134,6 @@ export default {
     getAllStates,
     getAllCities,
     getAllFacilities,
-    updateCatalogueOption
+    updateCatalogueOption,
+    createCatalogueOption
 };   
