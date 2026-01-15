@@ -78,7 +78,6 @@ const getAllFacilities = async (req, res, next) => {
 };
 const updateCatalogueOption = async (req, res, next) => {
     try {
-        console.log("Update Catalogue Option called", req.params);
         const { option, id } = req.params;
         const data = req.body;
         
