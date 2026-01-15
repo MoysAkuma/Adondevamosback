@@ -69,6 +69,7 @@ const cataloguesService = {
             default:
                 return { status: 400, error: "Invalid option" };
         }
+       
     }
 
 };

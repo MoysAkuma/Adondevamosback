@@ -2,33 +2,48 @@ class cataloguesRepository {
     constructor({ cataloguesClient }) {
         this.cataloguesClient = cataloguesClient;
     }
-    async getAllCountries(fields = 'id, name, acronym') {
-        const { data, error } = await this.cataloguesClient
+    async getAllCountries(fields = 'id, name, acronym, originalname, hide', showHidden = false) {
+        let query = this.cataloguesClient
             .from('countries')
-            .select(fields);
+            .select(fields)
+            .order('name', { ascending: true });
+
+        let { data, error } = await query;
+                
         if (error) return { status: 500, error: error.message };
         return { status: 200, data: data };
     }   
-    async getAllStates(fields = 'id, name, countryid') {
-        const { data, error } = await this.cataloguesClient
+    async getAllStates(fields = 'id, name, countryid,originalname, hide', showHidden = false) {
+        let query = this.cataloguesClient
             .from('states')
             .select(fields)
             .order('countryid', { ascending: true });
+
+        let { data, error } = await query;
+        
         if (error) return { status: 500, error: error.message };
         return { status: 200, data: data };
     }   
-    async getAllCities(fields = 'id, name, stateid') {
-        const { data, error } = await this.cataloguesClient
+    async getAllCities(fields = 'id, name, stateid, countryid, originalname, hide', showHidden = false) {
+        let query = this.cataloguesClient
             .from('cities')
-            .select(fields);
+            .select(fields)
+            .order('countryid', { ascending: true });
+        let { data, error } = await query;
+        
         if (error) return { status: 500, error: error.message };
         return { status: 200, data: data };
     }
-    async getAllFacilities(fields = 'id, name,code, hide') {
-        const { data, error } = await this.cataloguesClient
+    async getAllFacilities(fields = 'id, name,code, hide', showHidden = false) {
+        let query = this.cataloguesClient
             .from('facilities')
             .select(fields)
             .order('id', { ascending: true });
+        let { data, error } = await query;
+        
+        if (!showHidden) {
+            data = data.filter(facility => !facility.hide);
+        }
         if (error) return { status: 500, error: error.message };
         return { status: 200, data: data };
     }
@@ -73,10 +88,12 @@ class cataloguesRepository {
         return { status: 201, data: insertedData };
     }
     async createState(data) {
-        const { data: insertedData, error } = await this.cataloguesClient
+        const { data: insertedData, error } = 
+        await this.cataloguesClient
             .from('states')
             .insert(data)
             .select();
+        
         if (error) return { status: 500, error: error.message };
         return { status: 201, data: insertedData };
     }
