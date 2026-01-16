@@ -280,6 +280,53 @@ const updateMemberList = async (req, res, next) => {
   }
 };
 
+const uploadImages = async (req, res, next) => {
+  try {
+    const { TripID } = req.params;
+    
+    // Validate request has images
+    if (!req.body.images || !Array.isArray(req.body.images)) {
+      throw new ApiError(400, 'Images array is required in request body');
+    }
+
+    // Convert base64 images to buffer format
+    const images = req.body.images.map((img, index) => {
+      if (!img.data) {
+        throw new ApiError(400, `Image data is required for image at index ${index}`);
+      }
+
+      // Handle base64 data
+      let buffer;
+      if (img.data.startsWith('data:')) {
+        // Extract base64 data from data URL
+        const base64Data = img.data.split(',')[1];
+        buffer = Buffer.from(base64Data, 'base64');
+      } else {
+        buffer = Buffer.from(img.data, 'base64');
+      }
+
+      return {
+        buffer: buffer,
+        mimetype: img.mimetype || 'image/jpeg',
+        extension: img.extension || 'jpg'
+      };
+    });
+
+    const result = await tripsService.uploadImages(TripID, images);
+
+    if (result.status !== 200) {
+      throw new ApiError(result.status, result.error);
+    }
+
+    new ApiResponse(res).success(
+      'Images uploaded successfully',
+      result.data,
+      201
+    );
+  } catch (err) {
+    next(err);
+  }
+};
 
 const tripsController = {
   createTrip,
@@ -292,7 +339,8 @@ const tripsController = {
   createItinerary,
   updateItinerary,
   createMemberList,
-  updateMemberList
+  updateMemberList,
+  uploadImages
 };
 
 export default tripsController;

@@ -25,6 +25,23 @@ const tripsService = {
     return await tripsRepo.deleteTrip(tripId);
   },
 
+  async uploadImages(tripId, images) {
+    // Verify trip exists
+    const tripExists = await tripsRepo.getTripByIdRaw(tripId);
+    if (tripExists.status !== 200 || !tripExists.data || tripExists.data.length === 0) {
+      return { status: 404, error: 'Trip not found' };
+    }
+
+    const saveUploadedFiles =
+     await tripsRepo.uploadImagesToStorage(tripId, images);
+    if (saveUploadedFiles.status !== 200) {
+      return saveUploadedFiles;
+    }
+    const saveImageUrls =
+     await tripsRepo.saveImageUrlsToTrip(tripId, saveUploadedFiles.data);
+    return saveImageUrls;
+  },
+
   async getTripById(tripId, userid = null) {
     // base trip
     const base = await tripsRepo.getTripByIdRaw(tripId);
@@ -103,6 +120,11 @@ const tripsService = {
       userVote = await tripsRepo.getUserVoteByTripIdAndUserId(tripId, userid);
       if (userVote.status !== 200) return userVote;
     }
+
+    //get gallery images
+    const galleryImages = await tripsRepo.getTripImages(tripId);
+    if (galleryImages.status !== 200) return galleryImages;
+    
     const returnData = {
       id: tripRow.id,
       name: tripRow.name,
@@ -118,7 +140,8 @@ const tripsService = {
           Total: votesSummary.data[0].total
         }
       },
-      userVoted: userVote.data.value || false
+      userVoted: userVote.data.value || false,
+      gallery : galleryImages.data || []
     };
 
     return { status: 200, data: returnData };

@@ -135,6 +135,40 @@ class PlacesRepository {
     if (error) return { status: 500, error };
     return { status: 200, data };
   }
+  async updateFacilities(placeId, facilitiesData) {
+    // First, delete existing facilities for the place
+    const { error: deleteError } = await this.placesClient
+      .from('places_facilities')
+      .delete()
+      .eq('placeid', placeId);
+    if (deleteError) return { status: 500, error: deleteError };
+    // Now, insert the new facilities
+    const payload = facilitiesData.map(facility => ({
+      placeid: placeId,
+      facilityid: facility.facilityid,
+      value: facility.value
+    }));
+    const { data, error: insertError } = await this.placesClient
+      .from('places_facilities')
+      .insert(payload)
+      .select();
+    if (insertError) return { status: 500, error: insertError };
+    return { status: 200, data };
+  }
+  async addFacilities(placeId, facilitiesData) {
+    // Insert new facilities without deleting existing ones
+    const payload = facilitiesData.map(facility => ({
+      placeid: placeId,
+      facilityid: facility.facilityid,
+      value: facility.value
+    }));
+    const { data, error: insertError } = await this.placesClient
+      .from('places_facilities')
+      .insert(payload)
+      .select();
+    if (insertError) return { status: 500, error: insertError };
+    return { status: 200, data };
+  }
 }
 
 export default PlacesRepository;
