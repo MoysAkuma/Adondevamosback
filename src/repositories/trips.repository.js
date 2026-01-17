@@ -113,7 +113,7 @@ class TripsRepository {
     const { data, error } = await this.tripsClient
       .from('trips')
       .select(fields)
-      .order('created_at', { ascending: true })
+      .order('createddate', { ascending: true })
       .limit(limit);
     if (error) return { status: 500, error };
     return { status: 200, data };

@@ -57,7 +57,10 @@ class PlacesRepository {
 
   async searchPlaces(filters = {}, fields = 'id,name,countryid,stateid,cityid,address') {
     let query = 
-    this.placesClient.from('places').select(fields).limit(5);
+    this.placesClient.from('places').
+    select(fields)
+    .limit(10)
+    .order('name', { ascending: true });
     
     if (filters.name) {
       query = query.ilike('name', `%${filters.name}%`);
