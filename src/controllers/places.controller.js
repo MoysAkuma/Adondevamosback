@@ -147,7 +147,10 @@ const updatePlace = async (req, res, next) => {
 const updateFacilities = async (req, res, next) => {
   try {
     const { PlaceID } = req.params;
-    const facilitiesData = req.body;
+    const facilitiesData = req.body.Facilities;
+    if (!Array.isArray(facilitiesData)) {
+      return new ApiError(400, 'Facilities data must be an array');
+    }
     const updateResult = await placesService.updateFacilities(PlaceID, facilitiesData);
     if (updateResult.status !== 200) {
       return new ApiError(updateResult.status, updateResult.error || 'Facilities update failed');

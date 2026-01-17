@@ -37,6 +37,7 @@ const placesService = {
     
     //get facilities
     const facilities = await placesRepo.getFacilitiesByPlaceId(id);
+    
 
     if (facilities.status !== 200) return facilities;
 
@@ -67,6 +68,11 @@ const placesService = {
     }
     
     placeWithUbicationNames[0].userVote = userVote.data.value;
+
+    //get gallery
+    const gallery = await placesRepo.getGalleryByPlaceId(id);
+    if (gallery.status !== 200) return gallery;
+    placeWithUbicationNames[0].gallery = gallery.data;
 
     return { status: 200, data: placeWithUbicationNames[0] };
   },
