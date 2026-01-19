@@ -113,7 +113,7 @@ class TripsRepository {
     const { data, error } = await this.tripsClient
       .from('trips')
       .select(fields)
-      .order('created_at', { ascending: true })
+      .order('createddate', { ascending: true })
       .limit(limit);
     if (error) return { status: 500, error };
     return { status: 200, data };
@@ -209,6 +209,69 @@ class TripsRepository {
       .in('tripid', tripIds);
     if (error) return { status: 500, error };
     return { status: 200, data };
+  }
+
+  async uploadImagesToStorage(tripId, images) {
+    try {
+      const uploadedUrls = [];
+      const bucketName = 'adondevamosNoGallery';
+      const folder = 'trips';
+
+      for (let i = 0; i < images.length; i++) {
+        const image = images[i];
+        const timestamp = Date.now();
+        const fileName = `${folder}/${tripId}_${timestamp}_${i}.${image.extension || 'jpg'}`;
+
+        // Upload image to Supabase storage
+        const { data, error } = await this.tripsClient.storage
+          .from(bucketName)
+          .upload(fileName, image.buffer, {
+            contentType: image.mimetype || 'image/jpeg',
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (error) {
+          return { status: 500, error: error.message };
+        }
+
+        // Get public URL
+        const { data: urlData } = this.tripsClient.storage
+          .from(bucketName)
+          .getPublicUrl(fileName);
+
+        uploadedUrls.push({
+          fileName: fileName,
+          url: urlData.publicUrl
+        });
+      }
+
+      return { status: 200, data: uploadedUrls };
+    } catch (error) {
+      return { status: 500, error: error.message };
+    }
+  }
+  async saveImageUrlsToTrip(tripid, imageUrls) {
+    const { data, error } = await this.tripsClient
+      .from('trips_gallery')
+      .insert(
+        imageUrls.map(item => ({
+          tripid: tripid,
+          filename: item.fileName,
+          completeurl: item.url
+        }))
+      )
+      .select();
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data: data };
+  }
+  async getTripImages(tripId) {
+    const { data, error } = await this.tripsClient
+      .from('trips_gallery')
+      .select('id,filename,completeurl')
+      .eq('tripid', tripId);
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data: data };
   }
 }
 

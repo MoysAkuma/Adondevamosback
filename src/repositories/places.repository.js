@@ -36,7 +36,7 @@ class PlacesRepository {
     return { status: 200, data };
   }
 
-  async getPlaceByIdRaw(id, fields = 'name, countryid, stateid, cityid, description, ispublic, address') {
+  async getPlaceByIdRaw(id, fields = 'name, countryid, stateid, cityid, description, ispublic, address, latitude, longitude') {
     const { data, error } = await this.placesClient
       .from('places')
       .select(fields)
@@ -57,7 +57,10 @@ class PlacesRepository {
 
   async searchPlaces(filters = {}, fields = 'id,name,countryid,stateid,cityid,address') {
     let query = 
-    this.placesClient.from('places').select(fields).limit(5);
+    this.placesClient.from('places').
+    select(fields)
+    .limit(10)
+    .order('name', { ascending: true });
     
     if (filters.name) {
       query = query.ilike('name', `%${filters.name}%`);
@@ -79,7 +82,8 @@ class PlacesRepository {
     const { data, error } = await this.placesClient
       .from('places_facilities')
       .select('facilityid, value')
-      .eq('placeid', placeId);
+      .eq('placeid', placeId)
+      .eq('value', true);
     if (error) return { status: 500, error };
     
     if (!data || data.length === 0) {
@@ -134,6 +138,105 @@ class PlacesRepository {
     const { data, error } = await query;
     if (error) return { status: 500, error };
     return { status: 200, data };
+  }
+  async uploadImagesToStorage(placeId, images) {
+    try {
+      const uploadedUrls = [];
+      const bucketName = 'adondevamosNoGallery';
+      const folder = 'places';
+
+      for (let i = 0; i < images.length; i++) {
+        const image = images[i];
+        const timestamp = Date.now();
+        const fileName = `${folder}/${placeId}_${timestamp}_${i}.${image.extension || 'jpg'}`;
+
+        // Upload image to Supabase storage
+        const { data, error } = await this.placesClient.storage
+          .from(bucketName)
+          .upload(fileName, image.buffer, {
+            contentType: image.mimetype || 'image/jpeg',
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (error) {
+          return { status: 500, error: error.message };
+        }
+
+        // Get public URL
+        const { data: urlData } = this.placesClient.storage
+          .from(bucketName)
+          .getPublicUrl(fileName);
+
+        uploadedUrls.push({
+          fileName: fileName,
+          url: urlData.publicUrl
+        });
+      }
+
+      return { status: 200, data: uploadedUrls };
+    } catch (error) {
+      return { status: 500, error: error.message };
+    }
+  }
+  async updateFacilities(placeId, facilitiesData) {
+    // First, delete existing facilities for the place
+    const { error: deleteError } = await this.placesClient
+      .from('places_facilities')
+      .delete()
+      .eq('placeid', placeId);
+    if (deleteError) return { status: 500, error: deleteError };
+    if (!facilitiesData || facilitiesData.length === 0) {
+      return { status: 200, data: [] };
+    }
+    // Now, insert the new facilities
+    const payload = facilitiesData.map(facility => ({
+      placeid: placeId,
+      facilityid: facility.facilityid,
+      value: facility.value
+    }));
+    const { data, error: insertError } = await this.placesClient
+      .from('places_facilities')
+      .insert(payload)
+      .select();
+    if (insertError) return { status: 500, error: insertError };
+    return { status: 200, data };
+  }
+  async addFacilities(placeId, facilitiesData) {
+    // Insert new facilities without deleting existing ones
+    const payload = facilitiesData.map(facility => ({
+      placeid: placeId,
+      facilityid: facility.facilityid,
+      value: facility.value
+    }));
+    const { data, error: insertError } = await this.placesClient
+      .from('places_facilities')
+      .insert(payload)
+      .select();
+    if (insertError) return { status: 500, error: insertError };
+    return { status: 200, data };
+  }
+  async saveImageUrlsToPlace(placeId, imageUrls) {
+    const { data, error } = await this.placesClient
+      .from('places_gallery')
+      .insert(
+        imageUrls.map(item => ({
+          placeid: placeId,
+          filename: item.fileName,
+          completeurl: item.url
+        }))
+      )
+      .select();
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data: data };
+  }
+  async getGalleryByPlaceId(placeId) {
+    const { data, error } = await this.placesClient
+      .from('places_gallery')
+      .select('filename, completeurl')
+      .eq('placeid', placeId);
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data: data };
   }
 }
 

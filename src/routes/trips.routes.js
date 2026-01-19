@@ -139,4 +139,8 @@ router.post('/Trips/:TripID/Members',
 router.put('/Trips/:TripID/Members',
     tripsController.updateMemberList);
 
+
+router.post('/Trips/:TripID/Images',
+    tripsController.uploadImages);
+    
 export default router;

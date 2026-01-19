@@ -41,7 +41,7 @@ const login = async (req, res, next) => {
         new ApiResponse(res).success('Login success', {
             id: data.data.id,
             tag: data.data.tag,
-            role: isAdmin ? 'Admin' : 'User',
+            role: isAdmin ? 'admin' : 'user',
             name: data.data.name,
             lastname: data.data.lastname
         }, data.status);

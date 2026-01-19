@@ -37,6 +37,7 @@ const placesService = {
     
     //get facilities
     const facilities = await placesRepo.getFacilitiesByPlaceId(id);
+    
 
     if (facilities.status !== 200) return facilities;
 
@@ -67,6 +68,11 @@ const placesService = {
     }
     
     placeWithUbicationNames[0].userVote = userVote.data.value;
+
+    //get gallery
+    const gallery = await placesRepo.getGalleryByPlaceId(id);
+    if (gallery.status !== 200) return gallery;
+    placeWithUbicationNames[0].gallery = gallery.data;
 
     return { status: 200, data: placeWithUbicationNames[0] };
   },
@@ -112,6 +118,39 @@ const placesService = {
       delete place.cityid;
     });
     return { status: 200, data: placesWithUbicationNames };
+  },
+  async uploadImages(placeId, images) {
+    //verify place exists
+    const place = await placesRepo.getPlaceByIdRaw(placeId);
+    if (place.status !== 200) return place;
+
+    //save images in bucket
+    const saveUploadedFiles = 
+     await placesRepo.uploadImagesToStorage(placeId, images);
+    if (saveUploadedFiles.status !== 200) {
+      return saveUploadedFiles;
+    }
+
+    //save image urls in place record
+    return await placesRepo.saveImageUrlsToPlace(placeId, saveUploadedFiles.data);
+  },
+  async updateFacilities(placeId, facilitiesData) {
+    //verify place exists
+    const place = await placesRepo.getPlaceByIdRaw(placeId);
+    if (place.status !== 200) return place;
+    if (!place.data || place.data.length === 0) {
+      return { status: 404, error: 'Place not found' };
+    }
+    return await placesRepo.updateFacilities(placeId, facilitiesData);
+  },
+  async addFacilities(placeId, facilitiesData) {
+    //verify place exists
+    const place = await placesRepo.getPlaceByIdRaw(placeId);
+    if (place.status !== 200) return place;
+    if (!place.data || place.data.length === 0) {
+      return { status: 404, error: 'Place not found' };
+    }
+    return await placesRepo.addFacilities(placeId, facilitiesData);
   }
 };
 
