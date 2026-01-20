@@ -182,8 +182,19 @@ const tripsService = {
     return { status: 200, data: foundedTrips.data };
   },
 
-  async getNewsTrips(limit = 10) {
-    return await tripsRepo.getNewsTrips(limit);
+  async getNewsTrips(limit = 5) {
+    const result = await tripsRepo.getNewsTrips(limit, 
+      'id,name,description,initialdate,finaldate,isinternational,ownerid');
+    if (result.status !== 200) {
+      return result;
+    }
+    
+    //get info of trips
+    let resultsToReturn = await Promise.all(
+      result.data.map(trip => this.getTripById(trip.id))
+    );
+
+    return { status: 200, data: resultsToReturn.map(r => r.data) }; 
   },
 
   async searchItineraryByTripIDs(tripIds, fields = 'tripid,initialdate,finaldate,placeid') {

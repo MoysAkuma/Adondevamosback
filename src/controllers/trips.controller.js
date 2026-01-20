@@ -114,84 +114,17 @@ const getAllTrips = async (req, res) => {
 
 const getNewTrips = async (req, res) => {
   try{
+    //get limit from params
+    const { Limit } = req.params;
     //get news trips
-    const trips = await tripsService.getNewsTrips();
+    const trips = await tripsService.getNewsTrips(Limit);
     if(trips.status != 200){
       return ApiError("new trips error", trips.status )
     }
-    
-    //get owners info
-    const ownerIds = trips.data.map(trip => trip.ownerid);
-    const ownersInfo = await usersService.searchOwnerInfo(ownerIds, "id, name, tag, email");
-    
-    if(ownersInfo.status != 200){
-      return ApiError("owners info error", ownersInfo.status )
-    }
-   
-    //get Intineraries
-    const tripIds = trips.data.map(trip => trip.id);
-    const itinerary = await tripsService.searchItineraryByTripIDs(tripIds);
-    if(itinerary.status != 200){
-      return ApiError("itinerary info error", itinerary.status )
-    }
-   
-    //get places info for itinerary
-    const placeIds = itinerary.data.map(item => item.placeid);
-    const placesInfo = await placesService.searchPlacesByIDs(placeIds, "id, name, countryid, stateid, cityid");
-    
-    if( placesInfo.status != 200 ){
-      return ApiError("places info error", placesInfo.status )
-    }
 
-    const UbicationNames = 
-    await ubicationService.getUbicationNamesByIDs(
-      placesInfo.data
-    );
-
-    if(UbicationNames.status != 200){
-      return ApiError("ubication names error", UbicationNames.status )
-    }
-    
-    const matchPlacesWithUbicationIds = matchUbicationNames(placesInfo, UbicationNames);
-
-    //Generate response
-    const itemsToReturn = trips.data.map(
-      item => 
-        (
-          {
-            id : item.id, 
-            name : item.name, 
-            description : item.description, 
-            initialdate : item.initialdate, 
-            finaldate : item.finaldate, 
-            isinternational : item.isinternational,
-            statics : {
-               Votes : {
-                Total: 0
-                }
-            },
-            itinerary : itinerary.data.filter(
-              it => it.tripid === item.id
-            ).map(
-                retItinerary => (
-                  {
-                    initialdate : retItinerary.initialdate,
-                    finaldate : retItinerary.finaldate,
-                    place : matchPlacesWithUbicationIds.data.find(
-                      place => place.id === retItinerary.placeid
-                    ),
-                    Ubication : retItinerary.Ubication
-                  }
-                )
-            ),
-            owner : ownersInfo.data.find(owner => owner.id === item.ownerid)
-          }
-        )
-      );
-  
     return new ApiResponse(res).success(
       'Reading news trips sucess', 
-      itemsToReturn);
+      trips.data);
   } catch(err){
     return new ApiError(err.message, err.status);
   } 

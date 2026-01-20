@@ -6,7 +6,6 @@ const router = express.Router();
     router.get('/Places/:PlaceID', 
         placesController.getPlaceByID);
 
-
     router.post('/Places/Search',
         placesController.searchPlaces);
 
@@ -27,5 +26,9 @@ const router = express.Router();
         
     router.post('/Places/:PlaceID/Facilities',
         placesController.addFacilities);
+        
+    router.get('/Places/lasted/:limit?',
+        placesController.getNewPlaces
+    )
 
 export default router;

@@ -104,6 +104,107 @@ class usersRepository {
     if (error) return { status: 500, error: error.message };
     return { status: 200, data : data };
   }
+
+  async getUserByTag(tagid) {
+    const { data, error } = await this.userClient
+        .from('users')
+        .select("id, email, name, lastname, tagid, password")
+        .eq('tagid', tagid);
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data: data };
+  }
+
+  async checkAdminRole(userId) {
+    const { data, error } = await this.userClient
+        .from('admins')
+        .select()
+        .eq('id', userId);
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data: ( data.length === 0 ) };
+  }
+
+  async searchByEmailAndPassword(email, password) {
+    const { data, error } = await this.userClient
+        .from('users')
+        .select("id,name, tag, lastname")
+        .eq('email', email)
+        .eq('password', password)
+        .single();
+    if (error) return { status: 409, error: error.message };
+    return { status: 200, data: data || {} };
+  }
+
+  async searchByTagAndPassword(tag, password) {
+    const { data, error } = await this.userClient
+        .from('users')
+        .select("id, name, tag, lastname")
+        .eq('tag', tag)
+        .eq('password', password)
+        .single();
+    if (error) return { status: 409, error: error.message };
+    return { status: 200, data: data || {} };
+  }
+
+  async searchByText(text) {
+    const { data, error } = await this.userClient
+        .from('users')
+        .select("id, name, email, tag, email")
+        .or(`tag.ilike.%${text}%, email.ilike.%${text}%`)
+        .limit(5);
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data : data };
+  }
+
+  async checkEmailExists(email) {
+    const { data, error } = await this.userClient
+        .from('users')
+        .select("id")
+        .eq('email', email);
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data : data.length > 0 };
+  }
+
+  async checkTagExists(tag) {
+    const { data, error } = await this.userClient
+        .from('users')
+        .select("id")
+        .eq('tag', tag);
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data : data.length > 0 };
+  }
+
+  async searchByEmail(email) {
+    const { data, error } = await this.userClient
+        .from('users')
+        .select("id, name, tag, lastname, password")
+        .eq('email', email)
+        .single();
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data : data || {} };
+  }
+
+  async searchByTag(tag) {
+    const { data, error } = await this.userClient
+        .from('users')
+        .select("id, name, tag, lastname, password")
+        .eq('tag', tag)
+        .single();
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data : data || {} };
+  }
+
+  async searchOwnerInfo(userid, fields = "id, name, tag, email") {
+    //avoid duplicate user ids
+    const uniqueuserids = [...new Set(userid)];
+    
+    //get user list
+    const { data, error } = await this.userClient
+        .from('users')
+        .select(fields)
+        .in('id', uniqueuserids);
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data : data || {} };
+  }
 };
 
 export default usersRepository;
