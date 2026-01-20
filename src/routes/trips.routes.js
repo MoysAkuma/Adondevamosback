@@ -121,9 +121,6 @@ router.delete('/Trips/:TripID',
 router.post('/Trips', 
     tripsController.createTrip);
 
-router.get('/Trips/View/New',
-    tripsController.getNewTrips);
-
 router.post('/Trips/Search',
     tripsController.searchTrips);
 
@@ -139,6 +136,8 @@ router.post('/Trips/:TripID/Members',
 router.put('/Trips/:TripID/Members',
     tripsController.updateMemberList);
 
+router.get('/Trips/lasted/:Limit?',
+    tripsController.getNewTrips);
 
 router.post('/Trips/:TripID/Images',
     tripsController.uploadImages);

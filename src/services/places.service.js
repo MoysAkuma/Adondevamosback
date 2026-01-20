@@ -11,6 +11,58 @@ const placesRepo = new PlacesRepository(
   });
 
 const placesService = {
+  // Helper method to enrich place data with full details
+  async _enrichPlaceWithFullDetails(placeId, userid = null) {
+    const base = await placesRepo.getPlaceByIdRaw(placeId);
+    if (base.status !== 200) return base;
+    
+    if (!base.data || base.data.length === 0) return { status: 404, data: null };
+    
+    //get ubication names
+    const ubicationNames = await ubicationService.getUbicationNamesByIDs(base.data);
+    
+    if (ubicationNames.status !== 200) return ubicationNames;
+    const placeWithUbicationNames = mapPlacesWithUbicationNames(base.data, ubicationNames.data);
+    
+    //get facilities
+    const facilities = await placesRepo.getFacilitiesByPlaceId(placeId);
+    
+    if (facilities.status !== 200) return facilities;
+
+    //unset countryid, stateid, cityid from placeWithUbicationNames
+    placeWithUbicationNames.forEach(place => {
+      delete place.countryid;
+      delete place.stateid;
+      delete place.cityid;
+    });
+
+    placeWithUbicationNames[0].facilities = facilities.data;
+    
+    //get votes
+    const votes = await placesRepo.getVotesByPlaceIdSummary(placeId);
+    if (votes.status !== 200) return votes;
+    placeWithUbicationNames[0].statics = {
+        Votes: {
+          Total: votes.data[0].total
+        }
+      };
+    //validate if user has voted place
+    let userVote = { status: 200, data: { value: false } };
+    if (userid) {
+      userVote = await placesRepo.getUserVoteByPlaceIdAndUserId(placeId, userid);
+      if (userVote.status !== 200) return userVote;
+    }
+    
+    placeWithUbicationNames[0].userVote = userVote.data.value;
+
+    //get gallery
+    const gallery = await placesRepo.getGalleryByPlaceId(placeId);
+    if (gallery.status !== 200) return gallery;
+    placeWithUbicationNames[0].gallery = gallery.data;
+
+    return { status: 200, data: { ...placeWithUbicationNames[0], id: placeId } };
+  },
+
   async createPlace(rq) {
     return await placesRepo.createPlace(rq);
   },
@@ -24,57 +76,7 @@ const placesService = {
   },
 
   async getPlaceById(id, userid = null) {
-    const base = await placesRepo.getPlaceByIdRaw(id);
-    if (base.status !== 200) return base;
-    
-    if (!base.data || base.data.length === 0) return { status: 404, data: null };
-    
-    //get ubication names
-    const ubicationNames = await ubicationService.getUbicationNamesByIDs(base.data);
-    
-    if (ubicationNames.status !== 200) return ubicationNames;
-    const placeWithUbicationNames = mapPlacesWithUbicationNames(base.data, ubicationNames.data);
-    
-    //get facilities
-    const facilities = await placesRepo.getFacilitiesByPlaceId(id);
-    
-
-    if (facilities.status !== 200) return facilities;
-
-    //unset countryid, stateid, cityid from placeWithUbicationNames
-    placeWithUbicationNames.forEach(place => {
-      delete place.countryid;
-      delete place.stateid;
-      delete place.cityid;
-    });
-
-    placeWithUbicationNames[0].facilities = facilities.data;
-    
-    //get votes
-    const votes = await placesRepo.getVotesByPlaceIdSummary(id);
-    if (votes.status !== 200) return votes;
-    placeWithUbicationNames[0].statics = {
-        Votes: {
-          Total: votes.data[0].total
-        }
-      };
-    //validate if user has voted place
-    let userVote = { status: 200, data: { value: false } };
-    if (userid) {
-      
-      userVote = 
-      await placesRepo.getUserVoteByPlaceIdAndUserId(id, userid);
-      if (userVote.status !== 200) return userVote;
-    }
-    
-    placeWithUbicationNames[0].userVote = userVote.data.value;
-
-    //get gallery
-    const gallery = await placesRepo.getGalleryByPlaceId(id);
-    if (gallery.status !== 200) return gallery;
-    placeWithUbicationNames[0].gallery = gallery.data;
-
-    return { status: 200, data: placeWithUbicationNames[0] };
+    return await this._enrichPlaceWithFullDetails(id, userid);
   },
 
   async searchPlacesByIDs(ids, fields = 'id,name,countryid,stateid,cityid') {
@@ -151,6 +153,23 @@ const placesService = {
       return { status: 404, error: 'Place not found' };
     }
     return await placesRepo.addFacilities(placeId, facilitiesData);
+  }, 
+  async getNewPlaces(limit = 10, userid = null) {
+    const result = await placesRepo.getNewPlaces(limit);
+    if (result.status !== 200) return result;
+    if (!result.data || result.data.length === 0) return { status: 200, data: [] };
+    
+    // Enrich each place with full details
+    const enrichedPlaces = await Promise.all(
+      result.data.map(place => this._enrichPlaceWithFullDetails(place.id, userid))
+    );
+    
+    // Filter out any errors and extract data
+    const successfulPlaces = enrichedPlaces
+      .filter(p => p.status === 200)
+      .map(p => p.data);
+    
+    return { status: 200, data: successfulPlaces };
   }
 };
 

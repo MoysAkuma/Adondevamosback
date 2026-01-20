@@ -238,6 +238,17 @@ class PlacesRepository {
     if (error) return { status: 500, error: error.message };
     return { status: 200, data: data };
   }
+  async getNewPlaces(limit = 5, fields = 'id,name,countryid,stateid,cityid,address') {
+    const { data, error } = await this.placesClient
+      .from('places')
+      .select(fields)
+      .order('createddate', { ascending: false })
+      .limit(limit);
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data };
+  }
+      
+
 }
 
 export default PlacesRepository;

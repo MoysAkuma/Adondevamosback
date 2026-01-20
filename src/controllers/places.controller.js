@@ -182,6 +182,23 @@ const addFacilities = async (req, res, next) => {
   }
 };
 
+const getNewPlaces = async (req, res, next) => {
+  try{
+    //get limit from params
+    const { limit } = req.params;
+    //get news places
+    const places = await placesService.getNewPlaces(limit);
+    if(places.status != 200){
+      return new ApiError(places.status, places.message )
+    }
+    return new ApiResponse(res).success(
+      'Reading news places sucess', 
+      places.data);
+  } catch(err){
+    return new ApiError(err.message, err.status);
+  }
+};
+
 const placesController = {
     getPlaceByID,
     searchPlaces,
@@ -190,6 +207,7 @@ const placesController = {
     createPlace,
     updatePlace,
     updateFacilities,
-    addFacilities
+    addFacilities,
+    getNewPlaces
 };
 export default placesController;

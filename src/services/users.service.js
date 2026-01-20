@@ -3,6 +3,7 @@ import ubicationService from './ubication.service.js';
 import { userClient } from "../config/supabase.js";
 import { matchUbicationNames } from "../mappers/ubication.mapper.js";
 import { sendPasswordRecoveryEmail, sendCreateAccountEmail } from '../config/email.config.js'
+import tripsService from './trips.service.js';
 
 const usersRepositoryInstance = new usersRepository({ userClient });
 
@@ -17,6 +18,35 @@ const usersService = {
     const userWithUbicationNames = matchUbicationNames( user, ubicationNames );
 
     return { status: 200, data: userWithUbicationNames.data || {} };
+  },
+
+  async getUserByIdWithTrips(userId, fields = "name, lastname, email, tag, countryid, stateid, cityid") {
+    // Get user info
+    const user = await usersRepositoryInstance.getUserById(userId, fields);
+    if (user.status != 200) return { status: 500, error: user.error || "Service error" };
+    
+    // Get ubication names
+    const ubicationNames = await ubicationService.getUbicationNamesByIDs(user.data);
+    if (ubicationNames.status !== 200) return ubicationNames;
+    const userWithUbicationNames = matchUbicationNames(user, ubicationNames);
+
+    // Get last 3 trips created by this user
+    const tripsResult = await tripsService.searchTrips({ ownerid: userId });
+    let userTrips = [];
+    if (tripsResult.status === 200 && tripsResult.data) {
+      // Sort by initialdate descending and take first 3
+      userTrips = tripsResult.data
+        .sort((a, b) => new Date(b.initialdate) - new Date(a.initialdate))
+        .slice(0, 3);
+    }
+
+    return { 
+      status: 200, 
+      data: {
+        ...userWithUbicationNames.data,
+        recentTrips: userTrips
+      }
+    };
   },
   async recoverPassword(email) {
     //get email and password
@@ -46,40 +76,16 @@ const usersService = {
 
   },
   async getUserByTag(tagid) {
-    const { data, error } = await userClient
-        .from('users')
-        .select("id, email, name, lastname, tagid, password")
-        .eq('tagid', tagid);
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data: data };
+    return await usersRepositoryInstance.getUserByTag(tagid);
   },
   async checkAdminRole(userId) {
-    const { data, error } = await userClient
-        .from('admins')
-        .select()
-        .eq('id', userId);
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data: ( data.length === 0 ) };
+    return await usersRepositoryInstance.checkAdminRole(userId);
   },
   async searchByEmailAndPassword(email, password) {
-    const { data, error } = await userClient
-        .from('users')
-        .select("id,name, tag, lastname")
-        .eq('email', email)
-        .eq('password', password)
-        .single();
-    if (error) return { status: 409, error: error.message };
-    return { status: 200, data: data[0] || {} };
+    return await usersRepositoryInstance.searchByEmailAndPassword(email, password);
   },
   async searchByTagAndPassword(tag, password) {
-    const { data, error } = await userClient
-        .from('users')
-        .select("id, name, tag, lastname")
-        .eq('tag', tag)
-        .eq('password', password)
-        .single();
-    if (error) return { status: 409, error: error.message };
-    return { status: 200, data: data[0] || {} };
+    return await usersRepositoryInstance.searchByTagAndPassword(tag, password);
   },
   async createUser(CreateUserRq) {
     //check if email or tag already exists
@@ -124,59 +130,22 @@ const usersService = {
     return user;
   },
     async searchByText(text) {
-        const { data, error } = await userClient
-        .from('users')
-        .select("id, name, email, tag, email")
-        .or(`tag.ilike.%${text}%, email.ilike.%${text}%`)
-        .limit(5);
-        if (error) return { status: 500, error: error.message };
-        return { status: 200, data : data };
+        return await usersRepositoryInstance.searchByText(text);
     },
     async checkEmailExists(email) {
-        const { data, error } = await userClient
-        .from('users')
-        .select("id")
-        .eq('email', email);
-        if (error) return { status: 500, error: error.message };
-        return { status: 200, data : data.length > 0 };
+        return await usersRepositoryInstance.checkEmailExists(email);
     },
     async checkTagExists(tag) {
-        const { data, error } = await userClient
-        .from('users')
-        .select("id")
-        .eq('tag', tag);
-        if (error) return { status: 500, error: error.message };
-        return { status: 200, data : data.length > 0 };
+        return await usersRepositoryInstance.checkTagExists(tag);
     },
     async searchByEmail(email) {
-        const { data, error } = await userClient
-        .from('users')
-        .select("id, name, tag, lastname, password")
-        .eq('email', email)
-        .single();
-        if (error) return { status: 500, error: error.message };
-        return { status: 200, data : data || {} };
+        return await usersRepositoryInstance.searchByEmail(email);
     },
     async searchByTag(tag) {
-        const { data, error } = await userClient
-        .from('users')
-        .select("id, name, tag, lastname, password")
-        .eq('tag', tag)
-        .single();
-        if (error) return { status: 500, error: error.message };
-        return { status: 200, data : data || {} };
+        return await usersRepositoryInstance.searchByTag(tag);
     },
     async searchOwnerInfo( userid, fields = "id, name, tag, email") {
-        //avoid duplicate user ids
-        const uniqueuserids = [...new Set(userid)];
-        
-        //get user list
-        const { data, error } = await userClient
-        .from('users')
-        .select(fields)
-        .in('id', uniqueuserids);
-        if (error) return { status: 500, error: error.message };
-        return { status: 200, data : data || {} };
+        return await usersRepositoryInstance.searchOwnerInfo(userid, fields);
     }
 };
 
