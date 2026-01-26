@@ -123,7 +123,7 @@ const placesService = {
   },
   async uploadImages(placeId, images) {
     //verify place exists
-    const place = await placesRepo.getPlaceByIdRaw(placeId);
+    const place = await placesRepo.getPlaceByIdRaw(placeId, 'id');
     if (place.status !== 200) return place;
 
     //save images in bucket
@@ -138,7 +138,7 @@ const placesService = {
   },
   async updateFacilities(placeId, facilitiesData) {
     //verify place exists
-    const place = await placesRepo.getPlaceByIdRaw(placeId);
+    const place = await placesRepo.getPlaceByIdRaw(placeId, 'id');
     if (place.status !== 200) return place;
     if (!place.data || place.data.length === 0) {
       return { status: 404, error: 'Place not found' };
@@ -147,7 +147,7 @@ const placesService = {
   },
   async addFacilities(placeId, facilitiesData) {
     //verify place exists
-    const place = await placesRepo.getPlaceByIdRaw(placeId);
+    const place = await placesRepo.getPlaceByIdRaw(placeId, 'id');
     if (place.status !== 200) return place;
     if (!place.data || place.data.length === 0) {
       return { status: 404, error: 'Place not found' };
@@ -170,6 +170,17 @@ const placesService = {
       .map(p => p.data);
     
     return { status: 200, data: successfulPlaces };
+  },
+  
+  async deleteImage(placeId, imageId) {
+    // Verify place exists
+    const place = await placesRepo.getPlaceByIdRaw(placeId, 'id');
+    if (place.status !== 200) return place;
+    if (!place.data || place.data.length === 0) {
+      return { status: 404, error: 'Place not found' };
+    }
+    
+    return await placesRepo.deleteImageFromGallery(imageId);
   }
 };
 

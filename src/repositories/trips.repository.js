@@ -273,6 +273,36 @@ class TripsRepository {
     if (error) return { status: 500, error: error.message };
     return { status: 200, data: data };
   }
+  
+  async deleteImageFromGallery(imageId) {
+    // First get the image details to retrieve the filename
+    const { data: imageData, error: fetchError } = await this.tripsClient
+      .from('trips_gallery')
+      .select('filename, tripid')
+      .eq('id', imageId)
+      .single();
+    
+    if (fetchError) return { status: 500, error: fetchError.message };
+    if (!imageData) return { status: 404, error: 'Image not found' };
+    
+    // Delete from storage bucket
+    const bucketName = 'adondevamosNoGallery';
+    const { error: storageError } = await this.tripsClient.storage
+      .from(bucketName)
+      .remove([imageData.filename]);
+    
+    if (storageError) return { status: 500, error: storageError.message };
+    
+    // Delete from database
+    const { error: deleteError } = await this.tripsClient
+      .from('trips_gallery')
+      .delete()
+      .eq('id', imageId);
+    
+    if (deleteError) return { status: 500, error: deleteError.message };
+    
+    return { status: 200, data: { message: 'Image deleted successfully', imageId, filename: imageData.filename } };
+  }
 }
 
 export default TripsRepository;

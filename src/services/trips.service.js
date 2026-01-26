@@ -235,6 +235,17 @@ const tripsService = {
       return { status: 201, data: [] };
     }
     return await tripsRepo.createMemberList(tripId, membersData);
+  },
+  
+  async deleteImage(tripId, imageId) {
+    // Verify trip exists
+    const trip = await tripsRepo.getTripByIdRaw(tripId);
+    if (trip.status !== 200) return trip;
+    if (!trip.data || trip.data.length === 0) {
+      return { status: 404, error: 'Trip not found' };
+    }
+    
+    return await tripsRepo.deleteImageFromGallery(imageId);
   }
 };
 

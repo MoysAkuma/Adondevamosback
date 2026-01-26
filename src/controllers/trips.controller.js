@@ -261,6 +261,29 @@ const uploadImages = async (req, res, next) => {
   }
 };
 
+const deleteImage = async (req, res, next) => {
+  try {
+    const { TripID, ImageID } = req.params;
+    
+    if (!ImageID) {
+      return new ApiError(400, 'Image ID is required');
+    }
+    
+    const deleteResult = await tripsService.deleteImage(TripID, ImageID);
+    
+    if (deleteResult.status !== 200) {
+      return new ApiError(deleteResult.status, deleteResult.error || 'Image deletion failed');
+    }
+    
+    return new ApiResponse(res).success(
+      'Image deleted successfully',
+      deleteResult.data
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 const tripsController = {
   createTrip,
   getTripbyID,
@@ -273,7 +296,8 @@ const tripsController = {
   updateItinerary,
   createMemberList,
   updateMemberList,
-  uploadImages
+  uploadImages,
+  deleteImage
 };
 
 export default tripsController;

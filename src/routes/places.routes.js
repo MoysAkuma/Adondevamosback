@@ -30,5 +30,9 @@ const router = express.Router();
     router.get('/Places/lasted/:limit?',
         placesController.getNewPlaces
     )
+    
+    router.delete('/Places/:PlaceID/Images/:ImageID',
+        placesController.deleteImage
+    )
 
 export default router;

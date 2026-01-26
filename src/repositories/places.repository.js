@@ -233,7 +233,7 @@ class PlacesRepository {
   async getGalleryByPlaceId(placeId) {
     const { data, error } = await this.placesClient
       .from('places_gallery')
-      .select('filename, completeurl')
+      .select('id, filename, completeurl')
       .eq('placeid', placeId);
     if (error) return { status: 500, error: error.message };
     return { status: 200, data: data };
@@ -246,6 +246,36 @@ class PlacesRepository {
       .limit(limit);
     if (error) return { status: 500, error: error.message };
     return { status: 200, data };
+  }
+  
+  async deleteImageFromGallery(imageId) {
+    // First get the image details to retrieve the filename
+    const { data: imageData, error: fetchError } = await this.placesClient
+      .from('places_gallery')
+      .select('filename, placeid')
+      .eq('id', imageId)
+      .single();
+    
+    if (fetchError) return { status: 500, error: fetchError.message };
+    if (!imageData) return { status: 404, error: 'Image not found' };
+    
+    // Delete from storage bucket
+    const bucketName = 'adondevamosNoGallery';
+    const { error: storageError } = await this.placesClient.storage
+      .from(bucketName)
+      .remove([imageData.filename]);
+    
+    if (storageError) return { status: 500, error: storageError.message };
+    
+    // Delete from database
+    const { error: deleteError } = await this.placesClient
+      .from('places_gallery')
+      .delete()
+      .eq('id', imageId);
+    
+    if (deleteError) return { status: 500, error: deleteError.message };
+    
+    return { status: 200, data: { message: 'Image deleted successfully', imageId, filename: imageData.filename } };
   }
       
 

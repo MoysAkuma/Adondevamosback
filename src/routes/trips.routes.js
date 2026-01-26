@@ -141,5 +141,8 @@ router.get('/Trips/lasted/:Limit?',
 
 router.post('/Trips/:TripID/Images',
     tripsController.uploadImages);
+
+router.delete('/Trips/:TripID/Images/:ImageID',
+    tripsController.deleteImage);
     
 export default router;
