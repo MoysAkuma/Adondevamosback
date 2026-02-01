@@ -146,6 +146,27 @@ const usersService = {
     },
     async searchOwnerInfo( userid, fields = "id, name, tag, email") {
         return await usersRepositoryInstance.searchOwnerInfo(userid, fields);
+    },
+    async changeUserField( userid, field, value, extrafields = {}) {
+      const userExists = await usersRepositoryInstance.getUserById(userid);
+
+      if (userExists.status !== 200) {
+        return { status: 409, error: "User not found" };
+      }
+
+      if (!(field in userExists.data[0])) {
+        return { status: 400, error: `Field ${field} does not exist on user` };
+      }
+      
+      if (field === 'password' 
+        && !extrafields.current != userExists.data[0].password ) {
+        return { status: 400, error: "This password is different from the current password" };
+      }
+
+      const updateData = { [field]: value };
+      const user = await usersRepositoryInstance.updateUser(userid, updateData);
+      if (user.status != 200) return { status: 500, error: user.error || "Service error" };
+      return user;
     }
 };
 
