@@ -22,4 +22,7 @@ router.get(
 router.put('/Users/:UserID',
     usersController.editUser);
 
+router.patch('/Users/:UserID/:field',
+    usersController.changeUserField);
+    
 export default router;

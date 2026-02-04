@@ -135,11 +135,48 @@ const searchUsersByField = async (req, res, next) => {
     }
 };
 
+const changeUserField = async (req, res, next) => {
+    try{
+        
+        //Get user id to search
+        const { UserID, field } = req.params;
+        
+        //GetrqBody
+        const { value } = req.body;
+
+        if (!field || !value) {
+            throw new ApiError(400, "Field and value are required");
+        }
+
+        if (field === 'password'){
+            const { current, value: newPassword } = req.body;
+            if (!current || !newPassword) {
+                throw new ApiError(400, "Current and new password are required");
+            }
+            if (current === newPassword) {
+                throw new ApiError(400, "New password must be different from current password");
+            }
+        }
+
+        const data = await usersService.changeUserField(
+            UserID,
+            field,
+            value,
+            (field === 'password') ? { current: req.body.current } : {}   
+        );
+        if (data.status != 200) throw new ApiError(data.status, "Failed to change user field");
+        new ApiResponse(res).successNoData(data.status);
+    } catch(error){
+        next(error);
+    }
+};
+
 export default {
     getUserByID,
     recoverPassword,
     verify,
     createUser,
     editUser,
-    searchUsersByField
+    searchUsersByField,
+    changeUserField
 };

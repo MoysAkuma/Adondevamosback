@@ -33,12 +33,11 @@ class usersRepository {
   async getUsersByField(field, value, 
     fields = "id, name, lastname, email, tag, description, countryid, stateid, cityid, enabled, hide") {
     const normalizedField = field.toLowerCase();
-    const normalizedValue = typeof value === 'string' ? `%${value.toLowerCase()}%` : `%${value}%`;
     
     const { data, error } = await this.userClient
         .from('users')
         .select(fields)
-        .ilike(normalizedField, normalizedValue);
+        .eq(normalizedField, value);
     
     if (error) return { status: 500, error: error.message };
     if (data.length === 0) return { status: 404, error: "Users not found" };
