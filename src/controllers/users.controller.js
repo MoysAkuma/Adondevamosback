@@ -158,17 +158,14 @@ const changeUserField = async (req, res, next) => {
             }
         }
 
-        
-
         const data = await usersService.changeUserField(
             UserID,
             field,
             value,
-            extrafields = (field === 'password') ? { current: req.body.current } : {}   
+            (field === 'password') ? { current: req.body.current } : {}   
         );
-
         if (data.status != 200) throw new ApiError(data.status, "Failed to change user field");
-        new ApiResponse(res).success('Change field process success', data.data, data.status);
+        new ApiResponse(res).successNoData(data.status);
     } catch(error){
         next(error);
     }
