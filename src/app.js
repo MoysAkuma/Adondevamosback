@@ -10,7 +10,7 @@ import usersRoutes from './routes/users.routes.js';
 import cataloguesRoutes from './routes/catalogues.routes.js';
 import votesRoutes from './routes/votes.routes.js';
 import errorMiddleware from './middleware/error.middleware.js'
-import login from './routes/login.routes.js';
+import authRoutes from './routes/auth.routes.js';
 import { env } from './config/env.js';
 dotenv.config();
 
@@ -34,7 +34,6 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
-// Set trust proxy BEFORE session middleware
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -50,7 +49,7 @@ redisConfig(app);
 
 // Routes
 app.use('/v1', tripsRoutes);
-app.use('/v1', login);
+app.use('/v1', authRoutes);
 app.use('/v1', placesRoutes);
 app.use('/v1', usersRoutes);
 app.use('/v1', cataloguesRoutes);
@@ -70,7 +69,7 @@ app.get('/health', (req, res) => {
 app.use(errorMiddleware.notFound);
 app.use(errorMiddleware.handleError);
 
-app.listen(3001, '0.0.0.0', () => {
-  console.log("Adondevamos.back is running at ", 3001);
-  console.log(`Swagger docs available at http://localhost:3001/api-docs`);
+app.listen(env.PORT, '0.0.0.0', () => {
+  console.log("Adondevamos.back is running at ", env.PORT);
+  console.log(`Swagger docs available at http://localhost:${env.PORT}/api-docs`);
 });
