@@ -117,9 +117,10 @@ class usersRepository {
     const { data, error } = await this.userClient
         .from('admins')
         .select()
-        .eq('id', userId);
+        .eq('userid', userId)
+        .eq('enabled', true);
     if (error) return { status: 500, error: error.message };
-    return { status: 200, data: ( data.length === 0 ) };
+    return { status: 200, data: { isAdmin: data.length > 0 } };
   }
 
   async searchByEmailAndPassword(email, password) {
