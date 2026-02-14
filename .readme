@@ -143,19 +143,20 @@ The Swagger interface provides detailed information about:
 ## 🔌 API Endpoints
 
 ### Authentication
-- **POST** `/v1/login` - Authenticate a user (returns 409 if credentials are invalid)
+- **POST** `/v1/Login` - Authenticate a user (returns 409 if credentials are invalid)
 - **GET** `/v1/check-auth` - Check if session is still valid
-- **POST** `/v1/logout` - Delete user session
+- **POST** `/v1/Logout` - Delete user session
 
 ### Users
-- **GET** `/v1/Users/:UserID` - Retrieve user information
-- **PUT** `/v1/Users/:UserID` - Update user information
+- **POST** `/Users` - Create a new user
+- **GET** `/v1/Users/:UserID` - Retrieve user information by id
+- **PUT** `/v1/Users/:UserID` - Update user information by id
 - **DELETE** `/v1/Users/:UserID` - Delete a user
-- **PATCH** `/v1/Users/Password/Change` - Change user password
-- **PATCH** `/v1/Users/:UserID/Show` - Show a user
-- **PATCH** `/v1/Users/:UserID/Hide` - Hide a user
-- **GET** `/v1/Users/Search/tag=:searchText` - Search users by name or description
-- **GET** `/v1/Users/Verify/Email/:email` - Verify if an email is available
+- **PATCH** `/v1/Users/:field` - Change user field value
+- **GET** `/v1/Users/Search/:field/:value` - Search users by field
+- **POST** `/v1/Users/RecoverPassword` - Send a email to user with password
+- **GET** `/v1/Users/Verify/:field/:value` - Verify if any user has a field with a given value
+
 
 ### Places
 - **POST** `/v1/Places` - Create a place
@@ -182,6 +183,8 @@ The Swagger interface provides detailed information about:
 - **PUT** `/v1/Trips/:TripID/Itinerary` - Update trip itinerary
 - **POST** `/v1/Trips/Search` - Search trips by filters
 - **GET** `/v1/Trips/lasted/:Limit?` - Retrieve last created trip 
+- **POST** `/v1/Trips/:TripID/Images` - Add images to gallery of trip
+- **DELETE** `/v1/Trips/:TripID/Images/:ImageID` - Remove an image of gallery
 
 ### Votes
 - **GET** `/v1/Votes/Trip/:tripId` - Retrieve votes by trip
