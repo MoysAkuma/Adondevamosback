@@ -206,9 +206,8 @@ The Swagger interface provides detailed information about:
 Adondevamosback/
 ├── src/
 │   ├── app.js                    # Main application entry point
-│   ├── index.js                  # Server initialization
 │   ├── config/                   # Configuration files
-│   │   ├── email.config.js       # Email/SMTP configuration
+│   │   ├── email.config.js       # Emails configuration and templates
 │   │   ├── env.js                # Environment variables
 │   │   ├── redis.config.js       # Redis cache/session config
 │   │   ├── supabase.js           # Supabase database config
