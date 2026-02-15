@@ -1,0 +1,303 @@
+import {ApiError} from  '../utils/apiError.js'
+import {ApiResponse} from  '../utils/apiResponse.js'
+import tripsService from '../services/trips.service.js';
+import placesService from '../services/places.service.js';
+import ubicationService from '../services/ubication.service.js';
+import usersService from '../services/users.service.js';
+
+//create trip
+const createTrip = async (req, res, next) => {
+  try{
+    //GetrqBody
+    const { name, ownerid, description, 
+            initialdate, finaldate } = req.body;
+    const data = await tripsService.createCountry({
+        name : name, 
+        description : description, 
+        initialdate : initialdate ,
+        finaldate : finaldate,
+        ownerid : ownerid,
+        hide : false
+    });
+    
+    if (data.status != 201) throw new ApiError(500, error.message);
+      new ApiResponse(res).success('Creation process sucess', data.data, data.status);
+  } catch(err){
+    next(err);
+  } 
+};
+
+const getTripbyID = async (req, res, next) => {
+  try {
+    //Get trip id to search
+    const { TripID } = req.params;
+
+    //Get userid from header
+    const userid = req.headers.userid || req.headers['user-id'];
+    
+    const trip = await tripsService.getTripById(TripID, userid);
+
+    if (trip.status == 500) throw new ApiError(500, trip.message);
+    if (trip.data.length === 0) throw new ApiError(404, 'Trip not found');
+    
+    new ApiResponse(res).success(
+      'Reading process sucess', 
+      trip.data);
+  } catch (err) {
+    next(err);
+  }
+};
+
+const updateTripbyID = async (req, res, next) => {
+  try {
+    //Get trip id to search
+    const { TripID } = req.params;
+
+    //Get userid from header
+    const userid = req.headers.userid || req.headers['user-id'];
+
+    //GetrqBody
+    const { name, description, 
+            initialdate, finaldate } = req.body;
+
+    const editedtrip = await tripsService.updateTrip(TripID, {
+        name : name, 
+        description : description, 
+        initialdate : initialdate ,
+        finaldate : finaldate,
+        lastupdateddate : new Date().toISOString()
+    });
+
+    if (editedtrip.status == 500) throw new ApiError(500, editedtrip.message);
+    
+    new ApiResponse(res).success(
+      'Updating Data sucess');
+
+  } catch (err) {
+    next(err);
+  }
+};
+
+const deleteTripbyID = async (req, res, next) => {
+  try {
+    //Get trip id to search
+    const { TripID } = req.params;
+    const resp = await tripsService.deleteTrip(TripID);
+
+    if (error) throw new ApiError(500,error.message);
+    new ApiResponse(res).success(
+      'Deletin process sucess', 
+      resp.data);
+  } catch (err) {
+    next(err);
+  }
+};
+
+//Get all countries
+const getAllTrips = async (req, res) => {
+  const page = parseInt(req.query.page) || 10;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+  try{
+    const trips = await tripsService.getAll();
+
+    if(trips.status != 200){
+      return ApiError(trips.message, trips.status )
+    }
+    return new ApiResponse(res).success(
+      'Reading all trips sucess', 
+      trips.data);
+  } catch(err){
+    return new ApiError(err.message, err.status);
+  }   
+};
+
+const getNewTrips = async (req, res) => {
+  try{
+    //get limit from params
+    const { Limit } = req.params;
+    //get news trips
+    const trips = await tripsService.getNewsTrips(Limit);
+    if(trips.status != 200){
+      return ApiError("new trips error", trips.status )
+    }
+
+    return new ApiResponse(res).success(
+      'Reading news trips sucess', 
+      trips.data);
+  } catch(err){
+    return new ApiError(err.message, err.status);
+  } 
+};
+
+const searchTrips = async (req, res) => {
+  try{
+    //Get filters to search
+    const { filters } = req.body;
+    
+    //call search
+    const foundedTrips = await tripsService.searchTrips(filters);
+    
+    if (foundedTrips.status != 200 ) {
+      return ApiError(foundedTrips.message, foundedTrips.status )
+    }
+    
+    return new ApiResponse(res).success(
+      'Search trips sucess', 
+      foundedTrips.data);
+  } catch(err){
+    return new ApiError(err.message, err.status);
+  }
+};
+
+const createItinerary = async (req, res, next) => {
+  try{
+    //Get trip id to search
+    const { TripID } = req.params;
+    //GetrqBody
+    const { Itinerary } = req.body;
+    const data = await tripsService.createItinerary(TripID, Itinerary);
+    if (data.status != 201) throw new ApiError(500, "Failed to create itinerary");
+      new ApiResponse(res).success('Itinerary creation process sucess', data.data, data.status);
+  } catch(err){
+    next(err);
+  }
+};
+
+const updateItinerary = async (req, res, next) => {
+  try{
+    //Get trip id to search
+    const { TripID } = req.params;
+    //GetrqBody
+    const { Itinerary } = req.body;
+    const data = await tripsService.updateItinerary(TripID, Itinerary);
+    
+    if (data.status != 201) throw new ApiError(data.status, "Failed to update itinerary");
+      new ApiResponse(res).success('Itinerary update process sucess', data.data, data.status);
+  }
+  catch(err){
+    next(err);
+  }
+};
+
+const createMemberList = async (req, res, next) => {
+  try{
+    //Get trip id to search
+    const { TripID } = req.params;
+    //GetrqBody
+    const { Members } = req.body;
+
+    const data = await tripsService.createMemberList(TripID, Members);
+    if (data.status != 201) throw new ApiError(500, "Failed to create member list");
+      new ApiResponse(res).success('Member list creation process sucess', data.data, data.status);
+  } catch(err){
+    next(err);
+  }
+};
+
+const updateMemberList = async (req, res, next) => {
+  try{
+    //Get trip id to search
+    const { TripID } = req.params;
+
+    //GetrqBody
+    const { Members } = req.body;
+    
+    const data = await tripsService.updateMemberList(TripID, Members);
+    if (data.status != 201) throw new ApiError(500, 
+      "Failed to update member list");
+      new ApiResponse(res).success('Member list update process sucess');
+  }
+  catch(err){
+    next(err);
+  }
+};
+
+const uploadImages = async (req, res, next) => {
+  try {
+    const { TripID } = req.params;
+    
+    // Validate request has images
+    if (!req.body.images || !Array.isArray(req.body.images)) {
+      throw new ApiError(400, 'Images array is required in request body');
+    }
+
+    // Convert base64 images to buffer format
+    const images = req.body.images.map((img, index) => {
+      if (!img.data) {
+        throw new ApiError(400, `Image data is required for image at index ${index}`);
+      }
+
+      // Handle base64 data
+      let buffer;
+      if (img.data.startsWith('data:')) {
+        // Extract base64 data from data URL
+        const base64Data = img.data.split(',')[1];
+        buffer = Buffer.from(base64Data, 'base64');
+      } else {
+        buffer = Buffer.from(img.data, 'base64');
+      }
+
+      return {
+        buffer: buffer,
+        mimetype: img.mimetype || 'image/jpeg',
+        extension: img.extension || 'jpg'
+      };
+    });
+
+    const result = await tripsService.uploadImages(TripID, images);
+
+    if (result.status !== 200) {
+      throw new ApiError(result.status, result.error);
+    }
+
+    new ApiResponse(res).success(
+      'Images uploaded successfully',
+      result.data,
+      201
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+const deleteImage = async (req, res, next) => {
+  try {
+    const { TripID, ImageID } = req.params;
+    
+    if (!ImageID) {
+      return new ApiError(400, 'Image ID is required');
+    }
+    
+    const deleteResult = await tripsService.deleteImage(TripID, ImageID);
+    
+    if (deleteResult.status !== 200) {
+      return new ApiError(deleteResult.status, deleteResult.error || 'Image deletion failed');
+    }
+    
+    return new ApiResponse(res).success(
+      'Image deleted successfully',
+      deleteResult.data
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+const tripsController = {
+  createTrip,
+  getTripbyID,
+  updateTripbyID,
+  deleteTripbyID,
+  getAllTrips,
+  getNewTrips,
+  searchTrips,
+  createItinerary,
+  updateItinerary,
+  createMemberList,
+  updateMemberList,
+  uploadImages,
+  deleteImage
+};
+
+export default tripsController;

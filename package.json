@@ -1,0 +1,34 @@
+{
+  "name": "adondevamosback",
+  "version": "Alpha",
+  "description": "a backend project in nodejs to manage a website",
+  "main": "src/app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js"
+  },
+  "keywords": [],
+  "author": "@Moysakuma",
+  "type": "module",
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "body-parser": "^2.2.0",
+    "connect-redis": "^9.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^4.21.2",
+    "express-session": "^1.18.2",
+    "nodemailer": "^7.0.11",
+    "redis": "^5.8.3",
+    "resend": "^6.9.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "whatwg-url": "^14.2.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}

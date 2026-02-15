@@ -1,0 +1,55 @@
+import { createClient } from '@supabase/supabase-js';
+import { env } from './env.js';
+
+const supabaseUrl = env.SUPABASE_URL;
+const supabaseKey = env.SUPABASE_ANON_KEY;
+const supabaseServiceKey = env.SUPABASE_SERVICE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Supabase URL and Key must be defined in environment variables');
+}
+
+// Main client with default schema (public)
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  db: {
+    schema: 'public' // Default schema
+  },
+  auth: {
+    persistSession: false // For server-side usage
+  }
+});
+
+// User client
+const userClient = createClient(supabaseUrl, supabaseServiceKey, {
+  db: { schema: 'users' }
+});
+
+// catalogues client
+const cataloguesClient = createClient(supabaseUrl, supabaseServiceKey, {
+  db: { schema: 'catalogues' }
+});
+
+// Trips client
+const clientTrips = createClient(supabaseUrl, supabaseServiceKey, {
+  db: { schema: 'trips' }
+});
+
+//places client
+const clientPlaces = createClient(supabaseUrl, supabaseServiceKey, {
+  db: { schema: 'places' }
+});
+
+//votes client
+const votesClient = createClient(supabaseUrl, supabaseServiceKey, {
+  db: { schema: 'votes' }
+});
+
+export { 
+  supabase as default,
+  supabase as publicSchemaClient,
+  userClient,
+  cataloguesClient,
+  clientTrips,
+  clientPlaces,
+  votesClient
+};

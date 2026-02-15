@@ -1,0 +1,293 @@
+# Adondevamos Backend API
+
+[![License](https://img.shields.io/badge/license-ISC-blue.svg)](LICENSE)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D%2014.16-brightgreen)](https://nodejs.org/)
+[![Express Version](https://img.shields.io/badge/express-%5E4.21.2-lightgrey)](https://expressjs.com/)
+
+A RESTful backend API for the Adondevamos web platform - a travel and places management system built with Node.js and Express.
+
+**Author:** [@MoysAkuma](https://github.com/MoysAkuma)  
+**Version:** Alpha
+
+## 📋 Table of Contents
+
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Running the Application](#running-the-application)
+- [API Documentation](#api-documentation)
+- [API Endpoints](#api-endpoints)
+- [Project Structure](#project-structure)
+- [Testing](#testing)
+- [Contributing](#contributing)
+- [License](#license)
+
+## ✨ Features
+
+- **User Management** - Authentication, authorization, and user profile management
+- **Place Management** - CRUD operations for places with facilities and location tracking
+- **Trip Management** - Create and manage trips with itineraries and members
+- **Catalogues** - Countries, states, cities, and facilities management
+- **Voting System** - User voting functionality for trips and places
+- **Session Management** - Redis-based session handling with cookie support
+- **API Documentation** - Interactive Swagger/OpenAPI documentation
+- **Health Monitoring** - Built-in health check endpoint
+- **CORS Support** - Configurable cross-origin resource sharing
+
+## 🛠 Tech Stack
+
+- **Runtime:** Node.js (>=14.16)
+- **Framework:** Express.js v4.21.2
+- **Database:** Supabase v2.49.4
+- **Cache/Session:** Redis v5.8.3 with connect-redis v9.0.0
+- **Documentation:** Swagger (swagger-jsdoc v6.2.8, swagger-ui-express v5.0.1)
+- **Email:** Nodemailer v7.0.11, Resend v6.9.1
+- **Other:** CORS, Cookie-parser, Express-session, Dotenv
+
+## 📦 Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Node.js** (v14.16 or higher)
+- **npm** (v6.0 or higher)
+- **Redis** server (v5.8.3 or higher)
+- **Supabase** account and project
+- **Git** for version control
+
+## 🚀 Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/MoysAkuma/Adondevamosback.git
+   cd Adondevamosback
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables:**
+   
+   Create a `.env` file in the root directory with the following variables:
+   ```env
+   # Server Configuration
+   PORT=3001
+   NODE_ENV=development
+   FRONT_URL=http://localhost:3000
+
+   # Supabase Configuration
+   SUPABASE_URL=your_supabase_url
+   SUPABASE_KEY=your_supabase_key
+
+   # Redis Configuration
+   REDIS_HOST=localhost
+   REDIS_PORT=6379
+   REDIS_PASSWORD=your_redis_password
+
+   # Session Configuration
+   SESSION_SECRET=your_session_secret
+
+   # Email Configuration
+   EMAIL_HOST=smtp.your-email-provider.com
+   EMAIL_PORT=587
+   EMAIL_USER=your_email@example.com
+   EMAIL_PASSWORD=your_email_password
+   ```
+
+## ⚙️ Configuration
+
+The application configuration is managed through environment variables in the `.env` file. Key configurations include:
+
+- **CORS:** Configure allowed origins in [src/app.js](src/app.js)
+- **Redis:** Session and cache settings in [src/config/redis.config.js](src/config/redis.config.js)
+- **Supabase:** Database connection in [src/config/supabase.js](src/config/supabase.js)
+- **Email:** SMTP settings in [src/config/email.config.js](src/config/email.config.js)
+- **Swagger:** API documentation in [src/config/swagger.config.js](src/config/swagger.config.js)
+
+## 🏃 Running the Application
+
+### Development Mode (with auto-reload):
+```bash
+npm run dev
+```
+
+### Production Mode:
+```bash
+npm start
+```
+
+The server will start on `http://localhost:3001` (or the PORT specified in your `.env` file).
+
+### Access Points:
+- **API Base URL:** `http://localhost:3001/v1`
+- **Swagger Documentation:** `http://localhost:3001/api-docs`
+- **Health Check:** `http://localhost:3001/health`
+
+## 📚 API Documentation
+
+Interactive API documentation is available via Swagger UI at:
+```
+http://localhost:3001/api-docs
+```
+
+The Swagger interface provides detailed information about:
+- Available endpoints
+- Request/response schemas
+- Authentication requirements
+- Example requests and responses
+
+
+## 🔌 API Endpoints
+
+### Authentication
+- **POST** `/v1/Login` - Authenticate a user (returns 409 if credentials are invalid)
+- **GET** `/v1/check-auth` - Check if session is still valid
+- **POST** `/v1/Logout` - Delete user session
+
+### Users
+- **POST** `/Users` - Create a new user
+- **GET** `/v1/Users/:UserID` - Retrieve user information by id
+- **PUT** `/v1/Users/:UserID` - Update user information by id
+- **DELETE** `/v1/Users/:UserID` - Delete a user
+- **PATCH** `/v1/Users/:field` - Change user field value
+- **GET** `/v1/Users/Search/:field/:value` - Search users by field
+- **POST** `/v1/Users/RecoverPassword` - Send a email to user with password
+- **GET** `/v1/Users/Verify/:field/:value` - Verify if any user has a field with a given value
+
+
+### Places
+- **POST** `/v1/Places` - Create a place
+- **GET** `/v1/Places/:PlaceID` - Retrieve place info by id
+- **PUT** `/v1/Places/:PlaceID` - Edit a place by id
+- **POST** `/v1/Places/Search` - Retrieve list of places by filters
+- **GET** `/v1/Places/Search/:field/:name` - Retrieve list of places by field
+- **POST** `/v1/Places/:PlaceID/Images` - Add images to gallery of a place
+- **POST** `/v1/Places/:PlaceID/Facilities` - Add facilities to a place
+- **PUT** `/v1/Places/:PlaceID/Facilities` - Remove added facilities and add a new list of facilities of a place
+- **GET** `/v1/Places/lasted/:limit?` - Retrieve last created places
+- **DELETE** `/v1/Places/:PlaceID/Images/:ImageID` - Remove photo of gallery by place and image
+
+### Trips
+- **GET** `/v1/Trips` - Retrieve list of last created trips
+- **POST** `/v1/Trips` - Create a new trip
+- **GET** `/v1/Trips/:TripID` - Retrieve trip information by ID
+- **PUT** `/v1/Trips/:TripID` - Update trip information
+- **DELETE** `/v1/Trips/:TripID` - Delete a trip
+- **GET** `/v1/Trips/View/News` - Retrieve last 5 created trips
+- **GET** `/v1/Trips/:TripID/Members` - Retrieve all members of a trip
+- **PUT** `/v1/Trips/:TripID/Members` - Update members list of a trip
+- **GET** `/v1/Trips/:TripID/Itinerary` - Retrieve trip itinerary
+- **PUT** `/v1/Trips/:TripID/Itinerary` - Update trip itinerary
+- **POST** `/v1/Trips/Search` - Search trips by filters
+- **GET** `/v1/Trips/lasted/:Limit?` - Retrieve last created trip 
+- **POST** `/v1/Trips/:TripID/Images` - Add images to gallery of trip
+- **DELETE** `/v1/Trips/:TripID/Images/:ImageID` - Remove an image of gallery
+
+### Votes
+- **GET** `/v1/Votes/Trip/:tripId` - Retrieve votes by trip
+- **GET** `/v1/Votes/Place/:placeId` - Retrieve votes by place
+- **POST** `/v1/Votes/:userid` - Create a new vote
+
+### Catalogues
+- **GET** `/v1/Catalogues/all` - Retrieve all catalogues catalogues
+- **GET** `/v1/Catalogues/countries` - Retrieve countries catalogue
+- **GET** `/v1/Catalogues/states` - Retrieve state catalogue
+- **GET** `/v1/Catalogues/cities` - Retrieve cities catalogue
+- **GET** `/v1/Catalogues/facilities` - Retrieve facilities catalogue
+- **POST** `/v1/Catalogues/:option` - Create an entity of catalogues
+- **PATCH** `/v1/Catalogues/:option/:id` - Edit an entity of catalogues
+
+## 📁 Project Structure
+
+```
+Adondevamosback/
+├── src/
+│   ├── app.js                    # Main application entry point
+│   ├── config/                   # Configuration files
+│   │   ├── email.config.js       # Emails configuration and templates
+│   │   ├── env.js                # Environment variables
+│   │   ├── redis.config.js       # Redis cache/session config
+│   │   ├── supabase.js           # Supabase database config
+│   │   └── swagger.config.js     # Swagger API documentation
+│   ├── controllers/              # Request handlers
+│   │   ├── catalogues.controller.js
+│   │   ├── login.controller.js
+│   │   ├── places.controller.js
+│   │   ├── trips.controller.js
+│   │   ├── users.controller.js
+│   │   └── votes.controller.js
+│   ├── repositories/             # Data access layer
+│   │   ├── catalogues.repository.js
+│   │   ├── places.repository.js
+│   │   ├── trips.repository.js
+│   │   ├── users.repository.js
+│   │   └── votes.repository.js
+│   ├── services/                 # Business logic
+│   │   ├── catalogues.service.js
+│   │   ├── places.service.js
+│   │   ├── trips.service.js
+│   │   ├── ubication.service.js
+│   │   ├── users.service.js
+│   │   └── votes.services.js
+│   ├── routes/                   # API route definitions
+│   │   ├── catalogues.routes.js
+│   │   ├── login.routes.js
+│   │   ├── places.routes.js
+│   │   ├── trips.routes.js
+│   │   ├── users.routes.js
+│   │   └── votes.routes.js
+│   ├── middleware/               # Express middleware
+│   │   ├── auth.js               # Authentication middleware
+│   │   └── error.middleware.js   # Error handling
+│   ├── mappers/                  # Data transformation
+│   │   └── ubication.mapper.js
+│   ├── models/                   # Data models/schemas
+│   │   └── schemas/
+│   ├── utils/                    # Utility functions
+│   │   ├── apiError.js           # Custom error classes
+│   │   └── apiResponse.js        # Standard response format
+│   └── validations/              # Input validation
+│       └── contriesValidations.js
+├── test/                         # Test files
+│   └── Adondevamos.postman_collection.json
+├── tests/                        # Unit tests
+│   └── repositories/
+│       ├── places.repository.test.js
+│       └── trips.repository.test.js
+├── package.json                  # Project dependencies
+├── .env                          # Environment variables (not in repo)
+└── .readme                       # This file
+```
+
+## 🧪 Testing
+
+The project uses Postman collections for API testing. Import the collection from:
+```
+test/Adondevamos.postman_collection.json
+```
+
+Unit tests are available in the `tests/` directory. To run tests:
+```bash
+npm test
+```
+
+
+## 📄 License
+
+This project is licensed under the ISC License.
+
+## 👤 Author
+
+**@MoysAkuma**
+- GitHub: [@MoysAkuma](https://github.com/MoysAkuma)
+
+## 📞 Support
+
+For issues, questions, or contributions, please open an issue on the GitHub repository.
+
+---
+
+**Made with ❤️ for the Adondevamos community**
