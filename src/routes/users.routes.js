@@ -1,6 +1,6 @@
 import express from 'express';
 import usersController from '../controllers/users.controller.js'
-
+import { authenticate } from '../middleware/auth.middleware.js';
 const router = express.Router();
 
 router.get('/Users/:UserID', 
@@ -20,9 +20,11 @@ router.get(
     usersController.searchUsersByField
 );
 router.put('/Users/:UserID',
+    authenticate,
     usersController.editUser);
 
 router.patch('/Users/:UserID/:field',
+    authenticate,
     usersController.changeUserField);
     
 export default router;

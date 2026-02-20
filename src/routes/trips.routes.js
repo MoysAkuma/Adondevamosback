@@ -1,5 +1,6 @@
 import express from 'express';
 import tripsController from '../controllers/trips.controller.js'
+import { authenticate } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 /** 
@@ -86,6 +87,7 @@ const router = express.Router();
 
 
 router.get('/Trips', 
+    authenticate,
     tripsController.getAllTrips);
 /**
  * @swagger
@@ -113,36 +115,45 @@ router.get('/Trips/:TripID',
     tripsController.getTripbyID);
 
 router.put('/Trips/:TripID', 
+    authenticate,
     tripsController.updateTripbyID);
 
 router.delete('/Trips/:TripID', 
+    authenticate,
     tripsController.deleteTripbyID);
 
 router.post('/Trips', 
+    authenticate,
     tripsController.createTrip);
 
 router.post('/Trips/Search',
     tripsController.searchTrips);
 
 router.post('/Trips/:TripID/Itinerary',
+    authenticate,
     tripsController.createItinerary);
 
 router.put('/Trips/:TripID/Itinerary',
+    authenticate,
     tripsController.updateItinerary);
 
 router.post('/Trips/:TripID/Members',
+    authenticate,
     tripsController.createMemberList);
 
 router.put('/Trips/:TripID/Members',
+    authenticate,
     tripsController.updateMemberList);
 
 router.get('/Trips/lasted/:Limit?',
     tripsController.getNewTrips);
 
 router.post('/Trips/:TripID/Images',
+    authenticate,
     tripsController.uploadImages);
 
 router.delete('/Trips/:TripID/Images/:ImageID',
+    authenticate,
     tripsController.deleteImage);
     
 export default router;

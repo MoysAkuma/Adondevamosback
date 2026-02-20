@@ -15,6 +15,8 @@ export const env = {
   PORT : process.env.PORT,
   FRONT_URL: process.env.FRONT_URL,
   SECRET: process.env.SECRET,
+  JWT_SECRET: process.env.JWT_SECRET || process.env.SECRET,
+  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
   NODE_ENV: process.env.NODE_ENV,
   RESEND_API: process.env.RESEND_API,
   EMAIL_FROM: process.env.EMAIL_FROM,

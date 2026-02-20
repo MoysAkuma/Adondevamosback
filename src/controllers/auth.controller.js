@@ -16,7 +16,10 @@ const login = async (req, res, next) => {
 
     const result = await authService.login(id, password, req);
 
-    new ApiResponse(res).success('Login success', result.user, result.status);
+    new ApiResponse(res).success('Login success', {
+      user: result.user,
+      token: result.token
+    }, result.status);
   } catch (err) {
     next(err);
   }
