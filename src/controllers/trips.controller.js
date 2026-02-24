@@ -38,7 +38,8 @@ const getTripbyID = async (req, res, next) => {
     const trip = await tripsService.getTripById(TripID, userid);
 
     if (trip.status == 500) throw new ApiError(500, trip.message);
-    if (trip.data.length === 0) throw new ApiError(404, 'Trip not found');
+    
+    if (!trip.data) throw new ApiError(404, 'Trip not found');
     
     new ApiResponse(res).success(
       'Reading process sucess', 
