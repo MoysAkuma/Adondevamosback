@@ -34,14 +34,14 @@ const authenticate = (req, res, next) => {
  * Checks if user has admin role
  */
 const authorizeAdmin = (req, res, next) => {
-  if (!req.user) {
+  if (!req.session.userId) {
     return res.status(401).json({ 
       error: 'Unauthorized',
       message: 'User not authenticated' 
     });
   }
-
-  if (!req.user.isAdmin && req.user.role !== 'admin') {
+  console.log('User role:', req.session.isAdmin);
+  if (!req.session.isAdmin) {
     return res.status(403).json({ 
       error: 'Forbidden',
       message: 'Admin access required' 

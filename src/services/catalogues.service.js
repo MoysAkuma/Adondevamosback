@@ -1,6 +1,40 @@
 import cataloguesRepository from '../repositories/catalogues.repository.js';
 import { cataloguesClient } from '../config/supabase.js';
+import { CatalogueOptionModel } from '../models/catalogue-option.model.js';
+
 const cataloguesRepo = new cataloguesRepository({ cataloguesClient });
+
+const CATALOGUE_ACTIONS = {
+    country: {
+        createMethod: 'createCountry',
+        updateMethod: 'updateCountryField'
+    },
+    state: {
+        createMethod: 'createState',
+        updateMethod: 'updateStateField'
+    },
+    city: {
+        createMethod: 'createCity',
+        updateMethod: 'updateCityField'
+    },
+    facility: {
+        createMethod: 'createFacility',
+        updateMethod: 'updateFacilityField'
+    }
+};
+
+async function executeCatalogueAction(option, type, data, id = null) {
+    const selectedOption = CatalogueOptionModel.validateOption(option);
+    const action = CATALOGUE_ACTIONS[selectedOption];
+    const repositoryMethod =
+        type === 'create' ? action.createMethod : action.updateMethod;
+
+    if (type === 'create') {
+        return await cataloguesRepo[repositoryMethod](data);
+    }
+
+    return await cataloguesRepo[repositoryMethod](data, id);
+}
 
 const cataloguesService = {
     
@@ -41,33 +75,27 @@ const cataloguesService = {
     },
     async updateCatalogueOption(option, id, data)
     {
-        
-        switch(option) {
-            case 'country':
-                return await cataloguesRepo.updateCountryField(data, id);
-            case 'state':
-                return await cataloguesRepo.updateStateField(data, id);
-            case 'city':
-                return await cataloguesRepo.updateCityField(data, id);
-            case 'facility':
-                return await cataloguesRepo.updateFacilityField(data, id);
-            default:
-                return { status: 400, error: "Invalid option" };
+        try {
+            const validatedId = CatalogueOptionModel.validateId(id);
+            const validatedData = CatalogueOptionModel.forUpdate(option, data);
+
+            return await executeCatalogueAction(
+                option,
+                'update',
+                validatedData,
+                validatedId
+            );
+        } catch (error) {
+            return { status: 400, error: error.message };
         }
     },
     async createCatalogueOption(option, data)
     {
-        switch(option) {
-            case 'country':
-                return await cataloguesRepo.createCountry(data);
-            case 'state':
-                return await cataloguesRepo.createState(data);
-            case 'city':
-                return await cataloguesRepo.createCity(data);
-            case 'facility':
-                return await cataloguesRepo.createFacility(data);
-            default:
-                return { status: 400, error: "Invalid option" };
+        try {
+            const validatedData = CatalogueOptionModel.forCreate(option, data);
+            return await executeCatalogueAction(option, 'create', validatedData);
+        } catch (error) {
+            return { status: 400, error: error.message };
         }
        
     }
