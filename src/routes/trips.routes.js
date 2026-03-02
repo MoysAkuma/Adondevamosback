@@ -153,15 +153,49 @@ const router = express.Router();
  *            description: The trip gallery images
  *            items:
  *              $ref: '#/components/schemas/GalleryItem'
- *          TripByIdResponse:
- *              type: object
- *              properties:
- *                  message:
- *                      type: string
- *                      example: Reading process sucess
- *                  info:
+ *      TripByIdResponse:
+ *         type: object
+ *         properties:
+ *             message:
+ *                 type: string
+ *                 example: Reading process sucess
+ *             info:
  *                      $ref: '#/components/schemas/Trip'
- */
+ *      CreateTripRq:
+ *        type: object
+ *        required:
+ *          - name
+ *          - description
+ *          - initialdate
+ *          - finaldate
+ *          - isinternational
+ *        properties:
+ *          name:
+ *            type: string
+ *            description: The name of the trip
+ *          description:
+ *            type: string
+ *            description: The description of the trip
+ *          initialdate:
+ *            type: string
+ *            format: date
+ *            description: The start date of the trip
+ *          finaldate:
+ *            type: string
+ *            format: date
+ *            description: The end date of the trip
+ *          isinternational:
+ *            type: boolean
+ *            description: Indicates if the trip is international
+ *      CreateTripRs:
+ *        type: object
+ *        properties:
+ *          message:
+ *            type: string
+ *            example: Trip created successfully
+ *          info:
+ *            $ref: '#/components/schemas/Trip'
+ * */
 
 /**
  * @swagger
@@ -279,13 +313,84 @@ router.get('/Trips',
 router.get('/Trips/:TripID', 
     tripsController.getTripbyID);
 
+
+/**
+ * @swagger
+ * /Trips:
+ *   post:
+ *     summary: Creates a new trip
+ *     tags: [Trips, Creation]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateTripRq'
+ *     responses:
+ *       201:
+ *         description: Trip created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CreaterTripRs'
+ *       400:
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Invalid input
+ *          
+ */
+router.post('/Trips', 
+    authenticate,
+    tripsController.createTrip);
+
+/**
+ * @swagger
+ * /Trips/{TripID}:
+ *   put:
+ *     summary: Updates a trip by ID
+ *     tags: [Trips, Update]
+ *     parameters:
+ *       - in: path
+ *         name: TripID
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The ID of the trip to update
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateTripRq'
+ *     responses:
+ *       200:
+ *         description: Trip updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UpdateTripRs'
+ *       400:
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Invalid input
+ */
 router.put('/Trips/:TripID', 
     authenticate,
     tripsController.updateTripbyID);
 
-router.post('/Trips', 
-    authenticate,
-    tripsController.createTrip);
+
 
 router.post('/Trips/Search',
     tripsController.searchTrips);
