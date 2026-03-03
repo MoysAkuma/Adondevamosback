@@ -1,23 +1,54 @@
 import {ApiError} from  '../utils/apiError.js'
 import {ApiResponse} from  '../utils/apiResponse.js'
 import tripsService from '../services/trips.service.js';
-import placesService from '../services/places.service.js';
-import ubicationService from '../services/ubication.service.js';
-import usersService from '../services/users.service.js';
+
+const getAuthenticatedUser = (req) => {
+  const userId = req.user?.id ?? req.user?.userId ?? null;
+  const isAdmin = !!req.user?.isAdmin || req.user?.role === 'admin';
+
+  return { userId, isAdmin };
+};
+
+const validateTripAdminOrCreator = async (req, tripId) => {
+  const { userId, isAdmin } = getAuthenticatedUser(req);
+
+  if (!userId) {
+    throw new ApiError(401, 'User not authenticated');
+  }
+
+  if (isAdmin) {
+    return userId;
+  }
+
+  const trip = await tripsService.getTripById(tripId, userId);
+
+  if (trip.status == 500) throw new ApiError(500, trip.message);
+  if (!trip.data) throw new ApiError(404, 'Trip not found');
+
+  if (Number(trip.data.owner?.id) !== Number(userId)) {
+    throw new ApiError(403, 'Only admin or trip creator can perform this action');
+  }
+
+  return userId;
+};
 
 //create trip
 const createTrip = async (req, res, next) => {
   try{
+    const { userId } = getAuthenticatedUser(req);
+    if (!userId) {
+      throw new ApiError(401, 'User not authenticated');
+    }
+
     //GetrqBody
-    const { name, ownerid, description, 
+    const { name, description, 
             initialdate, finaldate } = req.body;
-    const data = await tripsService.createCountry({
+    const data = await tripsService.createTrip({
         name : name, 
         description : description, 
         initialdate : initialdate ,
         finaldate : finaldate,
-        ownerid : ownerid,
-        hide : false
+        ownerid : userId
     });
     
     if (data.status != 201) throw new ApiError(500, error.message);
@@ -32,10 +63,9 @@ const getTripbyID = async (req, res, next) => {
     //Get trip id to search
     const { TripID } = req.params;
 
-    //Get userid from header
-    const userid = req.headers.userid || req.headers['user-id'];
+    const { userId } = getAuthenticatedUser(req);
     
-    const trip = await tripsService.getTripById(TripID, userid);
+    const trip = await tripsService.getTripById(TripID, userId);
 
     if (trip.status == 500) throw new ApiError(500, trip.message);
     
@@ -54,8 +84,7 @@ const updateTripbyID = async (req, res, next) => {
     //Get trip id to search
     const { TripID } = req.params;
 
-    //Get userid from header
-    const userid = req.headers.userid || req.headers['user-id'];
+    await validateTripAdminOrCreator(req, TripID);
 
     //GetrqBody
     const { name, description, 
@@ -83,6 +112,9 @@ const deleteTripbyID = async (req, res, next) => {
   try {
     //Get trip id to search
     const { TripID } = req.params;
+
+    await validateTripAdminOrCreator(req, TripID);
+
     const resp = await tripsService.deleteTrip(TripID);
 
     if (error) throw new ApiError(500,error.message);
@@ -155,6 +187,9 @@ const createItinerary = async (req, res, next) => {
   try{
     //Get trip id to search
     const { TripID } = req.params;
+
+    await validateTripAdminOrCreator(req, TripID);
+
     //GetrqBody
     const { Itinerary } = req.body;
     const data = await tripsService.createItinerary(TripID, Itinerary);
@@ -169,6 +204,9 @@ const updateItinerary = async (req, res, next) => {
   try{
     //Get trip id to search
     const { TripID } = req.params;
+
+    await validateTripAdminOrCreator(req, TripID);
+
     //GetrqBody
     const { Itinerary } = req.body;
     const data = await tripsService.updateItinerary(TripID, Itinerary);
@@ -185,6 +223,9 @@ const createMemberList = async (req, res, next) => {
   try{
     //Get trip id to search
     const { TripID } = req.params;
+
+    await validateTripAdminOrCreator(req, TripID);
+
     //GetrqBody
     const { Members } = req.body;
 
@@ -200,6 +241,8 @@ const updateMemberList = async (req, res, next) => {
   try{
     //Get trip id to search
     const { TripID } = req.params;
+
+    await validateTripAdminOrCreator(req, TripID);
 
     //GetrqBody
     const { Members } = req.body;
@@ -217,6 +260,8 @@ const updateMemberList = async (req, res, next) => {
 const uploadImages = async (req, res, next) => {
   try {
     const { TripID } = req.params;
+
+    await validateTripAdminOrCreator(req, TripID);
     
     // Validate request has images
     if (!req.body.images || !Array.isArray(req.body.images)) {
@@ -265,6 +310,8 @@ const uploadImages = async (req, res, next) => {
 const deleteImage = async (req, res, next) => {
   try {
     const { TripID, ImageID } = req.params;
+
+    await validateTripAdminOrCreator(req, TripID);
     
     if (!ImageID) {
       return new ApiError(400, 'Image ID is required');
