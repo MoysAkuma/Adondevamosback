@@ -1,20 +1,10 @@
 import {ApiError} from  '../utils/apiError.js'
 import {ApiResponse} from  '../utils/apiResponse.js'
+import { getAuthenticatedUser, requireAuthenticatedUser } from '../utils/auth-user.js';
 import tripsService from '../services/trips.service.js';
 
-const getAuthenticatedUser = (req) => {
-  const userId = req.user?.id ?? req.user?.userId ?? null;
-  const isAdmin = !!req.user?.isAdmin || req.user?.role === 'admin';
-
-  return { userId, isAdmin };
-};
-
 const validateTripAdminOrCreator = async (req, tripId) => {
-  const { userId, isAdmin } = getAuthenticatedUser(req);
-
-  if (!userId) {
-    throw new ApiError(401, 'User not authenticated');
-  }
+  const { userId, isAdmin } = requireAuthenticatedUser(req);
 
   if (isAdmin) {
     return userId;
@@ -35,10 +25,7 @@ const validateTripAdminOrCreator = async (req, tripId) => {
 //create trip
 const createTrip = async (req, res, next) => {
   try{
-    const { userId } = getAuthenticatedUser(req);
-    if (!userId) {
-      throw new ApiError(401, 'User not authenticated');
-    }
+    const { userId } = requireAuthenticatedUser(req);
 
     //GetrqBody
     const { name, description, 
@@ -64,7 +51,6 @@ const getTripbyID = async (req, res, next) => {
     const { TripID } = req.params;
 
     const { userId } = getAuthenticatedUser(req);
-    
     const trip = await tripsService.getTripById(TripID, userId);
 
     if (trip.status == 500) throw new ApiError(500, trip.message);
@@ -149,8 +135,11 @@ const getNewTrips = async (req, res) => {
   try{
     //get limit from params
     const { Limit } = req.params;
+    const { userId } = getAuthenticatedUser(req);
+    const parsedLimit = Number(Limit) || 5;
+
     //get news trips
-    const trips = await tripsService.getNewsTrips(Limit);
+    const trips = await tripsService.getNewsTrips(parsedLimit, userId);
     if(trips.status != 200){
       return ApiError("new trips error", trips.status )
     }

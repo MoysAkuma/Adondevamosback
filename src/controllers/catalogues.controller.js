@@ -105,7 +105,7 @@ const updateCatalogueOption = async (req, res, next) => {
 
 const createCatalogueOption = async (req, res, next) => {
     try {
-        console.log('Received request to create catalogue option with body:', req.body);
+        
         const { option } = req.params;
         const data = req.body;
         

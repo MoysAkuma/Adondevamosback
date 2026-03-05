@@ -40,7 +40,7 @@ const authorizeAdmin = (req, res, next) => {
       message: 'User not authenticated' 
     });
   }
-  console.log('User role:', req.session.isAdmin);
+
   if (!req.session.isAdmin) {
     return res.status(403).json({ 
       error: 'Forbidden',

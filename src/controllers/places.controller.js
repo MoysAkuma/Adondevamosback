@@ -3,6 +3,7 @@ import {ApiResponse} from  '../utils/apiResponse.js'
 import placesService from '../services/places.service.js';
 import ubicationService from '../services/ubication.service.js';
 import { mapPlacesWithUbicationNames } from '../mappers/ubication.mapper.js';
+import { getAuthenticatedUser } from '../utils/auth-user.js';
 /**
  *  Recibes PlaceID as param and returns place info
  */
@@ -11,10 +12,9 @@ const getPlaceByID = async (req, res, next) => {
     //Get place id to search
     const { PlaceID } = req.params;
 
-    //Get userid from header
-    const userid = req.headers.userid || req.headers['user-id'];
+    const { userId } = getAuthenticatedUser(req);
 
-    const place = await placesService.getPlaceById(PlaceID, userid);
+    const place = await placesService.getPlaceById(PlaceID, userId);
     
     if (place.status != 200) return new ApiError(place.status, place.message);
     

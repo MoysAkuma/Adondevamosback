@@ -25,7 +25,6 @@ if (dotenv.REDIS_HOST && dotenv.REDIS_PORT && dotenv.REDIS_PASSWORD) {
 }
 
 export default (app) => {
- //session config
 app.use(session({
     name:'sessionId',
     secret: dotenv.SECRET,
@@ -37,7 +36,6 @@ app.use(session({
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
         sameSite: dotenv.NODE_ENV === 'production' ? 'none' : 'lax'
-        // domain property removed for testing
     }
 }));
 };
