@@ -36,7 +36,6 @@ const searchPlaces = async (req, res, next) => {
     //Get filters
     const { filters } = req.body;
     const foundedPlaces = await placesService.searchPlaces(filters);
-    console.log('Founded places:', foundedPlaces);
     if (!foundedPlaces.data) throw new ApiError(foundedPlaces.status, foundedPlaces.message || 'No results to show');
     
     return new ApiResponse(res).success(

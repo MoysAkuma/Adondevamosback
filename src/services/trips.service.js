@@ -117,7 +117,6 @@ const tripsService = {
     //validate if the user has voted
     let userVote = { status: 200, data: { value: false } };
     if (userid) {
-      console.log(`Checking if user ${userid} has voted for trip ${tripId}`);
       userVote = await tripsRepo.getUserVoteByTripIdAndUserId(tripId, userid);
       if (userVote.status !== 200) return userVote;
     }
@@ -164,7 +163,7 @@ const tripsService = {
     //get trip list
     const foundedTrips = await tripsRepo.searchTrips(filters, 
       'id,name,description,initialdate,finaldate,isinternational,ownerid');
-      
+
     if( foundedTrips.status != 200 ) {
       return foundedTrips;
     }
