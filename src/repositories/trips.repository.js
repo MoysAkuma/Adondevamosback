@@ -105,6 +105,7 @@ class TripsRepository {
     
     const { data, error } = await query;
     if (error) return { status: 500, error };
+    if (!data || data.length === 0) return { status: 404, message: "No results to show" };
     return { status: 200, data };
   }
 

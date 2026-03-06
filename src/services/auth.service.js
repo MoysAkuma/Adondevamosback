@@ -132,22 +132,33 @@ const logout = async (req, res) => {
 const checkAuth = async (req) => {
   try {
     const sessionData = sessionService.validateSession(req);
-    
-    if (!sessionData.isValid) {
+
+    const authenticatedUserId = sessionData.isValid
+      ? sessionData.userId
+      : (req.user?.id ?? req.user?.userId ?? req.user?.userid ?? null);
+
+    if (!authenticatedUserId) {
       throw new ApiError(401, 'User not authenticated');
     }
-    
+
     // Verify user still exists in database
-    const data = await userService.getUserById(sessionData.userId);
+    const data = await userService.getUserById(authenticatedUserId);
     
     if (data.status !== 200) {
       throw new ApiError(401, 'Invalid session');
     }
+
+    const userRecord = Array.isArray(data.data) ? data.data[0] : data.data;
+    const adminRole = await userService.checkAdminRole(authenticatedUserId);
+    const isAdmin = adminRole?.status === 200 ? !!adminRole.data?.isAdmin : !!sessionData.isAdmin;
     
     return {
       isAuthenticated: true,
-      userId: sessionData.userId,
-      isAdmin: sessionData.isAdmin
+      userId: authenticatedUserId,
+      id: authenticatedUserId,
+      tag: userRecord?.tag || req.user?.tag || '',
+      role: isAdmin ? 'admin' : 'user',
+      isAdmin
     };
   } catch (error) {
     throw error;

@@ -76,7 +76,8 @@ class PlacesRepository {
     }
     const { data, error } = await query;
     if (error) return { status: 500, error };
-    return { status: 200, data };
+    if (!data || data.length === 0) return { status: 404, message: "No results to show" };
+    return { status: 200, data : data };
   }
   async getFacilitiesByPlaceId(placeId) {
     const { data, error } = await this.placesClient

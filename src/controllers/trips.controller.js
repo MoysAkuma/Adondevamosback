@@ -113,7 +113,7 @@ const deleteTripbyID = async (req, res, next) => {
 };
 
 //Get all countries
-const getAllTrips = async (req, res) => {
+const getAllTrips = async (req, res, next) => {
   const page = parseInt(req.query.page) || 10;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
@@ -121,17 +121,17 @@ const getAllTrips = async (req, res) => {
     const trips = await tripsService.getAll();
 
     if(trips.status != 200){
-      return ApiError(trips.message, trips.status )
+      throw new ApiError(trips.status, trips.message);
     }
     return new ApiResponse(res).success(
       'Reading all trips sucess', 
       trips.data);
   } catch(err){
-    return new ApiError(err.message, err.status);
+    next(err instanceof ApiError ? err : new ApiError(err.status || 500, err.message));
   }   
 };
 
-const getNewTrips = async (req, res) => {
+const getNewTrips = async (req, res, next) => {
   try{
     //get limit from params
     const { Limit } = req.params;
@@ -141,34 +141,32 @@ const getNewTrips = async (req, res) => {
     //get news trips
     const trips = await tripsService.getNewsTrips(parsedLimit, userId);
     if(trips.status != 200){
-      return ApiError("new trips error", trips.status )
+      throw new ApiError(trips.status, "new trips error");
     }
 
     return new ApiResponse(res).success(
       'Reading news trips sucess', 
       trips.data);
   } catch(err){
-    return new ApiError(err.message, err.status);
+    next(err instanceof ApiError ? err : new ApiError(err.status || 500, err.message));
   } 
 };
 
-const searchTrips = async (req, res) => {
+const searchTrips = async (req, res, next) => {
   try{
     //Get filters to search
     const { filters } = req.body;
     
     //call search
     const foundedTrips = await tripsService.searchTrips(filters);
-    
-    if (foundedTrips.status != 200 ) {
-      return ApiError(foundedTrips.message, foundedTrips.status )
-    }
+    if (!foundedTrips.data) throw new ApiError(404, 
+      foundedTrips.message || 'No results to show');
     
     return new ApiResponse(res).success(
       'Search trips sucess', 
       foundedTrips.data);
   } catch(err){
-    return new ApiError(err.message, err.status);
+    next(err instanceof ApiError ? err : new ApiError(err.status || 500, err.message));
   }
 };
 
@@ -303,13 +301,13 @@ const deleteImage = async (req, res, next) => {
     await validateTripAdminOrCreator(req, TripID);
     
     if (!ImageID) {
-      return new ApiError(400, 'Image ID is required');
+      throw new ApiError(400, 'Image ID is required');
     }
     
     const deleteResult = await tripsService.deleteImage(TripID, ImageID);
     
     if (deleteResult.status !== 200) {
-      return new ApiError(deleteResult.status, deleteResult.error || 'Image deletion failed');
+      throw new ApiError(deleteResult.status, deleteResult.error || 'Image deletion failed');
     }
     
     return new ApiResponse(res).success(

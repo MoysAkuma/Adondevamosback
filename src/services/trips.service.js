@@ -164,8 +164,9 @@ const tripsService = {
     //get trip list
     const foundedTrips = await tripsRepo.searchTrips(filters, 
       'id,name,description,initialdate,finaldate,isinternational,ownerid');
+      
     if( foundedTrips.status != 200 ) {
-      return ApiError("trips search error", foundedTrips.status )
+      return foundedTrips;
     }
     //get owners info
     const ownerIds = [...new Set(foundedTrips.data.map(trip => trip.ownerid))];

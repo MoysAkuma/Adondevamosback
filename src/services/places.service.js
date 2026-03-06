@@ -85,9 +85,10 @@ const placesService = {
 
   async searchPlaces(filters = {}, fields = 'id,name,countryid,stateid,cityid,address') {
     const base = await placesRepo.searchPlaces(filters, fields);
+    console.log('Base search result:', base);
     if (base.status !== 200) return base;
-    if (!base.data || base.data.length === 0) return { status: 200, data: [] };
-
+    if (!base.data || base.data.length === 0) return { status: 404 , message: "No results to show" };
+    console.log('Base search result data:', base.data);
     //get ubication names
     const ubicationNames = await ubicationService.getUbicationNamesByIDs(base.data);
     if (ubicationNames.status !== 200) return ubicationNames;
@@ -105,9 +106,9 @@ const placesService = {
     fields = 'id,name,countryid,stateid,cityid') {
     
     const base = await placesRepo.searchPlacesByField(field, name, fields);
-    
+    console.log('Base search result:', base);
     if (base.status !== 200) return base;
-    if (!base.data || base.data.length === 0) return { status: 200, data: [] };
+    if (!base.data || base.data.length === 0) return { status: 404, message: "No results to show" };
     //get ubication names
     const ubicationNames = 
     await ubicationService.getUbicationNamesByIDs(base.data);
