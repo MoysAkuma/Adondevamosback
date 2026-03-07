@@ -4,6 +4,7 @@ import placesService from '../services/places.service.js';
 import ubicationService from '../services/ubication.service.js';
 import { mapPlacesWithUbicationNames } from '../mappers/ubication.mapper.js';
 import { getAuthenticatedUser } from '../utils/auth-user.js';
+import { PlaceModel } from '../models/place.model.js';
 /**
  *  Recibes PlaceID as param and returns place info
  */
@@ -110,7 +111,7 @@ const uploadImages = async (req, res, next) => {
 
 const createPlace = async (req, res, next) => {
   try {
-    const placeData = req.body;
+    const placeData = PlaceModel.forCreate(req.body);
     const createResult = await placesService.createPlace(placeData);
 
     if (createResult.status !== 201) {
@@ -118,10 +119,15 @@ const createPlace = async (req, res, next) => {
     }
     return new ApiResponse(res).success(
       'Place created successfully',
-      createResult.data
+      { id: createResult.data?.id },
+      201
     );
   } catch (error) {
-    next(error);
+    if (error instanceof ApiError) {
+      return next(error);
+    }
+
+    return next(new ApiError(400, error.message || 'Invalid create place payload'));
   } 
 };
 
@@ -165,8 +171,8 @@ const updateFacilities = async (req, res, next) => {
 const addFacilities = async (req, res, next) => {
   try {
     const { PlaceID } = req.params;
-    const facilityData = req.body;
-    const addResult = await placesService.addFacility(PlaceID, facilityData);
+    const facilityData = req.body.Facilities;
+    const addResult = await placesService.addFacilities(PlaceID, facilityData);
     if (addResult.status !== 200) {
       throw new ApiError(addResult.status, addResult.error || 'Add facility failed');
     }

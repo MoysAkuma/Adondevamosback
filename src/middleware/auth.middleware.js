@@ -1,6 +1,7 @@
 // middlewares/auth.middleware.js
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
+import { requireAdminUser } from '../utils/auth-user.js';
 
 /**
  * Authentication middleware
@@ -34,21 +35,29 @@ const authenticate = (req, res, next) => {
  * Checks if user has admin role
  */
 const authorizeAdmin = (req, res, next) => {
-  if (!req.session.userId) {
-    return res.status(401).json({ 
+  try {
+    requireAdminUser(req);
+    next();
+  } catch (error) {
+    if (error?.statusCode === 401) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: error.message || 'User not authenticated'
+      });
+    }
+
+    if (error?.statusCode === 403) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: error.message || 'Admin access required'
+      });
+    }
+
+    return res.status(401).json({
       error: 'Unauthorized',
-      message: 'User not authenticated' 
+      message: 'Invalid token'
     });
   }
-
-  if (!req.session.isAdmin) {
-    return res.status(403).json({ 
-      error: 'Forbidden',
-      message: 'Admin access required' 
-    });
-  }
-
-  next();
 };
 
 export { authenticate, authorizeAdmin };
