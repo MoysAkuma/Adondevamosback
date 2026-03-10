@@ -135,11 +135,9 @@ const router = express.Router();
 
     router.post('/Places',
         authenticate,
-        authorizeAdmin,
         placesController.createPlace);
 
     router.put('/Places/:PlaceID',
-        authenticate,
         authorizeAdmin,
         placesController.updatePlace);
 
@@ -156,7 +154,6 @@ const router = express.Router();
     )
     
     router.delete('/Places/:PlaceID/Images/:ImageID',
-        authenticate,
         authorizeAdmin,
         placesController.deleteImage
     )

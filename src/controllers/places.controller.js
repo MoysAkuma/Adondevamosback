@@ -118,7 +118,8 @@ const createPlace = async (req, res, next) => {
     }
     return new ApiResponse(res).success(
       'Place created successfully',
-      createResult.data
+      createResult.data,
+      201
     );
   } catch (error) {
     next(error);

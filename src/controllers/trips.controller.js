@@ -2,6 +2,7 @@ import {ApiError} from  '../utils/apiError.js'
 import {ApiResponse} from  '../utils/apiResponse.js'
 import { getAuthenticatedUser, requireAuthenticatedUser } from '../utils/auth-user.js';
 import tripsService from '../services/trips.service.js';
+import TripModel from '../models/trip.model.js';
 
 const validateTripAdminOrCreator = async (req, tripId) => {
   const { userId, isAdmin } = requireAuthenticatedUser(req);
@@ -27,18 +28,18 @@ const createTrip = async (req, res, next) => {
   try{
     const { userId } = requireAuthenticatedUser(req);
 
-    //GetrqBody
-    const { name, description, 
-            initialdate, finaldate } = req.body;
+    // Validate request body
+    const validatedData = TripModel.forCreate(req.body);
+            
     const data = await tripsService.createTrip({
-        name : name, 
-        description : description, 
-        initialdate : initialdate ,
-        finaldate : finaldate,
+        name : validatedData.name, 
+        description : validatedData.description, 
+        initialdate : validatedData.initialdate,
+        finaldate : validatedData.finaldate,
         ownerid : userId
     });
     
-    if (data.status != 201) throw new ApiError(500, error.message);
+    if (data.status != 201) throw new ApiError(500, data.message);
       new ApiResponse(res).success('Creation process sucess', data.data, data.status);
   } catch(err){
     next(err);
@@ -72,15 +73,14 @@ const updateTripbyID = async (req, res, next) => {
 
     await validateTripAdminOrCreator(req, TripID);
 
-    //GetrqBody
-    const { name, description, 
-            initialdate, finaldate } = req.body;
+    // Validate request body
+    const validatedData = TripModel.forUpdate(req.body);
 
     const editedtrip = await tripsService.updateTrip(TripID, {
-        name : name, 
-        description : description, 
-        initialdate : initialdate ,
-        finaldate : finaldate,
+        name : validatedData.name, 
+        description : validatedData.description, 
+        initialdate : validatedData.initialdate,
+        finaldate : validatedData.finaldate,
         lastupdateddate : new Date().toISOString()
     });
 
