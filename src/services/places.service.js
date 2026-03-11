@@ -85,9 +85,10 @@ const placesService = {
 
   async searchPlaces(filters = {}, fields = 'id,name,countryid,stateid,cityid,address') {
     const base = await placesRepo.searchPlaces(filters, fields);
+    
     if (base.status !== 200) return base;
-    if (!base.data || base.data.length === 0) return { status: 200, data: [] };
-
+    if (!base.data || base.data.length === 0) return { status: 404 , message: "No results to show" };
+    
     //get ubication names
     const ubicationNames = await ubicationService.getUbicationNamesByIDs(base.data);
     if (ubicationNames.status !== 200) return ubicationNames;
@@ -107,7 +108,7 @@ const placesService = {
     const base = await placesRepo.searchPlacesByField(field, name, fields);
     
     if (base.status !== 200) return base;
-    if (!base.data || base.data.length === 0) return { status: 200, data: [] };
+    if (!base.data || base.data.length === 0) return { status: 404, message: "No results to show" };
     //get ubication names
     const ubicationNames = 
     await ubicationService.getUbicationNamesByIDs(base.data);
@@ -152,7 +153,11 @@ const placesService = {
     if (!place.data || place.data.length === 0) {
       return { status: 404, error: 'Place not found' };
     }
-    return await placesRepo.addFacilities(placeId, facilitiesData);
+    const createdFacilities = await placesRepo.addFacilities(placeId, facilitiesData);
+    if (createdFacilities.status !== 200) {
+      return createdFacilities;
+    }
+    return { status: 200, data: createdFacilities.data.map(facility => ({ id: facility.id })) };
   }, 
   async getNewPlaces(limit = 10, userid = null) {
     const result = await placesRepo.getNewPlaces(limit);

@@ -20,13 +20,35 @@ const app = express();
 import swaggerConfig from './config/swagger.config.js';
 
 const corsOptions = {
-  origin : (origin, callback) => { 
-    if(!origin || origin === env.FRONT_URL ) return callback(null, true);
-    return callback( new Error('Not allowed by CORS'));
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, Postman, or curl)
+    if (!origin) return callback(null, true);
+    
+    // List of allowed origins
+    const allowedOrigins = [
+      env.FRONT_URL,
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:5173'
+    ].filter(Boolean); // Remove undefined values
+    
+    // In development, allow all origins
+    if (env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+    
+    // Check if origin is in the allowed list
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    return callback(new Error('Not allowed by CORS'));
   },
-  methods: ['GET', 'POST', 'PUT','PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 
-    'Authorization', 'Accept', 'Origin', 'user-id'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'user-id'],
   credentials: true
 };
 

@@ -163,8 +163,9 @@ const tripsService = {
     //get trip list
     const foundedTrips = await tripsRepo.searchTrips(filters, 
       'id,name,description,initialdate,finaldate,isinternational,ownerid');
+
     if( foundedTrips.status != 200 ) {
-      return ApiError("trips search error", foundedTrips.status )
+      return foundedTrips;
     }
     //get owners info
     const ownerIds = [...new Set(foundedTrips.data.map(trip => trip.ownerid))];
@@ -182,16 +183,16 @@ const tripsService = {
     return { status: 200, data: foundedTrips.data };
   },
 
-  async getNewsTrips(limit = 5) {
-    const result = await tripsRepo.getNewsTrips(limit, 
-      'id,name,description,initialdate,finaldate,isinternational,ownerid');
+  async getNewsTrips(limit = 5, userId = null) {
+    const result = await tripsRepo.getNewsTrips(limit, 'id');
+    
     if (result.status !== 200) {
       return result;
     }
     
     //get info of trips
     let resultsToReturn = await Promise.all(
-      result.data.map(trip => this.getTripById(trip.id))
+      result.data.map(trip => this.getTripById(trip.id, userId))
     );
 
     return { status: 200, data: resultsToReturn.map(r => r.data) }; 

@@ -105,6 +105,7 @@ const updateCatalogueOption = async (req, res, next) => {
 
 const createCatalogueOption = async (req, res, next) => {
     try {
+        
         const { option } = req.params;
         const data = req.body;
         
@@ -117,9 +118,7 @@ const createCatalogueOption = async (req, res, next) => {
             throw new ApiError(result.status, `Failed to create ${option}`);
         }
 
-        new ApiResponse(res).success(
-            `${option} created successfully`
-        );
+        new ApiResponse(res).successNoData(201);
 
     } catch (error) {
         next(error);

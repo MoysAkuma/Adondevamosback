@@ -3,9 +3,11 @@
  * Handles all authentication-related business logic
  */
 
+import jwt from 'jsonwebtoken';
 import userService from './users.service.js';
 import sessionService from './session.service.js';
 import { ApiError } from '../utils/apiError.js';
+import { env } from '../config/env.js';
 
 /**
  * Email validation function
@@ -15,6 +17,38 @@ import { ApiError } from '../utils/apiError.js';
 const isEmail = (input) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(input);
+};
+
+/**
+ * Generates a JWT token for a user
+ * @param {Object} payload - User data to include in token
+ * @returns {string} JWT token
+ */
+const generateToken = (payload) => {
+  try {
+    const token = jwt.sign(
+      payload,
+      env.JWT_SECRET,
+      { expiresIn: env.JWT_EXPIRES_IN }
+    );
+    return token;
+  } catch (error) {
+    throw new ApiError(500, 'Error generating token', error);
+  }
+};
+
+/**
+ * Verifies and decodes a JWT token
+ * @param {string} token - JWT token to verify
+ * @returns {Object} Decoded token payload
+ */
+const verifyToken = (token) => {
+  try {
+    const decoded = jwt.verify(token, env.JWT_SECRET);
+    return decoded;
+  } catch (error) {
+    throw new ApiError(401, 'Invalid or expired token');
+  }
 };
 
 /**
@@ -46,8 +80,15 @@ const login = async (id, password, req) => {
     // Check if user is admin
     const isAdmin = (await userService.checkAdminRole(data.data.id)).data.isAdmin;
     
+    // Generate JWT token
+    const token = generateToken({
+      id: data.data.id,
+      tag: data.data.tag,
+      isAdmin: !!isAdmin,
+      role: isAdmin ? 'admin' : 'user'
+    });
     
-    // Create session
+    // Create session (optional - you can remove this if you want JWT-only auth)
     await sessionService.createSession(req, {
       id: data.data.id,
       isAdmin: !!isAdmin
@@ -61,6 +102,7 @@ const login = async (id, password, req) => {
         name: data.data.name,
         lastname: data.data.lastname
       },
+      token,
       status: data.status
     };
   } catch (error) {
@@ -90,22 +132,33 @@ const logout = async (req, res) => {
 const checkAuth = async (req) => {
   try {
     const sessionData = sessionService.validateSession(req);
-    
-    if (!sessionData.isValid) {
+
+    const authenticatedUserId = sessionData.isValid
+      ? sessionData.userId
+      : (req.user?.id ?? req.user?.userId ?? req.user?.userid ?? null);
+
+    if (!authenticatedUserId) {
       throw new ApiError(401, 'User not authenticated');
     }
-    
+
     // Verify user still exists in database
-    const data = await userService.getUserById(sessionData.userId);
+    const data = await userService.getUserById(authenticatedUserId);
     
     if (data.status !== 200) {
       throw new ApiError(401, 'Invalid session');
     }
+
+    const userRecord = Array.isArray(data.data) ? data.data[0] : data.data;
+    const adminRole = await userService.checkAdminRole(authenticatedUserId);
+    const isAdmin = adminRole?.status === 200 ? !!adminRole.data?.isAdmin : !!sessionData.isAdmin;
     
     return {
       isAuthenticated: true,
-      userId: sessionData.userId,
-      isAdmin: sessionData.isAdmin
+      userId: authenticatedUserId,
+      id: authenticatedUserId,
+      tag: userRecord?.tag || req.user?.tag || '',
+      role: isAdmin ? 'admin' : 'user',
+      isAdmin
     };
   } catch (error) {
     throw error;
@@ -137,7 +190,9 @@ const authService = {
   logout,
   checkAuth,
   validateCredentials,
-  isEmail
+  isEmail,
+  generateToken,
+  verifyToken
 };
 
 export default authService;

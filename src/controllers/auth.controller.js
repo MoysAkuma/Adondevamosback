@@ -16,7 +16,10 @@ const login = async (req, res, next) => {
 
     const result = await authService.login(id, password, req);
 
-    new ApiResponse(res).success('Login success', result.user, result.status);
+    new ApiResponse(res).success('Login success', {
+      user: result.user,
+      token: result.token
+    }, result.status);
   } catch (err) {
     next(err);
   }
@@ -28,10 +31,19 @@ const login = async (req, res, next) => {
  */
 const checkAuth = async (req, res, next) => {
   try {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.set('Surrogate-Control', 'no-store');
+
     const result = await authService.checkAuth(req);
 
     new ApiResponse(res).success('Reading process success', {
-      isAuthenticated: result.isAuthenticated
+      isAuthenticated: result.isAuthenticated,
+      id: result.id,
+      tag: result.tag,
+      role: result.role,
+      isAdmin: result.isAdmin
     });
   } catch (err) {
     next(err);

@@ -105,6 +105,7 @@ class TripsRepository {
     
     const { data, error } = await query;
     if (error) return { status: 500, error };
+    if (!data || data.length === 0) return { status: 404, message: "No results to show" };
     return { status: 200, data };
   }
 
@@ -158,13 +159,13 @@ class TripsRepository {
     const payload = itineraryData.map(item => ({
       initialdate: item.initialdate,
       finaldate: item.finaldate,
-      placeid: item.placeid
+      placeid: item.placeid,
+      tripid: tripId
     }));
     const { data, error } = await this.tripsClient
       .from('trips_itinerary')
       .insert(
-        payload.map(item => ({ ...item, 
-          tripid: tripId }))
+        payload
       )
       .select();
     if (error) return { status: 500, error };
