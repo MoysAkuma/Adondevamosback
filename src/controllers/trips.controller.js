@@ -40,7 +40,9 @@ const createTrip = async (req, res, next) => {
     });
     
     if (data.status != 201) throw new ApiError(500, data.message);
-      new ApiResponse(res).success('Creation process sucess', data.data, data.status);
+      new ApiResponse(res).success('Creation process sucess', 
+        data.data, 
+        data.status);
   } catch(err){
     next(err);
   } 
@@ -50,10 +52,10 @@ const getTripbyID = async (req, res, next) => {
   try {
     //Get trip id to search
     const { TripID } = req.params;
-    console.log("Received TripID:", TripID);
+    
     const { userId } = getAuthenticatedUser(req);
     const trip = await tripsService.getTripById(TripID, userId);
-    console.log("Trip data:", trip);
+    
     if (trip.status == 500) throw new ApiError(500, trip.message);
     
     if (!trip.data) throw new ApiError(404, 'Trip not found');
@@ -176,12 +178,13 @@ const createItinerary = async (req, res, next) => {
     const { TripID } = req.params;
 
     await validateTripAdminOrCreator(req, TripID);
-
     //GetrqBody
     const { Itinerary } = req.body;
     const data = await tripsService.createItinerary(TripID, Itinerary);
     if (data.status != 201) throw new ApiError(500, "Failed to create itinerary");
-      new ApiResponse(res).success('Itinerary creation process sucess', data.data, data.status);
+      new ApiResponse(res).success('Itinerary creation process sucess', 
+        data.data, 
+        data.status);
   } catch(err){
     next(err);
   }

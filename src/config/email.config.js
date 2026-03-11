@@ -60,10 +60,10 @@ export async function sendPasswordRecoveryEmail(to, password, userName = 'User')
       throw new Error('Failed to send recovery email');
     }
 
-    console.log('Password recovery email sent:', data.id);
+    
     return { success: true, messageId: data.id };
   } catch (error) {
-    console.error('Error sending password recovery email:', error);
+    
     throw new Error('Failed to send recovery email');
   }
 }

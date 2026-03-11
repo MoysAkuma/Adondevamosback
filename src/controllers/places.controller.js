@@ -177,7 +177,6 @@ const addFacilities = async (req, res, next) => {
   try {
     const { PlaceID } = req.params;
     const {Facilities} = req.body;
-    console.log('Received facilities data:', Facilities);
     if (!Array.isArray(Facilities)) {
       throw new ApiError(400, 'Facilities data must be an array');
     }
@@ -189,8 +188,7 @@ const addFacilities = async (req, res, next) => {
       'Facility added successfully',
       addResult.data
     );
-  }
-  catch (error) {
+  } catch (error) {
     next(error);
   }
 };

@@ -159,13 +159,13 @@ class TripsRepository {
     const payload = itineraryData.map(item => ({
       initialdate: item.initialdate,
       finaldate: item.finaldate,
-      placeid: item.placeid
+      placeid: item.placeid,
+      tripid: tripId
     }));
     const { data, error } = await this.tripsClient
       .from('trips_itinerary')
       .insert(
-        payload.map(item => ({ ...item, 
-          tripid: tripId }))
+        payload
       )
       .select();
     if (error) return { status: 500, error };
