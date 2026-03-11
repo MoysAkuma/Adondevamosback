@@ -153,7 +153,11 @@ const placesService = {
     if (!place.data || place.data.length === 0) {
       return { status: 404, error: 'Place not found' };
     }
-    return await placesRepo.addFacilities(placeId, facilitiesData);
+    const createdFacilities = await placesRepo.addFacilities(placeId, facilitiesData);
+    if (createdFacilities.status !== 200) {
+      return createdFacilities;
+    }
+    return { status: 200, data: createdFacilities.data.map(facility => ({ id: facility.id })) };
   }, 
   async getNewPlaces(limit = 10, userid = null) {
     const result = await placesRepo.getNewPlaces(limit);

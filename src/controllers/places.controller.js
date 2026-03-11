@@ -1,9 +1,8 @@
 import {ApiError} from  '../utils/apiError.js'
 import {ApiResponse} from  '../utils/apiResponse.js'
 import placesService from '../services/places.service.js';
-import ubicationService from '../services/ubication.service.js';
-import { mapPlacesWithUbicationNames } from '../mappers/ubication.mapper.js';
 import { getAuthenticatedUser } from '../utils/auth-user.js';
+import { createPlaceSchema, updatePlaceSchema } from '../schemas/places/place.schema.js';
 /**
  *  Recibes PlaceID as param and returns place info
  */
@@ -110,7 +109,12 @@ const uploadImages = async (req, res, next) => {
 
 const createPlace = async (req, res, next) => {
   try {
-    const placeData = req.body;
+    const validation = createPlaceSchema.safeParse(req.body);
+    if (!validation.success) {
+      const errorMessages = validation.error.errors.map(e => e.message).join(', ');
+      throw new ApiError(400, errorMessages);
+    }
+    const placeData = validation.data;
     const createResult = await placesService.createPlace(placeData);
 
     if (createResult.status !== 201) {
@@ -129,7 +133,13 @@ const createPlace = async (req, res, next) => {
 const updatePlace = async (req, res, next) => {
   try {
     const { PlaceID } = req.params;
-    const placeData = req.body;
+    const validation = updatePlaceSchema.safeParse(req.body);
+    if (!validation.success) {
+      const errorMessages = validation.error.errors.map(e => e.message).join(', ');
+      throw new ApiError(400, errorMessages);
+    }
+    const placeData = validation.data;
+
     const updateResult = await placesService.updatePlace(PlaceID, placeData);
     if (updateResult.status !== 200) {
       throw new ApiError(updateResult.status, updateResult.error || 'Place update failed');
@@ -146,11 +156,11 @@ const updatePlace = async (req, res, next) => {
 const updateFacilities = async (req, res, next) => {
   try {
     const { PlaceID } = req.params;
-    const facilitiesData = req.body.Facilities;
-    if (!Array.isArray(facilitiesData)) {
+    const { Facilities } = req.body;
+    if (!Array.isArray(Facilities)) {
       throw new ApiError(400, 'Facilities data must be an array');
     }
-    const updateResult = await placesService.updateFacilities(PlaceID, facilitiesData);
+    const updateResult = await placesService.updateFacilities(PlaceID, Facilities);
     if (updateResult.status !== 200) {
       throw new ApiError(updateResult.status, updateResult.error || 'Facilities update failed');
     }
@@ -166,8 +176,12 @@ const updateFacilities = async (req, res, next) => {
 const addFacilities = async (req, res, next) => {
   try {
     const { PlaceID } = req.params;
-    const facilityData = req.body;
-    const addResult = await placesService.addFacility(PlaceID, facilityData);
+    const {Facilities} = req.body;
+    console.log('Received facilities data:', Facilities);
+    if (!Array.isArray(Facilities)) {
+      throw new ApiError(400, 'Facilities data must be an array');
+    }
+    const addResult = await placesService.addFacilities(PlaceID, Facilities);
     if (addResult.status !== 200) {
       throw new ApiError(addResult.status, addResult.error || 'Add facility failed');
     }

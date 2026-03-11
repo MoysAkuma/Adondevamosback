@@ -50,10 +50,10 @@ const getTripbyID = async (req, res, next) => {
   try {
     //Get trip id to search
     const { TripID } = req.params;
-
+    console.log("Received TripID:", TripID);
     const { userId } = getAuthenticatedUser(req);
     const trip = await tripsService.getTripById(TripID, userId);
-
+    console.log("Trip data:", trip);
     if (trip.status == 500) throw new ApiError(500, trip.message);
     
     if (!trip.data) throw new ApiError(404, 'Trip not found');

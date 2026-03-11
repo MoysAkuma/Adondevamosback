@@ -60,7 +60,7 @@ class PlacesRepository {
     this.placesClient.from('places').
     select(fields)
     .limit(10)
-    .order('name', { ascending: true });
+    .order('createddate', { ascending: false });
     
     if (filters.name) {
       query = query.ilike('name', `%${filters.name}%`);
