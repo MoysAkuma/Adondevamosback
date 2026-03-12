@@ -9,6 +9,7 @@ import placesRoutes from './routes/places.routes.js';
 import usersRoutes from './routes/users.routes.js';
 import cataloguesRoutes from './routes/catalogues.routes.js';
 import votesRoutes from './routes/votes.routes.js';
+import rankingRoutes from './routes/ranking.routes.js';
 import errorMiddleware from './middleware/error.middleware.js'
 import authRoutes from './routes/auth.routes.js';
 import { env } from './config/env.js';
@@ -76,6 +77,7 @@ app.use('/v1', placesRoutes);
 app.use('/v1', usersRoutes);
 app.use('/v1', cataloguesRoutes);
 app.use('/v1', votesRoutes);
+app.use('/v1/', rankingRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
