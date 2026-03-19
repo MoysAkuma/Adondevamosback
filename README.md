@@ -274,6 +274,32 @@ Unit tests are available in the `tests/` directory. To run tests:
 npm test
 ```
 
+## 🗓️ Roadmap
+
+### Completed ✅
+- [x] User authentication with RBAC
+- [x] Trip creation and management
+- [x] Search functionality
+- [x] Admin management
+- [x] Session management with warnings
+- [x] Protected routes
+- [x] Responsive design
+- [x] Map integration for locations
+- [x] Image gallery and upload
+- [x] Jwt validation
+
+### In Progress 🚧
+- [ ] Migration to Google Cloud Platform
+- [ ] Ranking pages by votes
+- [ ] Google Maps API
+- [ ] Show trips and places by Users and Ubications
+- [ ] Comments
+
+### Planned 📋
+- [ ] SEO
+- [ ] Zod
+- [ ] Microservice Architechture
+---
 
 ## 📄 License
 
