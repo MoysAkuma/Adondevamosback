@@ -89,6 +89,27 @@ const tripsService = {
       };
     });
     
+    // get votes summary for itinerary items
+    const itineraryVotesSummary = await tripsRepo.getItineraryVotesSummaryByTripId(tripId);
+    if (itineraryVotesSummary.status !== 200) return itineraryVotesSummary;
+    
+    // get user votes for itinerary items if user is provided
+    let userItineraryVotes = new Set();
+    if (userid) {
+      const userVotesResult = await tripsRepo.getUserItineraryVotesByTripIdAndUserId(tripId, userid);
+      if (userVotesResult.status !== 200) return userVotesResult;
+      userItineraryVotes = userVotesResult.data;
+    }
+    
+    // add voting information to each itinerary item
+    itinerary.data = itinerary.data.map(item => ({
+      ...item,
+      votes: {
+        total: itineraryVotesSummary.data[item.place.id] || 0
+      },
+      userVoted: userItineraryVotes.has(item.place.id)
+    }));
+    
     // members
     const membersList = await tripsRepo.getMembersListByTripId(tripId);
     if (membersList.status !== 200) return membersList;
