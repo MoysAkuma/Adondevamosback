@@ -53,8 +53,12 @@ const getTripbyID = async (req, res, next) => {
     //Get trip id to search
     const { TripID } = req.params;
     
+    // Get optional fields parameter from query string
+    const { fields } = req.query;
+    const requestedFields = fields ? fields.split(',').map(f => f.trim()) : null;
+    
     const { userId } = getAuthenticatedUser(req);
-    const trip = await tripsService.getTripById(TripID, userId);
+    const trip = await tripsService.getTripById(TripID, userId, requestedFields);
     
     if (trip.status == 500) throw new ApiError(500, trip.message);
     
@@ -137,11 +141,16 @@ const getNewTrips = async (req, res, next) => {
   try{
     //get limit from params
     const { Limit } = req.params;
+    
+    // Get optional fields parameter from query string
+    const { fields } = req.query;
+    const requestedFields = fields ? fields.split(',').map(f => f.trim()) : null;
+    
     const { userId } = getAuthenticatedUser(req);
     const parsedLimit = Number(Limit) || 5;
 
     //get news trips
-    const trips = await tripsService.getNewsTrips(parsedLimit, userId);
+    const trips = await tripsService.getNewsTrips(parsedLimit, userId, requestedFields);
     if(trips.status != 200){
       throw new ApiError(trips.status, "new trips error");
     }

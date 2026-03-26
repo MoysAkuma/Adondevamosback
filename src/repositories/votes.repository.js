@@ -144,7 +144,7 @@ class VotesRepository {
         query = query.update(
             { 
                 value: value,
-                lastupdateddate: new Date() 
+                updateddate: new Date() 
             })
             .eq('userid', userId)
             .eq('tripid', tripId)

@@ -37,10 +37,10 @@ class TripsRepository {
     return { status: 200, data };
   }
 
-  async getTripByIdRaw(id) {
+  async getTripByIdRaw(id, fields = 'id,name,ownerid,description,initialdate,finaldate,isinternational') {
     const { data, error } = await this.tripsClient
       .from('trips')
-      .select('id,name,ownerid,description,initialdate,finaldate,isinternational')
+      .select(fields)
       .eq('id', id);
     if (error) return { status: 500, error };
     return { status: 200, data };
