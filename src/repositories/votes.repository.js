@@ -191,6 +191,29 @@ class VotesRepository {
         return { status: 200, data: data };
     }
 
+    async countVotesByUserId(userId, voteType = 'trips') {
+        const table = voteType === 'trips' ? 'trips' : 'places';
+        const { data, error, count } = await this.votesClient
+            .from(table)
+            .select('*', { count: 'exact', head: true })
+            .eq('userid', userId)
+            .eq('value', true);
+        if (error) return { status: 500, error: error.message };
+        return { status: 200, data: count };
+    }
+
+    async getVotedTripsByUserId(userId, limit = 3) {
+        const { data, error } = await this.votesClient
+            .from('trips')
+            .select('tripid, createddate')
+            .eq('userid', userId)
+            .eq('value', true)
+            .order('createddate', { ascending: false })
+            .limit(limit);
+        if (error) return { status: 500, error: error.message };
+        return { status: 200, data: data };
+    }
+
 };
 
 export default VotesRepository;

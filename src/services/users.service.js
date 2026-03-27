@@ -4,8 +4,11 @@ import { userClient } from "../config/supabase.js";
 import { matchUbicationNames } from "../mappers/ubication.mapper.js";
 import { sendPasswordRecoveryEmail, sendCreateAccountEmail } from '../config/email.config.js'
 import tripsService from './trips.service.js';
+import VotesRepository from "../repositories/votes.repository.js";
+import { votesClient } from "../config/supabase.js";
 
 const usersRepositoryInstance = new usersRepository({ userClient });
+const votesRepositoryInstance = new VotesRepository({ votesClient });
 
 const usersService = {
   async getUserById(userId, fields = "name, lastname, email, tag, countryid, stateid, cityid") {
@@ -167,6 +170,64 @@ const usersService = {
       const user = await usersRepositoryInstance.updateUser(userid, updateData);
       if (user.status != 200) return { status: 500, error: user.error || "Service error" };
       return { status: 200  };
+    },
+
+    async getProfileData(userId) {
+      // Get user info with ubication
+      const user = await usersRepositoryInstance.getUserById(userId, 
+        "name, lastname, email, tag, description, countryid, stateid, cityid, enabled, hide");
+      if (user.status != 200) return { status: 500, error: user.error || "Service error" };
+      
+      // Get ubication names
+      const ubicationNames = await ubicationService.getUbicationNamesByIDs(user.data);
+      if (ubicationNames.status !== 200) return ubicationNames;
+      const userWithUbicationNames = matchUbicationNames(user, ubicationNames);
+
+      // Get last 3 trips created by user
+      const tripsResult = await tripsService.searchTrips({ 
+        ownerid: userId,
+        fields: 'id,name,description,initialdate,finaldate,ownerid,statics,itinerary'
+      });
+      let createdTrips = [];
+      if (tripsResult.status === 200 && tripsResult.data) {
+        createdTrips = tripsResult.data
+          .sort((a, b) => new Date(b.initialdate) - new Date(a.initialdate))
+          .slice(0, 3);
+      }
+
+      // Get vote counts
+      const tripVotesCount = await votesRepositoryInstance.countVotesByUserId(userId, 'trips');
+      const placeVotesCount = await votesRepositoryInstance.countVotesByUserId(userId, 'places');
+
+      // Get last 3 voted trips
+      const votedTripsResult = await votesRepositoryInstance.getVotedTripsByUserId(userId, 3);
+      let votedTrips = [];
+      if (votedTripsResult.status === 200 && votedTripsResult.data) {
+        // Get trip details for each voted trip
+        const tripIds = votedTripsResult.data.map(v => v.tripid);
+        if (tripIds.length > 0) {
+          const votedTripsDetails = await Promise.all(
+            tripIds.map(tripId => tripsService.getTripById(tripId, userId, 
+              ['id', 'name', 'description', 'initialdate', 'finaldate', 'ownerid', 'statics', 'itinerary']))
+          );
+          votedTrips = votedTripsDetails
+            .filter(t => t.status === 200 && t.data)
+            .map(t => t.data);
+        }
+      }
+
+      return { 
+        status: 200, 
+        data: {
+          user: userWithUbicationNames.data[0] || {},
+          createdTrips: createdTrips,
+          votedTrips: votedTrips,
+          voteCounts: {
+            trips: tripVotesCount.status === 200 ? tripVotesCount.data : 0,
+            places: placeVotesCount.status === 200 ? placeVotesCount.data : 0
+          }
+        }
+      };
     }
 };
 

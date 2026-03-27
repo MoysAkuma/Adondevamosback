@@ -171,6 +171,22 @@ const changeUserField = async (req, res, next) => {
     }
 };
 
+const getProfileData = async (req, res, next) => {
+    try {
+        const { UserID } = req.params;
+        
+        const profileData = await usersService.getProfileData(UserID);
+        
+        if (profileData.status != 200) {
+            throw new ApiError(profileData.status, profileData.error || "Failed to get profile data");
+        }
+
+        new ApiResponse(res).success('Profile data retrieved successfully', profileData.data);
+    } catch (error) {
+        next(error);
+    }
+};
+
 export default {
     getUserByID,
     recoverPassword,
@@ -178,5 +194,6 @@ export default {
     createUser,
     editUser,
     searchUsersByField,
-    changeUserField
+    changeUserField,
+    getProfileData
 };
