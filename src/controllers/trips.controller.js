@@ -23,6 +23,36 @@ const validateTripAdminOrCreator = async (req, tripId) => {
   return userId;
 };
 
+const validateTripMemberOrCreator = async (req, tripId) => {
+  const { userId, isAdmin } = requireAuthenticatedUser(req);
+
+  if (isAdmin) {
+    return userId;
+  }
+
+  const trip = await tripsService.getTripById(tripId, userId);
+
+  if (trip.status == 500) throw new ApiError(500, trip.message);
+  if (!trip.data) throw new ApiError(404, 'Trip not found');
+
+  // Check if user is the trip owner
+  if (Number(trip.data.owner?.id) === Number(userId)) {
+    return userId;
+  }
+
+  // Check if user is a member of the trip
+  const members = await tripsService.getMembersListByTripId(tripId);
+  if (members.status !== 200) throw new ApiError(500, members.message);
+
+  const isMember = members.data.some(member => Number(member.userid) === Number(userId));
+  
+  if (!isMember) {
+    throw new ApiError(403, 'Only trip creator or members can perform this action');
+  }
+
+  return userId;
+};
+
 //create trip
 const createTrip = async (req, res, next) => {
   try{
@@ -53,8 +83,12 @@ const getTripbyID = async (req, res, next) => {
     //Get trip id to search
     const { TripID } = req.params;
     
+    // Get optional fields parameter from query string
+    const { fields } = req.query;
+    const requestedFields = fields ? fields.split(',').map(f => f.trim()) : null;
+    
     const { userId } = getAuthenticatedUser(req);
-    const trip = await tripsService.getTripById(TripID, userId);
+    const trip = await tripsService.getTripById(TripID, userId, requestedFields);
     
     if (trip.status == 500) throw new ApiError(500, trip.message);
     
@@ -137,11 +171,16 @@ const getNewTrips = async (req, res, next) => {
   try{
     //get limit from params
     const { Limit } = req.params;
+    
+    // Get optional fields parameter from query string
+    const { fields } = req.query;
+    const requestedFields = fields ? fields.split(',').map(f => f.trim()) : null;
+    
     const { userId } = getAuthenticatedUser(req);
     const parsedLimit = Number(Limit) || 5;
 
     //get news trips
-    const trips = await tripsService.getNewsTrips(parsedLimit, userId);
+    const trips = await tripsService.getNewsTrips(parsedLimit, userId, requestedFields);
     if(trips.status != 200){
       throw new ApiError(trips.status, "new trips error");
     }
@@ -195,7 +234,7 @@ const updateItinerary = async (req, res, next) => {
     //Get trip id to search
     const { TripID } = req.params;
 
-    await validateTripAdminOrCreator(req, TripID);
+    await validateTripMemberOrCreator(req, TripID);
 
     //GetrqBody
     const { Itinerary } = req.body;

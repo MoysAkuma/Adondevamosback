@@ -6,6 +6,9 @@ const router = express.Router();
 router.get('/Users/:UserID', 
     usersController.getUserByID);
 
+router.get('/Users/:UserID/Profile',
+    usersController.getProfileData);
+
 router.post('/Users/RecoverPassword',
     usersController.recoverPassword);
     

@@ -37,10 +37,10 @@ class TripsRepository {
     return { status: 200, data };
   }
 
-  async getTripByIdRaw(id) {
+  async getTripByIdRaw(id, fields = 'id,name,ownerid,description,initialdate,finaldate,isinternational') {
     const { data, error } = await this.tripsClient
       .from('trips')
-      .select('id,name,ownerid,description,initialdate,finaldate,isinternational')
+      .select(fields)
       .eq('id', id);
     if (error) return { status: 500, error };
     return { status: 200, data };
@@ -303,6 +303,43 @@ class TripsRepository {
     if (deleteError) return { status: 500, error: deleteError.message };
     
     return { status: 200, data: { message: 'Image deleted successfully', imageId, filename: imageData.filename } };
+  }
+  
+  async getItineraryVotesSummaryByTripId(tripId) {
+    const { data, error } = await this.votesClient
+      .from('trips_itineraries')
+      .select('placeid, tripid, value')
+      .eq('tripid', tripId)
+      .eq('value', true);
+      
+    if (error) return { status: 500, error };
+    
+    // Group votes by placeid and count them
+    const voteCounts = {};
+    data.forEach(vote => {
+      if (!voteCounts[vote.placeid]) {
+        voteCounts[vote.placeid] = 0;
+      }
+      voteCounts[vote.placeid]++;
+    });
+    
+    return { status: 200, data: voteCounts };
+  }
+  
+  async getUserItineraryVotesByTripIdAndUserId(tripId, userId) {
+    const { data, error } = await this.votesClient
+      .from('trips_itineraries')
+      .select('placeid, tripid, value')
+      .eq('tripid', tripId)
+      .eq('userid', userId)
+      .eq('value', true);
+      
+    if (error) return { status: 500, error };
+    
+    // Convert to a set of placeid that user has voted for
+    const userVotes = new Set(data.map(vote => vote.placeid));
+    
+    return { status: 200, data: userVotes };
   }
 }
 
