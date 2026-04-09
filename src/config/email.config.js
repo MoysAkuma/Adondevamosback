@@ -135,4 +135,136 @@ export async function sendCreateAccountEmail(to,
   }
 }
 
+/**
+ * Send email when user is added to a trip
+ * @param {string} to - Recipient email
+ * @param {string} userName - User name
+ * @param {string} tripName - Trip name
+ * @param {string} ownerName - Owner name
+ * @param {string} ownerTag - Owner tag
+ */
+export async function sendAddedToTripEmail(to, userName, tripName, ownerName, ownerTag) {
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #4c79adff; color: white; padding: 20px; text-align: center; }
+          .content { background-color: #e8ebc3ff; padding: 20px; border-radius: 5px; margin-top: 20px; }
+          .info { background-color: #b9f5e6ff; padding: 15px; border-left: 4px solid #4CAF50; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>You've Been Added to a Trip!</h1>
+          </div>
+          <div class="content">
+            <p>Hello <strong>${userName}</strong>,</p>
+            <p>You have been added as a member to the following trip:</p>
+            <div class="info">
+              <strong>Trip:</strong> ${tripName}<br/>
+              <strong>Added by:</strong> ${ownerName} (@${ownerTag})
+            </div>
+            <p>Add your plans, photos and memories too! 🌍✈️</p>
+          </div>
+          <div class="footer">
+            <p>© ${new Date().getFullYear()} AdondeVamos. All rights reserved.</p>
+            <p>This is an automated email. Please do not reply.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: `${env.EMAIL_FROM_NAME} <${env.EMAIL_FROM}>`,
+      to: [to],
+      subject: `You've been added to trip "${tripName}" - AdondeVamos`,
+      html: htmlContent
+    });
+
+    if (error) {
+      console.error('Error sending added to trip email:', error);
+      return { success: false, error };
+    }
+
+    console.log('Added to trip email sent:', data.id);
+    return { success: true, messageId: data.id };
+  } catch (error) {
+    console.error('Error sending added to trip email:', error);
+    return { success: false, error };
+  }
+}
+
+/**
+ * Send email when user is removed from a trip
+ * @param {string} to - Recipient email
+ * @param {string} userName - User name
+ * @param {string} tripName - Trip name
+ * @param {string} ownerName - Owner name
+ * @param {string} ownerTag - Owner tag
+ */
+export async function sendRemovedFromTripEmail(to, userName, tripName, ownerName, ownerTag) {
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #ff9800; color: white; padding: 20px; text-align: center; }
+          .content { background-color: #f9f9f9; padding: 20px; border-radius: 5px; margin-top: 20px; }
+          .info { background-color: #fff; padding: 15px; border-left: 4px solid #ff9800; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>You've Been Removed from a Trip</h1>
+          </div>
+          <div class="content">
+            <p>Hello <strong>${userName}</strong>,</p>
+            <p>You have been removed as a member from the following trip:</p>
+            <div class="info">
+              <strong>Trip:</strong> ${tripName}<br/>
+              <strong>Removed by:</strong> ${ownerName} (@${ownerTag})
+            </div>
+            <p>If you have any questions, please contact the trip organizer.</p>
+          </div>
+          <div class="footer">
+            <p>© ${new Date().getFullYear()} AdondeVamos. All rights reserved.</p>
+            <p>This is an automated email. Please do not reply.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: `${env.EMAIL_FROM_NAME} <${env.EMAIL_FROM}>`,
+      to: [to],
+      subject: `You've been removed from trip "${tripName}" - AdondeVamos`,
+      html: htmlContent
+    });
+
+    if (error) {
+      console.error('Error sending removed from trip email:', error);
+      return { success: false, error };
+    }
+
+    console.log('Removed from trip email sent:', data.id);
+    return { success: true, messageId: data.id };
+  } catch (error) {
+    console.error('Error sending removed from trip email:', error);
+    return { success: false, error };
+  }
+}
+
 export default resend;

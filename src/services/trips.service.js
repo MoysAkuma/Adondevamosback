@@ -3,6 +3,7 @@ import placesService from './places.service.js';
 import ubicationService from './ubication.service.js';
 import { clientTrips, userClient, votesClient } from '../config/supabase.js';
 import { mapPlacesWithUbicationNames } from '../mappers/ubication.mapper.js';
+import { sendAddedToTripEmail, sendRemovedFromTripEmail } from '../config/email.config.js';
 
 const tripsRepo = new TripsRepository(
   { 
@@ -103,9 +104,19 @@ const tripsService = {
         };
       });
       
-      // get votes summary for itinerary items
+      // get votes summary for itinerary items (all votes)
       const itineraryVotesSummary = await tripsRepo.getItineraryVotesSummaryByTripId(tripId);
       if (itineraryVotesSummary.status !== 200) return itineraryVotesSummary;
+      
+      // get member votes summary for itinerary items
+      // first get member list to get all member user IDs
+      const membersList = await tripsRepo.getMembersListByTripId(tripId);
+      let itineraryMemberVotes = { status: 200, data: {} };
+      if (membersList.status === 200 && membersList.data && membersList.data.length > 0) {
+        const memberUserIds = membersList.data.map(m => m.userid);
+        itineraryMemberVotes = await tripsRepo.getItineraryVotesByMembersByTripId(tripId, memberUserIds);
+        if (itineraryMemberVotes.status !== 200) return itineraryMemberVotes;
+      }
       
       // get user votes for itinerary items if user is provided
       let userItineraryVotes = new Set();
@@ -116,13 +127,19 @@ const tripsService = {
       }
       
       // add voting information to each itinerary item
-      itinerary.data = itinerary.data.map(item => ({
-        ...item,
-        votes: {
-          total: itineraryVotesSummary.data[item.place.id] || 0
-        },
-        userVoted: userItineraryVotes.has(item.place.id)
-      }));
+      itinerary.data = itinerary.data.map(item => {
+        const generalVotes = itineraryVotesSummary.data[item.place.id] || 0;
+        const memberVotes = itineraryMemberVotes.data[item.place.id] || 0;
+        return {
+          ...item,
+          votes: {
+            general: generalVotes,
+            members: memberVotes,
+            total_votes: generalVotes + memberVotes
+          },
+          userVoted: userItineraryVotes.has(item.place.id)
+        };
+      });
     }
     
     // members
@@ -283,7 +300,49 @@ const tripsService = {
     return await tripsRepo.createItinerary(tripId, itineraryData);
   },
   async createMemberList(tripId, membersData) {
-    return await tripsRepo.createMemberList(tripId, membersData);
+    // Create the member list
+    const result = await tripsRepo.createMemberList(tripId, membersData);
+    
+    // Send emails to newly added members
+    if (result.status === 201 && membersData && membersData.length > 0) {
+      // Get trip and owner information
+      const trip = await tripsRepo.getTripByIdRaw(tripId);
+      if (trip.status === 200 && trip.data && trip.data.length > 0) {
+        const tripInfo = trip.data[0];
+        
+        // Get owner information
+        const owner = await tripsRepo.getOwnerById(tripInfo.ownerid);
+        if (owner.status === 200 && owner.data && owner.data.length > 0) {
+          const ownerInfo = owner.data[0];
+          
+          // Get member user IDs
+          const memberUserIds = membersData.map(m => m.userid);
+          
+          // Get user details
+          const users = await tripsRepo.getUsersByIds(memberUserIds, 'id,name,lastname,email');
+          if (users.status === 200 && users.data) {
+            for (const user of users.data) {
+              if (user.email) {
+                try {
+                  await sendAddedToTripEmail(
+                    user.email,
+                    user.name,
+                    tripInfo.name,
+                    ownerInfo.name,
+                    ownerInfo.tag
+                  );
+                } catch (error) {
+                  console.error(`Failed to send added email to ${user.email}:`, error);
+                  // Continue even if email fails
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    return result;
   },
   async updateMemberList(tripId, membersData) {
     //get existing members list
@@ -291,10 +350,83 @@ const tripsService = {
     await tripsRepo.getMembersListByTripIds([tripId]);
     if (existingMembers.status !== 200) return existingMembers;
     
+    // Extract user IDs for comparison
+    const oldMemberIds = new Set((existingMembers.data || []).map(m => m.userid));
+    const newMemberIds = new Set((membersData || []).map(m => m.userid));
+    
+    // Find added and removed members
+    const addedMemberIds = [...newMemberIds].filter(id => !oldMemberIds.has(id));
+    const removedMemberIds = [...oldMemberIds].filter(id => !newMemberIds.has(id));
+    
+    // Get trip and owner information for email notifications
+    let tripInfo = null;
+    let ownerInfo = null;
+    
+    if (addedMemberIds.length > 0 || removedMemberIds.length > 0) {
+      // Get trip information
+      const trip = await tripsRepo.getTripByIdRaw(tripId);
+      if (trip.status === 200 && trip.data && trip.data.length > 0) {
+        tripInfo = trip.data[0];
+        
+        // Get owner information
+        const owner = await tripsRepo.getOwnerById(tripInfo.ownerid);
+        if (owner.status === 200 && owner.data && owner.data.length > 0) {
+          ownerInfo = owner.data[0];
+        }
+      }
+    }
+    
+    // Send emails to added members
+    if (addedMemberIds.length > 0 && tripInfo && ownerInfo) {
+      const addedUsers = await tripsRepo.getUsersByIds(addedMemberIds, 'id,name,lastname,email');
+      if (addedUsers.status === 200 && addedUsers.data) {
+        for (const user of addedUsers.data) {
+          if (user.email) {
+            try {
+              await sendAddedToTripEmail(
+                user.email,
+                user.name,
+                tripInfo.name,
+                ownerInfo.name,
+                ownerInfo.tag
+              );
+            } catch (error) {
+              console.error(`Failed to send added email to ${user.email}:`, error);
+              // Continue even if email fails
+            }
+          }
+        }
+      }
+    }
+    
     //delete existing members entries
     for (const item of existingMembers.data) {
       await tripsRepo.deleteMemberItem(item.id);
     }
+    
+    // Send emails to removed members
+    if (removedMemberIds.length > 0 && tripInfo && ownerInfo) {
+      const removedUsers = await tripsRepo.getUsersByIds(removedMemberIds, 'id,name,lastname,email');
+      if (removedUsers.status === 200 && removedUsers.data) {
+        for (const user of removedUsers.data) {
+          if (user.email) {
+            try {
+              await sendRemovedFromTripEmail(
+                user.email,
+                user.name,
+                tripInfo.name,
+                ownerInfo.name,
+                ownerInfo.tag
+              );
+            } catch (error) {
+              console.error(`Failed to send removed email to ${user.email}:`, error);
+              // Continue even if email fails
+            }
+          }
+        }
+      }
+    }
+    
     if (membersData.length === 0) {
       return { status: 201, data: [] };
     }

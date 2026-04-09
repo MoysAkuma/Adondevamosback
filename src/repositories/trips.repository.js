@@ -341,6 +341,32 @@ class TripsRepository {
     
     return { status: 200, data: userVotes };
   }
+  
+  async getItineraryVotesByMembersByTripId(tripId, memberUserIds) {
+    if (!memberUserIds || memberUserIds.length === 0) {
+      return { status: 200, data: {} };
+    }
+    
+    const { data, error } = await this.votesClient
+      .from('trips_itineraries')
+      .select('placeid, tripid, userid, value')
+      .eq('tripid', tripId)
+      .eq('value', true)
+      .in('userid', memberUserIds);
+      
+    if (error) return { status: 500, error };
+    
+    // Group votes by placeid and count only member votes
+    const memberVoteCounts = {};
+    data.forEach(vote => {
+      if (!memberVoteCounts[vote.placeid]) {
+        memberVoteCounts[vote.placeid] = 0;
+      }
+      memberVoteCounts[vote.placeid]++;
+    });
+    
+    return { status: 200, data: memberVoteCounts };
+  }
 }
 
 export default TripsRepository;
