@@ -2,10 +2,11 @@ import usersRepository from "../repositories/users.repository.js";
 import ubicationService from './ubication.service.js';
 import { userClient } from "../config/supabase.js";
 import { matchUbicationNames } from "../mappers/ubication.mapper.js";
-import { sendPasswordRecoveryEmail, sendCreateAccountEmail } from '../config/email.config.js'
+import { sendPasswordRecoveryEmail, sendCreateAccountEmail, sendEmailConfirmationEmail } from '../config/email.config.js'
 import tripsService from './trips.service.js';
 import VotesRepository from "../repositories/votes.repository.js";
 import { votesClient } from "../config/supabase.js";
+import { hashPassword, comparePassword, generateTemporaryPassword } from '../utils/password.js';
 
 const usersRepositoryInstance = new usersRepository({ userClient });
 const votesRepositoryInstance = new VotesRepository({ votesClient });
@@ -52,16 +53,34 @@ const usersService = {
     };
   },
   async recoverPassword(email) {
-    //get email and password
+    //get user data
     const userData = await usersRepositoryInstance.getUserByEmail(email);
     
     if (userData.status != 200) return { status: 500, error: userData.error || "Service error" };
     
-    const password = userData.data[0].password;
+    if (!userData.data || userData.data.length === 0) {
+      return { status: 404, error: "User not found" };
+    }
     
-    //send email
+    // Generate temporary password
+    const temporaryPassword = generateTemporaryPassword();
+    
+    // Hash the temporary password
+    const hashedPassword = await hashPassword(temporaryPassword);
+    
+    // Update user password in database
+    const updateResult = await usersRepositoryInstance.updateUser(
+      userData.data[0].id, 
+      { password: hashedPassword }
+    );
+    
+    if (updateResult.status !== 200) {
+      return { status: 500, error: "Failed to update password" };
+    }
+    
+    //send email with temporary password
     try {
-      await sendPasswordRecoveryEmail(email, password, userData.data[0].name);
+      await sendPasswordRecoveryEmail(email, temporaryPassword, userData.data[0].name);
       return { status: 200, data: null };
     } catch (error) {
       return { status: 500, error: "Failed to send recovery email" };
@@ -102,8 +121,24 @@ const usersService = {
       return { status: 409, error: "Tag already exists" };
     }
 
-    const user = await usersRepositoryInstance.createUser(CreateUserRq);
+    // Hash password before storing
+    const hashedPassword = await hashPassword(CreateUserRq.password);
+    const userDataToCreate = {
+      ...CreateUserRq,
+      password: hashedPassword
+    };
+
+    const user = await usersRepositoryInstance.createUser(userDataToCreate);
     if (user.status != 201) return { status: 500, error: user.error || "Service error" };
+
+    // Create email confirmation record
+    const userId = user.data[0].id;
+    const userEmail = CreateUserRq.email;
+    const confirmation = await usersRepositoryInstance.createEmailConfirmation(userId, userEmail);
+    if (confirmation.status !== 201) {
+      console.error('Failed to create email confirmation:', confirmation.error);
+      // Continue even if confirmation creation fails
+    }
 
     // ubication names
     const ubicationNames = await ubicationService.getUbicationNamesByIDs( user.data );
@@ -112,6 +147,19 @@ const usersService = {
     
     const infoToMail = userWithUbicationNames.data[0];
     
+    // Send email confirmation with token
+    if (confirmation.status === 201 && confirmation.data && confirmation.data.token) {
+      try {
+        await sendEmailConfirmationEmail(
+          infoToMail.email,
+          infoToMail.name + " " + infoToMail.lastname,
+          confirmation.data.token
+        );
+      } catch (error) {
+        console.error('Failed to send confirmation email:', error);
+        // Continue even if email fails
+      }
+    }
     
     //send welcome email
     await sendCreateAccountEmail( infoToMail.email, 
@@ -141,11 +189,37 @@ const usersService = {
     async checkTagExists(tag) {
         return await usersRepositoryInstance.checkTagExists(tag);
     },
-    async searchByEmail(email) {
-        return await usersRepositoryInstance.searchByEmail(email);
+    async searchByEmail(email, password) {
+        const result = await usersRepositoryInstance.searchByEmail(email);
+        if (result.status !== 200 || !result.data) {
+            return { status: 404, error: "User not found" };
+        }
+        
+        // Compare password with hashed password
+        const isPasswordValid = await comparePassword(password, result.data.password);
+        if (!isPasswordValid) {
+            return { status: 401, error: "Invalid credentials" };
+        }
+        
+        // Remove password from response
+        const { password: _, ...userWithoutPassword } = result.data;
+        return { status: 200, data: userWithoutPassword };
     },
-    async searchByTag(tag) {
-        return await usersRepositoryInstance.searchByTag(tag);
+    async searchByTag(tag, password) {
+        const result = await usersRepositoryInstance.searchByTag(tag);
+        if (result.status !== 200 || !result.data) {
+            return { status: 404, error: "User not found" };
+        }
+        
+        // Compare password with hashed password
+        const isPasswordValid = await comparePassword(password, result.data.password);
+        if (!isPasswordValid) {
+            return { status: 401, error: "Invalid credentials" };
+        }
+        
+        // Remove password from response
+        const { password: _, ...userWithoutPassword } = result.data;
+        return { status: 200, data: userWithoutPassword };
     },
     async searchOwnerInfo( userid, fields = "id, name, tag, email") {
         return await usersRepositoryInstance.searchOwnerInfo(userid, fields);
@@ -161,9 +235,20 @@ const usersService = {
         return { status: 400, error: `Field ${field} does not exist on user` };
       }
       
-      if (field === 'password' 
-        && extrafields.current != userExists.data[0].password ) {
-        return { status: 400, error: "This password is different from the current password" };
+      // Special handling for password field
+      if (field === 'password') {
+        // Verify current password matches
+        const isCurrentPasswordValid = await comparePassword(
+          extrafields.current, 
+          userExists.data[0].password
+        );
+        
+        if (!isCurrentPasswordValid) {
+          return { status: 400, error: "Current password is incorrect" };
+        }
+        
+        // Hash new password before saving
+        value = await hashPassword(value);
       }
 
       const updateData = { [field]: value };
@@ -228,6 +313,36 @@ const usersService = {
           }
         }
       };
+    },
+
+    async confirmEmail(token) {
+      // Verify token exists and get confirmation data
+      const verification = await usersRepositoryInstance.verifyEmailConfirmationToken(token);
+      if (verification.status !== 200) {
+        return { status: 404, error: verification.error || "Invalid confirmation token" };
+      }
+
+      const { userid, expirationstamp, confirmed } = verification.data;
+
+      // Check if already confirmed
+      if (confirmed) {
+        return { status: 400, error: "Email already confirmed" };
+      }
+
+      // Check if token expired
+      const now = new Date();
+      const expirationDate = new Date(expirationstamp);
+      if (now > expirationDate) {
+        return { status: 400, error: "Confirmation token has expired" };
+      }
+
+      // Mark as confirmed
+      const confirmResult = await usersRepositoryInstance.confirmEmail(token);
+      if (confirmResult.status !== 200) {
+        return { status: 500, error: "Failed to confirm email" };
+      }
+
+      return { status: 200, data: { message: "Email confirmed successfully", userid } };
     }
 };
 

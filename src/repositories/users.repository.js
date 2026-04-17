@@ -205,6 +205,51 @@ class usersRepository {
     if (error) return { status: 500, error: error.message };
     return { status: 200, data : data || {} };
   }
+
+  async createEmailConfirmation(userId, email, expirationHours = 24) {
+    // Calculate expiration timestamp (24 hours from now by default)
+    const expirationDate = new Date();
+    expirationDate.setHours(expirationDate.getHours() + expirationHours);
+    
+    const { data, error } = await this.userClient
+      .from('confirmations')
+      .insert({
+        userid: userId,
+        email: email,
+        expiration: expirationDate.toISOString(),
+        confirmed: false
+      })
+      .select('token, expiration')
+      .single();
+    
+    if (error) return { status: 500, error: error.message };
+    return { status: 201, data: data };
+  }
+
+  async verifyEmailConfirmationToken(token) {
+    const { data, error } = await this.userClient
+      .from('confirmations')
+      .select('userid, expiration, confirmed')
+      .eq('token', token)
+      .single();
+    
+    if (error) return { status: 404, error: 'Invalid confirmation token' };
+    if (!data) return { status: 404, error: 'Confirmation token not found' };
+    
+    return { status: 200, data: data };
+  }
+
+  async confirmEmail(token) {
+    const { data, error } = await this.userClient
+      .from('confirmations')
+      .update({ confirmed: true })
+      .eq('token', token)
+      .select()
+      .single();
+    
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data: data };
+  }
 };
 
 export default usersRepository;

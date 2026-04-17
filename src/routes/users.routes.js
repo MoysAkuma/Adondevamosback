@@ -12,6 +12,9 @@ router.get('/Users/:UserID/Profile',
 router.post('/Users/RecoverPassword',
     usersController.recoverPassword);
     
+router.get('/Users/ConfirmEmail',
+    usersController.confirmEmail);
+    
 router.get('/Users/Verify/:field/:value',
     usersController.verify);
     

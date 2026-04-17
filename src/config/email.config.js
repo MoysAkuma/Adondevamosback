@@ -267,4 +267,73 @@ export async function sendRemovedFromTripEmail(to, userName, tripName, ownerName
   }
 }
 
+/**
+ * Send email confirmation link
+ * @param {string} to - Recipient email
+ * @param {string} userName - User name
+ * @param {string} confirmationToken - Confirmation token (UUID)
+ */
+export async function sendEmailConfirmationEmail(to, userName, confirmationToken) {
+  const confirmationUrl = `${env.FRONTEND_URL || 'http://localhost:3000'}/confirm-email?token=${confirmationToken}`;
+  
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #4c79adff; color: white; padding: 20px; text-align: center; }
+          .content { background-color: #e8ebc3ff; padding: 20px; border-radius: 5px; margin-top: 20px; }
+          .button { background-color: #52B788; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0; font-weight: bold; }
+          .button:hover { background-color: #3D8B66; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+          .warning { color: #ff9800; font-size: 12px; margin-top: 10px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Confirm Your Email Address</h1>
+          </div>
+          <div class="content">
+            <p>Hello <strong>${userName}</strong>,</p>
+            <p>Thank you for creating an account with AdondeVamos! To complete your registration, please confirm your email address by clicking the button below:</p>
+            <div style="text-align: center;">
+              <a href="${confirmationUrl}" class="button">Confirm Email Address</a>
+            </div>
+            <p>Or copy and paste this link into your browser:</p>
+            <p style="background-color: #fff; padding: 10px; border: 1px solid #ddd; word-break: break-all;">${confirmationUrl}</p>
+            <p class="warning">⚠️ This link will expire in 24 hours. If you didn't create this account, please ignore this email.</p>
+          </div>
+          <div class="footer">
+            <p>© ${new Date().getFullYear()} AdondeVamos. All rights reserved.</p>
+            <p>This is an automated email. Please do not reply.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: `${env.EMAIL_FROM_NAME} <${env.EMAIL_FROM}>`,
+      to: [to],
+      subject: 'Confirm Your Email Address - AdondeVamos',
+      html: htmlContent
+    });
+
+    if (error) {
+      console.error('Error sending email confirmation:', error);
+      return { success: false, error };
+    }
+
+    console.log('Email confirmation sent:', data.id);
+    return { success: true, messageId: data.id };
+  } catch (error) {
+    console.error('Error sending email confirmation:', error);
+    return { success: false, error };
+  }
+}
+
 export default resend;
