@@ -79,7 +79,7 @@ const tripsService = {
       const placeIds = (itinerary.data || []).map(i => i.placeid);
       let placesList = { status: 200, data: [] };
       if (placeIds.length > 0) {
-        placesList = await placesService.searchPlacesByIDs(placeIds, 'id,name,countryid,stateid,cityid');
+        placesList = await placesService.searchPlacesByIDs(placeIds, 'id,name,countryid,stateid,cityid,latitude,longitude');
         if (placesList.status !== 200) return placesList;
       }
 
