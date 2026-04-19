@@ -1,9 +1,10 @@
 // Repository isolates all Supabase (DB) calls for trips domain.
 class TripsRepository {
-  constructor({ tripsClient, usersClient, votesClient }) {
+  constructor({ tripsClient, usersClient, votesClient, placesClient }) {
     this.tripsClient = tripsClient;
     this.usersClient = usersClient;
     this.votesClient = votesClient;
+    this.placesClient = placesClient;
   }
 
   async createTrip(payload) {
@@ -75,7 +76,11 @@ class TripsRepository {
     return { status: 200, data };
   }
 
-  async getUsersByIds(ids, fields = 'id,name,lastname,email,tag') {
+  async getUsersByIds(
+    ids, 
+    fields = 'id,name,lastname,email,tag',
+    userId = null
+  ) {
     const { data, error } = await this.usersClient
       .from('users')
       .select(fields)
@@ -84,15 +89,59 @@ class TripsRepository {
     return { status: 200, data };
   }
 
-  async searchTrips(filters = {}, fields = 'id,name,ownerid,initialdate,finaldate') {
+  async searchTrips(filters = {}, 
+    fields = 'id,name,ownerid,initialdate,finaldate', 
+    userId = null) {
     let query = this.tripsClient.from('trips').select(fields);
+    
+    // Handle location filters from places through itinerary table
+    const hasLocationFilter = filters.countryid || filters.stateid || filters.cityid;
+    if (hasLocationFilter) {
+      // First, find places matching the location criteria from places schema
+      let placesQuery = this.placesClient.from('places').select('id');
+      
+      if (filters.countryid) {
+        placesQuery = placesQuery.eq('countryid', filters.countryid);
+      }
+      
+      if (filters.stateid) {
+        placesQuery = placesQuery.eq('stateid', filters.stateid);
+      }
+      
+      if (filters.cityid) {
+        placesQuery = placesQuery.eq('cityid', filters.cityid);
+      }
+      
+      const { data: placesData, error: placesError } = await placesQuery;
+      if (placesError) return { status: 500, error: placesError };
+      
+      if (!placesData || placesData.length === 0) {
+        return { status: 404, message: "No results to show" };
+      }
+      
+      const placeIds = placesData.map(place => place.id);
+      
+      // Then find itineraries containing those places
+      const { data: itineraryData, error: itineraryError } = await this.tripsClient
+        .from('trips_itinerary')
+        .select('tripid')
+        .in('placeid', placeIds);
+      
+      if (itineraryError) return { status: 500, error: itineraryError };
+      
+      if (!itineraryData || itineraryData.length === 0) {
+        return { status: 404, message: "No results to show" };
+      }
+      
+      // Extract unique trip IDs from itinerary results
+      const tripIds = [...new Set(itineraryData.map(item => item.tripid))];
+      
+      // Filter trips by the found trip IDs
+      query = query.in('id', tripIds);
+    }
     
     if (filters.name) {
       query = query.ilike('name', `%${filters.name}%`);
-    }
-    
-    if (filters.ownerid) {
-      query = query.eq('ownerid', filters.ownerid);
     }
 
     if (filters.initialdate) {
@@ -102,6 +151,15 @@ class TripsRepository {
     if (filters.finaldate) {
       query = query.lte('finaldate', filters.finaldate);
     }
+
+    if (filters.mytrips){
+      query = query.eq('ownerid', userId);
+    }
+
+    if (filters.membertrips){
+      query = query.in('id', this.tripsClient.from('trips_members').select('tripid').eq('userid', userId));
+    }
+    
     
     const { data, error } = await query;
     if (error) return { status: 500, error };

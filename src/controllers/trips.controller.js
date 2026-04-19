@@ -195,11 +195,12 @@ const getNewTrips = async (req, res, next) => {
 
 const searchTrips = async (req, res, next) => {
   try{
+    const { userId } = getAuthenticatedUser(req);
     //Get filters to search
     const { filters } = req.body;
     
     //call search
-    const foundedTrips = await tripsService.searchTrips(filters);
+    const foundedTrips = await tripsService.searchTrips(filters, userId);
     if (!foundedTrips.data) throw new ApiError(404, 
       foundedTrips.message || 'No results to show');
     

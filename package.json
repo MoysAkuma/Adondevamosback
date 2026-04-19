@@ -14,6 +14,7 @@
   "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",
+    "bcryptjs": "^3.0.3",
     "body-parser": "^2.2.0",
     "connect-redis": "^9.0.0",
     "cookie-parser": "^1.4.7",

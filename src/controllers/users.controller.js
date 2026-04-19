@@ -77,9 +77,9 @@ const createUser = async (req, res, next) => {
                 hide : false
             }
         );
-        if (data.status != 201) throw new ApiError(500, "Failed to create user");
+        if (data.status != 201) throw new ApiError(data.status, "Failed to create user");
 
-        new ApiResponse(res).success('Creation process sucess', data.data, data.status);
+        new ApiResponse(res).success(201);
     } catch(error){
         next(error);
     }
@@ -187,6 +187,26 @@ const getProfileData = async (req, res, next) => {
     }
 };
 
+const confirmEmail = async (req, res, next) => {
+    try {
+        const { token } = req.query;
+        
+        if (!token) {
+            throw new ApiError(400, "Confirmation token is required");
+        }
+
+        const result = await usersService.confirmEmail(token);
+        
+        if (result.status !== 200) {
+            throw new ApiError(result.status, result.error || "Failed to confirm email");
+        }
+
+        new ApiResponse(res).success('Email confirmed successfully', result.data);
+    } catch (error) {
+        next(error);
+    }
+};
+
 export default {
     getUserByID,
     recoverPassword,
@@ -195,5 +215,6 @@ export default {
     editUser,
     searchUsersByField,
     changeUserField,
-    getProfileData
+    getProfileData,
+    confirmEmail
 };

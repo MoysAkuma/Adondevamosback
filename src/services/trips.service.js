@@ -1,7 +1,7 @@
 import TripsRepository from '../repositories/trips.repository.js';
 import placesService from './places.service.js';
 import ubicationService from './ubication.service.js';
-import { clientTrips, userClient, votesClient } from '../config/supabase.js';
+import { clientTrips, userClient, votesClient, clientPlaces } from '../config/supabase.js';
 import { mapPlacesWithUbicationNames } from '../mappers/ubication.mapper.js';
 import { sendAddedToTripEmail, sendRemovedFromTripEmail } from '../config/email.config.js';
 
@@ -9,7 +9,8 @@ const tripsRepo = new TripsRepository(
   { 
     tripsClient: clientTrips, 
     usersClient: userClient,
-    votesClient: votesClient
+    votesClient: votesClient,
+    placesClient: clientPlaces
   }
 );
 
@@ -78,7 +79,7 @@ const tripsService = {
       const placeIds = (itinerary.data || []).map(i => i.placeid);
       let placesList = { status: 200, data: [] };
       if (placeIds.length > 0) {
-        placesList = await placesService.searchPlacesByIDs(placeIds, 'id,name,countryid,stateid,cityid');
+        placesList = await placesService.searchPlacesByIDs(placeIds, 'id,name,countryid,stateid,cityid,latitude,longitude');
         if (placesList.status !== 200) return placesList;
       }
 
@@ -235,14 +236,16 @@ const tripsService = {
     return await tripsRepo.getMembersListByTripId(tripId);
   },
 
-  async getAll(filters = {}) {
-    return await tripsRepo.searchTrips(filters, 'id,name,ownerid,initialdate,finaldate');
+  async getAll(filters = {}, userId = null) {
+    return await tripsRepo.searchTrips(filters, 'id,name,ownerid,initialdate,finaldate', userId);
   },
 
-  async searchTrips(filters) {
+  async searchTrips(filters, 
+    userId = null) {
+
     //get trip list
     const foundedTrips = await tripsRepo.searchTrips(filters, 
-      'id,name,description,initialdate,finaldate,isinternational,ownerid');
+      'id,name,description,initialdate,finaldate,isinternational,ownerid', userId);
 
     if( foundedTrips.status != 200 ) {
       return foundedTrips;
