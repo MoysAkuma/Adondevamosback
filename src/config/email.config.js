@@ -4,7 +4,86 @@ import { env } from './env.js';
 const resend = new Resend(env.RESEND_API);
 
 /**
- * Send password recovery email
+ * Send password reset link email
+ * @param {string} to - Recipient email
+ * @param {string} resetLink - Password reset link
+ * @param {string} userName - User name
+ */
+export async function sendPasswordResetLinkEmail(to, resetLink, userName = 'User') {
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #4CAF50; color: white; padding: 20px; text-align: center; }
+          .content { background-color: #f9f9f9; padding: 20px; border-radius: 5px; margin-top: 20px; }
+          .button-container { text-align: center; margin: 30px 0; }
+          .reset-button { 
+            background-color: #4CAF50; 
+            color: white; 
+            padding: 15px 30px; 
+            text-decoration: none; 
+            border-radius: 5px; 
+            display: inline-block;
+            font-weight: bold;
+          }
+          .reset-button:hover { background-color: #45a049; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+          .warning { color: #ff9800; font-weight: bold; }
+          .expiry-note { background-color: #fff3cd; padding: 10px; border-left: 4px solid #ffc107; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Password Reset Request</h1>
+          </div>
+          <div class="content">
+            <p>Hello <strong>${userName}</strong>,</p>
+            <p>We received a request to reset your password for your AdondeVamos account.</p>
+            <p>Click the button below to reset your password:</p>
+            <div class="button-container">
+              <a href="${resetLink}" class="reset-button">Reset Password</a>
+            </div>
+            <p>If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; color: #666;">${resetLink}</p>
+            <div class="expiry-note">
+              <strong>⏰ Note:</strong> This link will expire in 1 hour for security reasons.
+            </div>
+            <p class="warning">⚠️ If you did not request this password reset, please ignore this email or contact support if you have concerns.</p>
+          </div>
+          <div class="footer">
+            <p>© ${new Date().getFullYear()} AdondeVamos. All rights reserved.</p>
+            <p>This is an automated email. Please do not reply.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: `${env.EMAIL_FROM_NAME} <${env.EMAIL_FROM}>`,
+      to: [to],
+      subject: 'Password Reset - AdondeVamos',
+      html: htmlContent
+    });
+
+    if (error) {
+      console.error('Error sending password reset email:', error);
+      throw new Error('Failed to send reset email');
+    }
+
+    return { success: true, messageId: data.id };
+  } catch (error) {
+    throw new Error('Failed to send reset email');
+  }
+}
+
+/**
+ * Send password recovery email (deprecated - use sendPasswordResetLinkEmail)
  * @param {string} to - Recipient email
  * @param {string} password - User password
  * @param {string} userName - User name
