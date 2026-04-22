@@ -1,14 +1,17 @@
 import usersRepository from "../repositories/users.repository.js";
+import PasswordResetsRepository from "../repositories/password-resets.repository.js";
 import ubicationService from './ubication.service.js';
 import { userClient } from "../config/supabase.js";
 import { matchUbicationNames } from "../mappers/ubication.mapper.js";
-import { sendPasswordRecoveryEmail, sendCreateAccountEmail, sendEmailConfirmationEmail } from '../config/email.config.js'
+import { sendPasswordRecoveryEmail, sendPasswordResetLinkEmail, sendCreateAccountEmail, sendEmailConfirmationEmail } from '../config/email.config.js'
 import tripsService from './trips.service.js';
 import VotesRepository from "../repositories/votes.repository.js";
 import { votesClient } from "../config/supabase.js";
-import { hashPassword, comparePassword, generateTemporaryPassword } from '../utils/password.js';
+import { hashPassword, comparePassword, generateTemporaryPassword, generateResetToken } from '../utils/password.js';
+import { env } from '../config/env.js';
 
 const usersRepositoryInstance = new usersRepository({ userClient });
+const passwordResetsRepositoryInstance = new PasswordResetsRepository({ userClient });
 const votesRepositoryInstance = new VotesRepository({ votesClient });
 
 const usersService = {
@@ -53,7 +56,7 @@ const usersService = {
     };
   },
   async recoverPassword(email) {
-    //get user data
+    // Get user data
     const userData = await usersRepositoryInstance.getUserByEmail(email);
     
     if (userData.status != 200) return { status: 500, error: userData.error || "Service error" };
@@ -61,16 +64,70 @@ const usersService = {
     if (!userData.data || userData.data.length === 0) {
       return { status: 404, error: "User not found" };
     }
+
+    const user = userData.data[0];
     
-    // Generate temporary password
-    const temporaryPassword = generateTemporaryPassword();
+    // Generate secure reset token
+    const resetToken = generateResetToken();
     
-    // Hash the temporary password
-    const hashedPassword = await hashPassword(temporaryPassword);
+    // Set token expiration (1 hour from now)
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1);
     
-    // Update user password in database
+    // Delete any existing tokens for this user
+    await passwordResetsRepositoryInstance.deleteUserResetTokens(user.id);
+    
+    // Save reset token to database
+    const tokenResult = await passwordResetsRepositoryInstance.createResetToken(
+      user.id,
+      email,
+      resetToken,
+      expiresAt.toISOString()
+    );
+    
+    if (tokenResult.status !== 201) {
+      console.error('Failed to create reset token:', tokenResult.error);
+      return { status: 500, error: tokenResult.error || "Failed to create reset token" };
+    }
+    
+    // Create reset link for frontend
+    const resetLink = `${env.FRONT_URL}/reset-password?token=${resetToken}`;
+    
+    // Send email with reset link
+    try {
+      await sendPasswordResetLinkEmail(email, resetLink, user.name);
+      return { status: 200, data: { message: "Password reset link sent to email" } };
+    } catch (error) {
+      return { status: 500, error: "Failed to send reset email" };
+    }
+  },
+
+  async resetPassword(token, newPassword) {
+    // Find the reset token
+    const tokenResult = await passwordResetsRepositoryInstance.findResetToken(token);
+    
+    if (tokenResult.status !== 200) {
+      return { status: 404, error: "Invalid or expired reset token" };
+    }
+
+    const resetRecord = tokenResult.data;
+    
+    // Check if token has expired
+    const now = new Date();
+    const expiredAt = new Date(resetRecord.expired_at);
+    
+    if (now > expiredAt) {
+      // Delete expired token
+      await passwordResetsRepositoryInstance.deleteResetToken(token);
+      return { status: 400, error: "Reset token has expired" };
+    }
+    
+    // Hash the new password
+    const hashedPassword = await hashPassword(newPassword);
+    
+    // Update user password
     const updateResult = await usersRepositoryInstance.updateUser(
-      userData.data[0].id, 
+      resetRecord.userid,
       { password: hashedPassword }
     );
     
@@ -78,14 +135,33 @@ const usersService = {
       return { status: 500, error: "Failed to update password" };
     }
     
-    //send email with temporary password
-    try {
-      await sendPasswordRecoveryEmail(email, temporaryPassword, userData.data[0].name);
-      return { status: 200, data: null };
-    } catch (error) {
-      return { status: 500, error: "Failed to send recovery email" };
+    // Delete the used token
+    await passwordResetsRepositoryInstance.deleteResetToken(token);
+    
+    return { status: 200, data: { message: "Password successfully reset" } };
+  },
+
+  async verifyResetToken(token) {
+    // Find the reset token
+    const tokenResult = await passwordResetsRepositoryInstance.findResetToken(token);
+    
+    if (tokenResult.status !== 200) {
+      return { status: 404, error: "Invalid reset token" };
     }
 
+    const resetRecord = tokenResult.data;
+    
+    // Check if token has expired
+    const now = new Date();
+    const expiredAt = new Date(resetRecord.expired_at);
+    
+    if (now > expiredAt) {
+      // Delete expired token
+      await passwordResetsRepositoryInstance.deleteResetToken(token);
+      return { status: 400, error: "Reset token has expired" };
+    }
+    
+    return { status: 200, data: { valid: true, email: resetRecord.email } };
   },
   async getUserByEmail(email) {
     const user = await usersRepositoryInstance.getUserByEmail(email);

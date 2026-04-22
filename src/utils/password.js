@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 /**
  * Hash a plain text password
@@ -32,4 +33,12 @@ export const generateTemporaryPassword = (length = 12) => {
     password += charset.charAt(Math.floor(Math.random() * charset.length));
   }
   return password;
+};
+
+/**
+ * Generate a secure UUID v4 token for password reset
+ * @returns {string} UUID v4 string
+ */
+export const generateResetToken = () => {
+  return crypto.randomUUID();
 };

@@ -26,11 +26,55 @@ const recoverPassword = async (req, res, next) => {
         const { email } = req.body;
         const recoverPassword = await usersService.recoverPassword(email);
         
-        if (recoverPassword.status != 200) throw new ApiError(500, "Failed to recover password");
+        if (recoverPassword.status != 200) throw new ApiError(recoverPassword.status, recoverPassword.error || "Failed to recover password");
 
-        new ApiResponse(res).success('Password recovery email sent successfully',null);
+        new ApiResponse(res).success('Password recovery email sent successfully', recoverPassword.data);
     }
     catch(error){
+        next(error);
+    }
+};
+
+const resetPassword = async (req, res, next) => {
+    try {
+        const { token, newPassword } = req.body;
+        
+        if (!token || !newPassword) {
+            throw new ApiError(400, "Token and new password are required");
+        }
+
+        if (newPassword.length < 6) {
+            throw new ApiError(400, "Password must be at least 6 characters long");
+        }
+
+        const result = await usersService.resetPassword(token, newPassword);
+        
+        if (result.status !== 200) {
+            throw new ApiError(result.status, result.error || "Failed to reset password");
+        }
+
+        new ApiResponse(res).success('Password reset successfully', result.data);
+    } catch (error) {
+        next(error);
+    }
+};
+
+const verifyResetToken = async (req, res, next) => {
+    try {
+        const { token } = req.query;
+        
+        if (!token) {
+            throw new ApiError(400, "Reset token is required");
+        }
+
+        const result = await usersService.verifyResetToken(token);
+        
+        if (result.status !== 200) {
+            throw new ApiError(result.status, result.error || "Invalid or expired token");
+        }
+
+        new ApiResponse(res).success('Token is valid', result.data);
+    } catch (error) {
         next(error);
     }
 };
@@ -210,6 +254,8 @@ const confirmEmail = async (req, res, next) => {
 export default {
     getUserByID,
     recoverPassword,
+    resetPassword,
+    verifyResetToken,
     verify,
     createUser,
     editUser,

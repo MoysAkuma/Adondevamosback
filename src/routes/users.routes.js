@@ -7,6 +7,12 @@ const router = express.Router();
 router.post('/Users/RecoverPassword',
     usersController.recoverPassword);
 
+router.post('/Users/ResetPassword',
+    usersController.resetPassword);
+
+router.get('/Users/VerifyResetToken',
+    usersController.verifyResetToken);
+
 router.get('/Users/ConfirmEmail',
     usersController.confirmEmail);
     

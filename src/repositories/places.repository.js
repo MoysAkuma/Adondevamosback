@@ -1,3 +1,5 @@
+import sharp from 'sharp';
+
 // Encapsulates all Supabase access for places.
 class PlacesRepository {
   constructor({ placesClient, catalogClient, votesClient }) {
@@ -145,13 +147,15 @@ class PlacesRepository {
       const uploadedUrls = [];
       const bucketName = 'adondevamosNoGallery';
       const folder = 'places';
+      const thumbnailFolder = 'places/thumbnails';
 
       for (let i = 0; i < images.length; i++) {
         const image = images[i];
         const timestamp = Date.now();
         const fileName = `${folder}/${placeId}_${timestamp}_${i}.${image.extension || 'jpg'}`;
+        const thumbnailFileName = `${thumbnailFolder}/${placeId}_${timestamp}_${i}.${image.extension || 'jpg'}`;
 
-        // Upload image to Supabase storage
+        // Upload original image to Supabase storage
         const { data, error } = await this.placesClient.storage
           .from(bucketName)
           .upload(fileName, image.buffer, {
@@ -162,6 +166,28 @@ class PlacesRepository {
 
         if (error) {
           return { status: 500, error: error.message };
+        }
+
+        // Generate 128x128px thumbnail
+        const thumbnailBuffer = await sharp(image.buffer)
+          .resize(128, 128, {
+            fit: 'cover',
+            position: 'center'
+          })
+          .toBuffer();
+
+        // Upload thumbnail to Supabase storage
+        const { error: thumbnailError } = await this.placesClient.storage
+          .from(bucketName)
+          .upload(thumbnailFileName, thumbnailBuffer, {
+            contentType: image.mimetype || 'image/jpeg',
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (thumbnailError) {
+          // Log error but don't fail the whole upload
+          console.error(`Failed to upload thumbnail for ${fileName}:`, thumbnailError.message);
         }
 
         // Get public URL
@@ -237,7 +263,23 @@ class PlacesRepository {
       .select('id, filename, completeurl')
       .eq('placeid', placeId);
     if (error) return { status: 500, error: error.message };
-    return { status: 200, data: data };
+    
+    // Add thumbnail URLs for each image
+    const bucketName = 'adondevamosNoGallery';
+    const galleryWithThumbnails = data.map(item => {
+      // Construct thumbnail path: places/file.jpg -> places/thumbnails/file.jpg
+      const thumbnailFilename = item.filename.replace('places/', 'places/thumbnails/');
+      const { data: thumbnailUrlData } = this.placesClient.storage
+        .from(bucketName)
+        .getPublicUrl(thumbnailFilename);
+      
+      return {
+        ...item,
+        thumbnailurl: thumbnailUrlData.publicUrl
+      };
+    });
+    
+    return { status: 200, data: galleryWithThumbnails };
   }
   async getNewPlaces(limit = 5, fields = 'id,name,countryid,stateid,cityid,address') {
     const { data, error } = await this.placesClient
@@ -267,6 +309,18 @@ class PlacesRepository {
       .remove([imageData.filename]);
     
     if (storageError) return { status: 500, error: storageError.message };
+    
+    // Delete thumbnail (construct thumbnail path from original filename)
+    // places/placeId_timestamp_i.jpg -> places/thumbnails/placeId_timestamp_i.jpg
+    const thumbnailFilename = imageData.filename.replace('places/', 'places/thumbnails/');
+    const { error: thumbnailError } = await this.placesClient.storage
+      .from(bucketName)
+      .remove([thumbnailFilename]);
+    
+    if (thumbnailError) {
+      // Log error but don't fail the whole deletion
+      console.error(`Failed to delete thumbnail ${thumbnailFilename}:`, thumbnailError.message);
+    }
     
     // Delete from database
     const { error: deleteError } = await this.placesClient
