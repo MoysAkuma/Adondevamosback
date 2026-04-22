@@ -1,3 +1,5 @@
+import sharp from 'sharp';
+
 // Repository isolates all Supabase (DB) calls for trips domain.
 class TripsRepository {
   constructor({ tripsClient, usersClient, votesClient, placesClient }) {
@@ -275,13 +277,15 @@ class TripsRepository {
       const uploadedUrls = [];
       const bucketName = 'adondevamosNoGallery';
       const folder = 'trips';
+      const thumbnailFolder = 'trips/thumbnails';
 
       for (let i = 0; i < images.length; i++) {
         const image = images[i];
         const timestamp = Date.now();
         const fileName = `${folder}/${tripId}_${timestamp}_${i}.${image.extension || 'jpg'}`;
+        const thumbnailFileName = `${thumbnailFolder}/${tripId}_${timestamp}_${i}.${image.extension || 'jpg'}`;
 
-        // Upload image to Supabase storage
+        // Upload original image to Supabase storage
         const { data, error } = await this.tripsClient.storage
           .from(bucketName)
           .upload(fileName, image.buffer, {
@@ -292,6 +296,28 @@ class TripsRepository {
 
         if (error) {
           return { status: 500, error: error.message };
+        }
+
+        // Generate 128x128px thumbnail
+        const thumbnailBuffer = await sharp(image.buffer)
+          .resize(128, 128, {
+            fit: 'cover',
+            position: 'center'
+          })
+          .toBuffer();
+
+        // Upload thumbnail to Supabase storage
+        const { error: thumbnailError } = await this.tripsClient.storage
+          .from(bucketName)
+          .upload(thumbnailFileName, thumbnailBuffer, {
+            contentType: image.mimetype || 'image/jpeg',
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (thumbnailError) {
+          // Log error but don't fail the whole upload
+          console.error(`Failed to upload thumbnail for ${fileName}:`, thumbnailError.message);
         }
 
         // Get public URL
@@ -330,7 +356,23 @@ class TripsRepository {
       .select('id,filename,completeurl')
       .eq('tripid', tripId);
     if (error) return { status: 500, error: error.message };
-    return { status: 200, data: data };
+    
+    // Add thumbnail URLs for each image
+    const bucketName = 'adondevamosNoGallery';
+    const galleryWithThumbnails = data.map(item => {
+      // Construct thumbnail path: trips/file.jpg -> trips/thumbnails/file.jpg
+      const thumbnailFilename = item.filename.replace('trips/', 'trips/thumbnails/');
+      const { data: thumbnailUrlData } = this.tripsClient.storage
+        .from(bucketName)
+        .getPublicUrl(thumbnailFilename);
+      
+      return {
+        ...item,
+        thumbnailurl: thumbnailUrlData.publicUrl
+      };
+    });
+    
+    return { status: 200, data: galleryWithThumbnails };
   }
   
   async deleteImageFromGallery(imageId) {
@@ -351,6 +393,18 @@ class TripsRepository {
       .remove([imageData.filename]);
     
     if (storageError) return { status: 500, error: storageError.message };
+    
+    // Delete thumbnail (construct thumbnail path from original filename)
+    // trips/tripId_timestamp_i.jpg -> trips/thumbnails/tripId_timestamp_i.jpg
+    const thumbnailFilename = imageData.filename.replace('trips/', 'trips/thumbnails/');
+    const { error: thumbnailError } = await this.tripsClient.storage
+      .from(bucketName)
+      .remove([thumbnailFilename]);
+    
+    if (thumbnailError) {
+      // Log error but don't fail the whole deletion
+      console.error(`Failed to delete thumbnail ${thumbnailFilename}:`, thumbnailError.message);
+    }
     
     // Delete from database
     const { error: deleteError } = await this.tripsClient
