@@ -16,7 +16,7 @@ class usersRepository {
     const { data, error } = await this.userClient
         .from('users')
         .select("id, name, tag, password")
-        .eq('email', email);
+        .ilike('email', email);
     if (error) return { status: 500, error: error.message };
     if (data.lenght === 0) return { status: 404, error: "User not found" };
     return { status: 200, data: data };
@@ -26,7 +26,7 @@ class usersRepository {
     const { data, error } = await this.userClient
         .from('users')
         .select("password")
-        .eq('email', email);
+        .ilike('email', email);
     if (error) return { status: 500, error: error.message };
     return { status: 200, data: data };
   }
@@ -127,11 +127,12 @@ class usersRepository {
     const { data, error } = await this.userClient
         .from('users')
         .select("id,name, tag, lastname")
-        .eq('email', email)
+        .ilike('email', email)
         .eq('password', password)
-        .single();
-    if (error) return { status: 409, error: error.message };
-    return { status: 200, data: data || {} };
+        .limit(1);
+    if (error) return { status: 500, error: error.message };
+    if (!data || data.length === 0) return { status: 404, error: "User not found" };
+    return { status: 200, data: data[0] };
   }
 
   async searchByTagAndPassword(tag, password) {
@@ -140,9 +141,10 @@ class usersRepository {
         .select("id, name, tag, lastname")
         .eq('tag', tag)
         .eq('password', password)
-        .single();
-    if (error) return { status: 409, error: error.message };
-    return { status: 200, data: data || {} };
+        .limit(1);
+    if (error) return { status: 500, error: error.message };
+    if (!data || data.length === 0) return { status: 404, error: "User not found" };
+    return { status: 200, data: data[0] };
   }
 
   async searchByText(text) {
@@ -159,7 +161,7 @@ class usersRepository {
     const { data, error } = await this.userClient
         .from('users')
         .select("id")
-        .eq('email', email);
+        .ilike('email', email);
     if (error) return { status: 500, error: error.message };
     return { status: 200, data : data.length > 0 };
   }
@@ -173,24 +175,29 @@ class usersRepository {
     return { status: 200, data : data.length > 0 };
   }
 
-  async searchByEmail(email) {
+  async searchByEmail(email, 
+    fields = "id, name, tag, lastname, password") {
     const { data, error } = await this.userClient
         .from('users')
-        .select("id, name, tag, lastname, password")
-        .eq('email', email)
-        .single();
+        .select(fields)
+        .ilike('email', email)
+        .limit(1);
+      console.log("searchByEmail result:", { data, error });
     if (error) return { status: 500, error: error.message };
-    return { status: 200, data : data || {} };
+    if (!data || data.length === 0) return { status: 404, error: "User not found" };
+    return { status: 200, data : data[0] };
   }
 
-  async searchByTag(tag) {
+  async searchByTag(tag, 
+    fields = "id, name, tag, lastname, password") {
     const { data, error } = await this.userClient
         .from('users')
-        .select("id, name, tag, lastname, password")
+        .select(fields)
         .eq('tag', tag)
-        .single();
+        .limit(1);
     if (error) return { status: 500, error: error.message };
-    return { status: 200, data : data || {} };
+    if (!data || data.length === 0) return { status: 404, error: "User not found" };
+    return { status: 200, data : data[0] };
   }
 
   async searchOwnerInfo(userid, fields = "id, name, tag, email") {

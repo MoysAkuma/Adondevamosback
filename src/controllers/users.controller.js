@@ -107,11 +107,11 @@ const createUser = async (req, res, next) => {
         
         const data = await usersService.createUser(
             {
-                name : name,
+                name : name.trim(),
                 secondname : secondname,
-                lastname : lastname,
-                email : email,
-                tag : tag,
+                lastname : lastname.trim(),
+                email : email.trim(),
+                tag : tag.trim(),
                 password : password,
                 description : description,
                 countryid : countryid,

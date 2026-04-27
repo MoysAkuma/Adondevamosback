@@ -237,14 +237,6 @@ const usersService = {
       }
     }
     
-    //send welcome email
-    await sendCreateAccountEmail( infoToMail.email, 
-      infoToMail.tag, 
-      infoToMail.name + " " + infoToMail.lastname, 
-      infoToMail.City.name + ", " + 
-      infoToMail.State.name + ", " + 
-      infoToMail.Country.name );
-
     return userWithUbicationNames;
   },
   async updateUser(userId, UpdateUserRq) { 
