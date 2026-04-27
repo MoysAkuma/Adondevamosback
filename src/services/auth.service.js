@@ -67,7 +67,7 @@ const login = async (id, password, req) => {
     const data = checkisEmail
       ? await userService.searchByEmail(id, password)
       : await userService.searchByTag(id, password);
-    
+      
     // Validate user found and password verified
     if (data.status === 404) {
       throw new ApiError(404, 'User not found');
