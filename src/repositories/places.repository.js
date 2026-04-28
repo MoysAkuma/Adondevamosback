@@ -197,7 +197,8 @@ class PlacesRepository {
 
         uploadedUrls.push({
           fileName: fileName,
-          url: urlData.publicUrl
+          url: urlData.publicUrl,
+          iscover: image.iscover || false
         });
       }
 
@@ -250,11 +251,27 @@ class PlacesRepository {
         imageUrls.map(item => ({
           placeid: placeId,
           filename: item.fileName,
-          completeurl: item.url
+          completeurl: item.url,
+          iscover: item.iscover || false
         }))
       )
       .select();
     if (error) return { status: 500, error: error.message };
+    
+    // If there's a cover image, update the place's cover_url
+    const coverImage = imageUrls.find(item => item.iscover);
+    if (coverImage) {
+      const { error: updateError } = await this.placesClient
+        .from('places')
+        .update({ cover_url: coverImage.url })
+        .eq('id', placeId);
+      
+      if (updateError) {
+        console.error('Failed to update place cover_url:', updateError);
+        // Don't fail the whole operation if cover update fails
+      }
+    }
+    
     return { status: 200, data: data };
   }
   async getGalleryByPlaceId(placeId) {
@@ -331,6 +348,45 @@ class PlacesRepository {
     if (deleteError) return { status: 500, error: deleteError.message };
     
     return { status: 200, data: { message: 'Image deleted successfully', imageId, filename: imageData.filename } };
+  }
+
+  async setCoverImage(placeId, imageId) {
+    // First, get the image URL
+    const { data: imageData, error: fetchError } = await this.placesClient
+      .from('places_gallery')
+      .select('completeurl')
+      .eq('id', imageId)
+      .eq('placeid', placeId)
+      .single();
+    
+    if (fetchError) return { status: 500, error: fetchError.message };
+    if (!imageData) return { status: 404, error: 'Image not found' };
+    
+    // Update all images for this place to set iscover = false
+    const { error: resetError } = await this.placesClient
+      .from('places_gallery')
+      .update({ iscover: false })
+      .eq('placeid', placeId);
+    
+    if (resetError) return { status: 500, error: resetError.message };
+    
+    // Set the selected image as cover
+    const { error: setCoverError } = await this.placesClient
+      .from('places_gallery')
+      .update({ iscover: true })
+      .eq('id', imageId);
+    
+    if (setCoverError) return { status: 500, error: setCoverError.message };
+    
+    // Update the place's cover_url
+    const { error: updatePlaceError } = await this.placesClient
+      .from('places')
+      .update({ cover_url: imageData.completeurl })
+      .eq('id', placeId);
+    
+    if (updatePlaceError) return { status: 500, error: updatePlaceError.message };
+    
+    return { status: 200, data: { message: 'Cover image updated successfully', coverUrl: imageData.completeurl } };
   }
       
 

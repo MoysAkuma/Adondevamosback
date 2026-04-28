@@ -327,7 +327,8 @@ class TripsRepository {
 
         uploadedUrls.push({
           fileName: fileName,
-          url: urlData.publicUrl
+          url: urlData.publicUrl,
+          iscover: image.iscover || false
         });
       }
 
@@ -343,11 +344,27 @@ class TripsRepository {
         imageUrls.map(item => ({
           tripid: tripid,
           filename: item.fileName,
-          completeurl: item.url
+          completeurl: item.url,
+          iscover: item.iscover || false
         }))
       )
       .select();
     if (error) return { status: 500, error: error.message };
+    
+    // If there's a cover image, update the trip's cover_url
+    const coverImage = imageUrls.find(item => item.iscover);
+    if (coverImage) {
+      const { error: updateError } = await this.tripsClient
+        .from('trips')
+        .update({ cover_url: coverImage.url })
+        .eq('id', tripid);
+      
+      if (updateError) {
+        console.error('Failed to update trip cover_url:', updateError);
+        // Don't fail the whole operation if cover update fails
+      }
+    }
+    
     return { status: 200, data: data };
   }
   async getTripImages(tripId) {
@@ -415,6 +432,45 @@ class TripsRepository {
     if (deleteError) return { status: 500, error: deleteError.message };
     
     return { status: 200, data: { message: 'Image deleted successfully', imageId, filename: imageData.filename } };
+  }
+
+  async setCoverImage(tripId, imageId) {
+    // First, get the image URL
+    const { data: imageData, error: fetchError } = await this.tripsClient
+      .from('trips_gallery')
+      .select('completeurl')
+      .eq('id', imageId)
+      .eq('tripid', tripId)
+      .single();
+    
+    if (fetchError) return { status: 500, error: fetchError.message };
+    if (!imageData) return { status: 404, error: 'Image not found' };
+    
+    // Update all images for this trip to set iscover = false
+    const { error: resetError } = await this.tripsClient
+      .from('trips_gallery')
+      .update({ iscover: false })
+      .eq('tripid', tripId);
+    
+    if (resetError) return { status: 500, error: resetError.message };
+    
+    // Set the selected image as cover
+    const { error: setCoverError } = await this.tripsClient
+      .from('trips_gallery')
+      .update({ iscover: true })
+      .eq('id', imageId);
+    
+    if (setCoverError) return { status: 500, error: setCoverError.message };
+    
+    // Update the trip's cover_url
+    const { error: updateTripError } = await this.tripsClient
+      .from('trips')
+      .update({ cover_url: imageData.completeurl })
+      .eq('id', tripId);
+    
+    if (updateTripError) return { status: 500, error: updateTripError.message };
+    
+    return { status: 200, data: { message: 'Cover image updated successfully', coverUrl: imageData.completeurl } };
   }
   
   async getItineraryVotesSummaryByTripId(tripId) {

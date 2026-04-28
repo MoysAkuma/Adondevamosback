@@ -362,6 +362,31 @@ const deleteImage = async (req, res, next) => {
   }
 };
 
+const setCoverImage = async (req, res, next) => {
+  try {
+    const { TripID, ImageID } = req.params;
+
+    await validateTripAdminOrCreator(req, TripID);
+    
+    if (!ImageID) {
+      throw new ApiError(400, 'Image ID is required');
+    }
+    
+    const result = await tripsService.setCoverImage(TripID, ImageID);
+    
+    if (result.status !== 200) {
+      throw new ApiError(result.status, result.error || 'Failed to set cover image');
+    }
+    
+    return new ApiResponse(res).success(
+      'Cover image set successfully',
+      result.data
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 const tripsController = {
   createTrip,
   getTripbyID,
@@ -375,7 +400,8 @@ const tripsController = {
   createMemberList,
   updateMemberList,
   uploadImages,
-  deleteImage
+  deleteImage,
+  setCoverImage
 };
 
 export default tripsController;

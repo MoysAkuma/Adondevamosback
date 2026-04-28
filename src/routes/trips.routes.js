@@ -974,5 +974,9 @@ router.post('/Trips/:TripID/Images',
 router.delete('/Trips/:TripID/Images/:ImageID',
     authenticate,
     tripsController.deleteImage);
+
+router.put('/Trips/:TripID/Images/:ImageID/SetCover',
+    authenticate,
+    tripsController.setCoverImage);
     
 export default router;
