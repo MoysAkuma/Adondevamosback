@@ -975,6 +975,54 @@ router.delete('/Trips/:TripID/Images/:ImageID',
     authenticate,
     tripsController.deleteImage);
 
+/**
+ * @swagger
+ * /Trips/{TripID}/Images/{ImageID}/SetCover:
+ *   put:
+ *     summary: Set an image as the trip cover image
+ *     tags: [Trips, Gallery]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: TripID
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The ID of the trip
+ *       - in: path
+ *         name: ImageID
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The ID of the image to set as cover
+ *     responses:
+ *       200:
+ *         description: Cover image set successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Cover image set successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: Cover image updated
+ *       400:
+ *         description: Bad request - ImageID is required
+ *       403:
+ *         description: Only admin or trip creator can perform this action
+ *       404:
+ *         description: Trip or image not found
+ */
 router.put('/Trips/:TripID/Images/:ImageID/SetCover',
     authenticate,
     tripsController.setCoverImage);

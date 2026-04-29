@@ -198,7 +198,8 @@ const tripsService = {
       description: tripRow.description,
       initialdate: tripRow.initialdate,
       finaldate: tripRow.finaldate,
-      isinternational: tripRow.isinternational
+      isinternational: tripRow.isinternational,
+      cover_url: tripRow.cover_url
     };
 
     // Add optional fields only if requested
