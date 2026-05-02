@@ -57,11 +57,14 @@ class PlacesRepository {
     return { status: 200, data };
   }
 
-  async searchPlaces(filters = {}, fields = 'id,name,countryid,stateid,cityid,address') {
+  async searchPlaces(filters = {}, 
+    fields = 'id,name,countryid,stateid,cityid,address',
+    page = 1,
+    limit = 10) {
     let query = 
     this.placesClient.from('places').
     select(fields)
-    .limit(10)
+    .range((page - 1) * limit, page * limit - 1)
     .order('createddate', { ascending: false });
     
     if (filters.name) {

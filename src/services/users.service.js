@@ -344,8 +344,7 @@ const usersService = {
       let createdTrips = [];
       if (tripsResult.status === 200 && tripsResult.data) {
         createdTrips = tripsResult.data
-          .sort((a, b) => new Date(b.initialdate) - new Date(a.initialdate))
-          .slice(0, 3);
+          .sort((a, b) => new Date(b.initialdate) - new Date(a.initialdate));
       }
 
       // Get vote counts
@@ -353,7 +352,7 @@ const usersService = {
       const placeVotesCount = await votesRepositoryInstance.countVotesByUserId(userId, 'places');
 
       // Get last 3 voted trips
-      const votedTripsResult = await votesRepositoryInstance.getVotedTripsByUserId(userId, 3);
+      const votedTripsResult = await votesRepositoryInstance.getVotedTripsByUserId(userId, 10);
       let votedTrips = [];
       if (votedTripsResult.status === 200 && votedTripsResult.data) {
         // Get trip details for each voted trip

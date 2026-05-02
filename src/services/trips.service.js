@@ -237,16 +237,18 @@ const tripsService = {
     return await tripsRepo.getMembersListByTripId(tripId);
   },
 
-  async getAll(filters = {}, userId = null) {
-    return await tripsRepo.searchTrips(filters, 'id,name,ownerid,initialdate,finaldate', userId);
+  async getAll(filters = {}, userId = null, page = 1, limit = 10) {
+    return await tripsRepo.searchTrips(filters, 'id,name,ownerid,initialdate,finaldate', userId, page, limit);
   },
 
   async searchTrips(filters, 
-    userId = null) {
+    userId = null,
+    page = 1,
+    limit = 10) {
 
     //get trip list
     const foundedTrips = await tripsRepo.searchTrips(filters, 
-      'id,name,description,initialdate,finaldate,isinternational,ownerid', userId);
+      'id,name,description,initialdate,finaldate,isinternational,ownerid', userId, page, limit);
 
     if( foundedTrips.status != 200 ) {
       return foundedTrips;
@@ -259,12 +261,16 @@ const tripsService = {
     }
     const ownerMap = new Map(ownersInfo.data.map(o => [o.id, o]));
     //attach owner info to trips
-    foundedTrips.data = foundedTrips.data.map(trip => ({
+    const tripsWithOwners = foundedTrips.data.map(trip => ({
       ...trip,
       owner: ownerMap.get(trip.ownerid) || null
     }));
     
-    return { status: 200, data: foundedTrips.data };
+    return { 
+      status: 200, 
+      data: tripsWithOwners,
+      pagination: foundedTrips.pagination
+    };
   },
 
   async getNewsTrips(limit = 5, userId = null, fields = null) {

@@ -93,7 +93,12 @@ class TripsRepository {
 
   async searchTrips(filters = {}, 
     fields = 'id,name,ownerid,initialdate,finaldate', 
-    userId = null) {
+    userId = null,
+    page = 1,
+    limit = 10) {
+    
+    // Get total count first with same filters
+    let countQuery = this.tripsClient.from('trips').select('id', { count: 'exact', head: false });
     let query = this.tripsClient.from('trips').select(fields);
     
     // Handle location filters from places through itinerary table
@@ -140,33 +145,64 @@ class TripsRepository {
       
       // Filter trips by the found trip IDs
       query = query.in('id', tripIds);
+      countQuery = countQuery.in('id', tripIds);
     }
     
     if (filters.name) {
       query = query.ilike('name', `%${filters.name}%`);
+      countQuery = countQuery.ilike('name', `%${filters.name}%`);
     }
 
     if (filters.initialdate) {
       query = query.gte('initialdate', filters.initialdate);
+      countQuery = countQuery.gte('initialdate', filters.initialdate);
     }
 
     if (filters.finaldate) {
       query = query.lte('finaldate', filters.finaldate);
+      countQuery = countQuery.lte('finaldate', filters.finaldate);
     }
 
     if (filters.mytrips){
       query = query.eq('ownerid', userId);
+      countQuery = countQuery.eq('ownerid', userId);
     }
 
     if (filters.membertrips){
       query = query.in('id', this.tripsClient.from('trips_members').select('tripid').eq('userid', userId));
+      countQuery = countQuery.in('id', this.tripsClient.from('trips_members').select('tripid').eq('userid', userId));
     }
     
+    // Get total count
+    const { count, error: countError } = await countQuery;
+    if (countError) return { status: 500, error: countError };
+    
+    const totalCount = count || 0;
+    const totalPages = Math.ceil(totalCount / limit);
+    
+    // Apply pagination
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+    query = query.range(from, to);
+    
+    query = query.order('createddate', { ascending: false });
     
     const { data, error } = await query;
     if (error) return { status: 500, error };
     if (!data || data.length === 0) return { status: 404, message: "No results to show" };
-    return { status: 200, data };
+    
+    return { 
+      status: 200, 
+      data,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
+      }
+    };
   }
 
   async getNewsTrips(limit = 5, 
