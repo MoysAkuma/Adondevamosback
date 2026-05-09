@@ -186,6 +186,17 @@ const placesService = {
     }
     
     return await placesRepo.deleteImageFromGallery(imageId);
+  },
+
+  async setCoverImage(placeId, imageId) {
+    // Verify place exists
+    const place = await placesRepo.getPlaceByIdRaw(placeId, 'id');
+    if (place.status !== 200) return place;
+    if (!place.data || place.data.length === 0) {
+      return { status: 404, error: 'Place not found' };
+    }
+    
+    return await placesRepo.setCoverImage(placeId, imageId);
   }
 };
 

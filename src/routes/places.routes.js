@@ -157,5 +157,10 @@ const router = express.Router();
         authorizeAdmin,
         placesController.deleteImage
     )
+    
+    router.put('/Places/:PlaceID/Images/:ImageID/SetCover',
+        authorizeAdmin,
+        placesController.setCoverImage
+    )
 
 export default router;

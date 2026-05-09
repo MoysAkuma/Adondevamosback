@@ -150,18 +150,19 @@ const deleteTripbyID = async (req, res, next) => {
 
 //Get all countries
 const getAllTrips = async (req, res, next) => {
-  const page = parseInt(req.query.page) || 10;
+  const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
-  const skip = (page - 1) * limit;
   try{
-    const trips = await tripsService.getAll();
+    const trips = await tripsService.getAll({}, null, page, limit);
 
     if(trips.status != 200){
       throw new ApiError(trips.status, trips.message);
     }
     return new ApiResponse(res).success(
       'Reading all trips sucess', 
-      trips.data);
+      trips.data,
+      200,
+      trips.pagination);
   } catch(err){
     next(err instanceof ApiError ? err : new ApiError(err.status || 500, err.message));
   }   
@@ -199,14 +200,20 @@ const searchTrips = async (req, res, next) => {
     //Get filters to search
     const { filters } = req.body;
     
+    // Get pagination parameters from query string
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    
     //call search
-    const foundedTrips = await tripsService.searchTrips(filters, userId);
+    const foundedTrips = await tripsService.searchTrips(filters, userId, page, limit);
     if (!foundedTrips.data) throw new ApiError(404, 
       foundedTrips.message || 'No results to show');
     
     return new ApiResponse(res).success(
       'Search trips sucess', 
-      foundedTrips.data);
+      foundedTrips.data,
+      200,
+      foundedTrips.pagination);
   } catch(err){
     next(err instanceof ApiError ? err : new ApiError(err.status || 500, err.message));
   }
@@ -362,6 +369,31 @@ const deleteImage = async (req, res, next) => {
   }
 };
 
+const setCoverImage = async (req, res, next) => {
+  try {
+    const { TripID, ImageID } = req.params;
+
+    await validateTripAdminOrCreator(req, TripID);
+    
+    if (!ImageID) {
+      throw new ApiError(400, 'Image ID is required');
+    }
+    
+    const result = await tripsService.setCoverImage(TripID, ImageID);
+    
+    if (result.status !== 200) {
+      throw new ApiError(result.status, result.error || 'Failed to set cover image');
+    }
+    
+    return new ApiResponse(res).success(
+      'Cover image set successfully',
+      result.data
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 const tripsController = {
   createTrip,
   getTripbyID,
@@ -375,7 +407,8 @@ const tripsController = {
   createMemberList,
   updateMemberList,
   uploadImages,
-  deleteImage
+  deleteImage,
+  setCoverImage
 };
 
 export default tripsController;

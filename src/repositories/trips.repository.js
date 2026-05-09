@@ -40,7 +40,7 @@ class TripsRepository {
     return { status: 200, data };
   }
 
-  async getTripByIdRaw(id, fields = 'id,name,ownerid,description,initialdate,finaldate,isinternational') {
+  async getTripByIdRaw(id, fields = 'id,name,cover_url,ownerid,description,initialdate,finaldate,isinternational') {
     const { data, error } = await this.tripsClient
       .from('trips')
       .select(fields)
@@ -93,7 +93,12 @@ class TripsRepository {
 
   async searchTrips(filters = {}, 
     fields = 'id,name,ownerid,initialdate,finaldate', 
-    userId = null) {
+    userId = null,
+    page = 1,
+    limit = 10) {
+    
+    // Get total count first with same filters
+    let countQuery = this.tripsClient.from('trips').select('id', { count: 'exact', head: false });
     let query = this.tripsClient.from('trips').select(fields);
     
     // Handle location filters from places through itinerary table
@@ -140,33 +145,64 @@ class TripsRepository {
       
       // Filter trips by the found trip IDs
       query = query.in('id', tripIds);
+      countQuery = countQuery.in('id', tripIds);
     }
     
     if (filters.name) {
       query = query.ilike('name', `%${filters.name}%`);
+      countQuery = countQuery.ilike('name', `%${filters.name}%`);
     }
 
     if (filters.initialdate) {
       query = query.gte('initialdate', filters.initialdate);
+      countQuery = countQuery.gte('initialdate', filters.initialdate);
     }
 
     if (filters.finaldate) {
       query = query.lte('finaldate', filters.finaldate);
+      countQuery = countQuery.lte('finaldate', filters.finaldate);
     }
 
     if (filters.mytrips){
       query = query.eq('ownerid', userId);
+      countQuery = countQuery.eq('ownerid', userId);
     }
 
     if (filters.membertrips){
       query = query.in('id', this.tripsClient.from('trips_members').select('tripid').eq('userid', userId));
+      countQuery = countQuery.in('id', this.tripsClient.from('trips_members').select('tripid').eq('userid', userId));
     }
     
+    // Get total count
+    const { count, error: countError } = await countQuery;
+    if (countError) return { status: 500, error: countError };
+    
+    const totalCount = count || 0;
+    const totalPages = Math.ceil(totalCount / limit);
+    
+    // Apply pagination
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+    query = query.range(from, to);
+    
+    query = query.order('createddate', { ascending: false });
     
     const { data, error } = await query;
     if (error) return { status: 500, error };
     if (!data || data.length === 0) return { status: 404, message: "No results to show" };
-    return { status: 200, data };
+    
+    return { 
+      status: 200, 
+      data,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
+      }
+    };
   }
 
   async getNewsTrips(limit = 5, 
@@ -327,7 +363,8 @@ class TripsRepository {
 
         uploadedUrls.push({
           fileName: fileName,
-          url: urlData.publicUrl
+          url: urlData.publicUrl,
+          iscover: image.iscover || false
         });
       }
 
@@ -337,23 +374,52 @@ class TripsRepository {
     }
   }
   async saveImageUrlsToTrip(tripid, imageUrls) {
+    // If there's a cover image in the new batch, reset all existing images first
+    const coverImage = imageUrls.find(item => item.iscover);
+    if (coverImage) {
+      const { error: resetError } = await this.tripsClient
+        .from('trips_gallery')
+        .update({ iscover: false })
+        .eq('tripid', tripid);
+      
+      if (resetError) {
+        console.error('Failed to reset existing cover images:', resetError);
+        // Continue anyway - don't fail the whole operation
+      }
+    }
+    
     const { data, error } = await this.tripsClient
       .from('trips_gallery')
       .insert(
         imageUrls.map(item => ({
           tripid: tripid,
           filename: item.fileName,
-          completeurl: item.url
+          completeurl: item.url,
+          iscover: item.iscover || false
         }))
       )
       .select();
     if (error) return { status: 500, error: error.message };
+    
+    // If there's a cover image, update the trip's cover_url
+    if (coverImage) {
+      const { error: updateError } = await this.tripsClient
+        .from('trips')
+        .update({ cover_url: coverImage.url })
+        .eq('id', tripid);
+      
+      if (updateError) {
+        console.error('Failed to update trip cover_url:', updateError);
+        // Don't fail the whole operation if cover update fails
+      }
+    }
+    
     return { status: 200, data: data };
   }
   async getTripImages(tripId) {
     const { data, error } = await this.tripsClient
       .from('trips_gallery')
-      .select('id,filename,completeurl')
+      .select('id,filename,completeurl,iscover')
       .eq('tripid', tripId);
     if (error) return { status: 500, error: error.message };
     
@@ -376,15 +442,17 @@ class TripsRepository {
   }
   
   async deleteImageFromGallery(imageId) {
-    // First get the image details to retrieve the filename
+    // First get the image details to retrieve the filename and cover status
     const { data: imageData, error: fetchError } = await this.tripsClient
       .from('trips_gallery')
-      .select('filename, tripid')
+      .select('filename, tripid, iscover')
       .eq('id', imageId)
       .single();
     
     if (fetchError) return { status: 500, error: fetchError.message };
     if (!imageData) return { status: 404, error: 'Image not found' };
+    
+    const { tripid, iscover } = imageData;
     
     // Delete from storage bucket
     const bucketName = 'adondevamosNoGallery';
@@ -414,7 +482,77 @@ class TripsRepository {
     
     if (deleteError) return { status: 500, error: deleteError.message };
     
+    // If the deleted image was the cover, clear the trip's cover_url
+    if (iscover) {
+      // Check if there are remaining images for this trip
+      const { data: remainingImages, error: remainingError } = await this.tripsClient
+        .from('trips_gallery')
+        .select('id, completeurl')
+        .eq('tripid', tripid)
+        .limit(1);
+      
+      if (!remainingError && remainingImages && remainingImages.length > 0) {
+        // Set the first remaining image as the new cover
+        const newCoverImage = remainingImages[0];
+        
+        await this.tripsClient
+          .from('trips_gallery')
+          .update({ iscover: true })
+          .eq('id', newCoverImage.id);
+        
+        await this.tripsClient
+          .from('trips')
+          .update({ cover_url: newCoverImage.completeurl })
+          .eq('id', tripid);
+      } else {
+        // No remaining images, clear the cover_url
+        await this.tripsClient
+          .from('trips')
+          .update({ cover_url: null })
+          .eq('id', tripid);
+      }
+    }
+    
     return { status: 200, data: { message: 'Image deleted successfully', imageId, filename: imageData.filename } };
+  }
+
+  async setCoverImage(tripId, imageId) {
+    // First, get the image URL
+    const { data: imageData, error: fetchError } = await this.tripsClient
+      .from('trips_gallery')
+      .select('completeurl')
+      .eq('id', imageId)
+      .eq('tripid', tripId)
+      .single();
+    
+    if (fetchError) return { status: 500, error: fetchError.message };
+    if (!imageData) return { status: 404, error: 'Image not found' };
+    
+    // Update all images for this trip to set iscover = false
+    const { error: resetError } = await this.tripsClient
+      .from('trips_gallery')
+      .update({ iscover: false })
+      .eq('tripid', tripId);
+    
+    if (resetError) return { status: 500, error: resetError.message };
+    
+    // Set the selected image as cover
+    const { error: setCoverError } = await this.tripsClient
+      .from('trips_gallery')
+      .update({ iscover: true })
+      .eq('id', imageId);
+    
+    if (setCoverError) return { status: 500, error: setCoverError.message };
+    
+    // Update the trip's cover_url
+    const { error: updateTripError } = await this.tripsClient
+      .from('trips')
+      .update({ cover_url: imageData.completeurl })
+      .eq('id', tripId);
+    
+    if (updateTripError) return { status: 500, error: updateTripError.message };
+    
+    return { status: 200, data: { message: 'Cover image updated successfully', coverUrl: imageData.completeurl } };
   }
   
   async getItineraryVotesSummaryByTripId(tripId) {

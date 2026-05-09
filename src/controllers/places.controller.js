@@ -233,6 +233,29 @@ const deleteImage = async (req, res, next) => {
   }
 };
 
+const setCoverImage = async (req, res, next) => {
+  try {
+    const { PlaceID, ImageID } = req.params;
+    
+    if (!ImageID) {
+      throw new ApiError(400, 'Image ID is required');
+    }
+    
+    const result = await placesService.setCoverImage(PlaceID, ImageID);
+    
+    if (result.status !== 200) {
+      throw new ApiError(result.status, result.error || 'Failed to set cover image');
+    }
+    
+    return new ApiResponse(res).success(
+      'Cover image set successfully',
+      result.data
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 const placesController = {
     getPlaceByID,
     searchPlaces,
@@ -243,6 +266,7 @@ const placesController = {
     updateFacilities,
     addFacilities,
     getNewPlaces,
-    deleteImage
+    deleteImage,
+    setCoverImage
 };
 export default placesController;
