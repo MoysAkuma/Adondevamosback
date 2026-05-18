@@ -1,3 +1,5 @@
+import sharp from 'sharp';
+
 class usersRepository {
     constructor({ userClient }) {
         this.userClient = userClient;
@@ -256,6 +258,100 @@ class usersRepository {
     
     if (error) return { status: 500, error: error.message };
     return { status: 200, data: data };
+  }
+
+  async uploadProfilePhotoToStorage(userId, imageBuffer, mimetype, extension) {
+    try {
+      const bucketName = 'adondevamosNoGallery';
+      const avatarFolder = 'users/avatar';
+      const thumbnailFolder = 'users/thumbnails';
+      const timestamp = Date.now();
+      
+      // Generate file names
+      const avatarFileName = `${avatarFolder}/${userId}_${timestamp}.webp`;
+      const thumbnailFileName = `${thumbnailFolder}/${userId}_${timestamp}.webp`;
+
+      // Resize and convert to webp - 400x400 for avatar
+      const avatarBuffer = await sharp(imageBuffer)
+        .resize(400, 400, {
+          fit: 'cover',
+          position: 'center'
+        })
+        .webp({ quality: 90 })
+        .toBuffer();
+
+      // Upload avatar (400x400) to Supabase storage
+      const { data: avatarData, error: avatarError } = await this.userClient.storage
+        .from(bucketName)
+        .upload(avatarFileName, avatarBuffer, {
+          contentType: 'image/webp',
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (avatarError) {
+        return { status: 500, error: avatarError.message };
+      }
+
+      // Resize and convert to webp - 150x150 for thumbnail
+      const thumbnailBuffer = await sharp(imageBuffer)
+        .resize(150, 150, {
+          fit: 'cover',
+          position: 'center'
+        })
+        .webp({ quality: 85 })
+        .toBuffer();
+
+      // Upload thumbnail (150x150) to Supabase storage
+      const { error: thumbnailError } = await this.userClient.storage
+        .from(bucketName)
+        .upload(thumbnailFileName, thumbnailBuffer, {
+          contentType: 'image/webp',
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (thumbnailError) {
+        // Log error but don't fail the whole upload
+        console.error(`Failed to upload thumbnail for user ${userId}:`, thumbnailError.message);
+      }
+
+      // Get public URLs
+      const { data: avatarUrlData } = this.userClient.storage
+        .from(bucketName)
+        .getPublicUrl(avatarFileName);
+
+      const { data: thumbnailUrlData } = this.userClient.storage
+        .from(bucketName)
+        .getPublicUrl(thumbnailFileName);
+
+      return {
+        status: 200,
+        data: {
+          avatarUrl: avatarUrlData.publicUrl,
+          thumbnailUrl: thumbnailUrlData.publicUrl,
+          avatarFileName: avatarFileName,
+          thumbnailFileName: thumbnailFileName
+        }
+      };
+    } catch (error) {
+      return { status: 500, error: error.message };
+    }
+  }
+
+  async updateProfilePhotoUrls(userId, avatarUrl, thumbnailUrl) {
+    const { data, error } = await this.userClient
+      .from('users')
+      .update({
+        profile_photo: avatarUrl,
+        profile_photo_tn: thumbnailUrl
+      })
+      .eq('id', userId)
+      .select('id, profile_photo, profile_photo_tn');
+    
+    if (error) return { status: 500, error: error.message };
+    if (!data || data.length === 0) return { status: 404, error: "User not found or not updated" };
+    return { status: 200, data: data[0] };
   }
 };
 

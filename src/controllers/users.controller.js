@@ -251,6 +251,64 @@ const confirmEmail = async (req, res, next) => {
     }
 };
 
+const uploadProfilePhoto = async (req, res, next) => {
+    try {
+        const { UserID } = req.params;
+
+        // Check if user is uploading their own photo or is admin
+        if (req.user.userid !== parseInt(UserID) && req.user.role !== 'admin') {
+            throw new ApiError(403, 'You can only upload your own profile photo');
+        }
+
+        let imageData;
+        let mimetype;
+        let extension;
+
+        // Handle multipart/form-data (file upload from Swagger/Postman)
+        if (req.file) {
+            imageData = req.file.buffer;
+            mimetype = req.file.mimetype || 'image/jpeg';
+            extension = req.file.originalname ? req.file.originalname.split('.').pop() : 'jpg';
+        }
+        // Handle JSON with base64 data (from frontend)
+        else if (req.body.data) {
+            // Handle base64 data
+            let buffer;
+            if (req.body.data.startsWith('data:')) {
+                // Extract base64 data from data URL
+                const base64Data = req.body.data.split(',')[1];
+                buffer = Buffer.from(base64Data, 'base64');
+            } else {
+                buffer = Buffer.from(req.body.data, 'base64');
+            }
+
+            imageData = buffer;
+            mimetype = req.body.mimetype || 'image/jpeg';
+            extension = req.body.extension || 'jpg';
+        }
+        else {
+            throw new ApiError(400, 'No image data provided. Send either a file or JSON with base64 data');
+        }
+
+        const result = await usersService.uploadProfilePhoto(UserID, imageData, mimetype, extension);
+        
+        if (result.status !== 200) {
+            throw new ApiError(result.status, result.error || "Failed to upload profile photo");
+        }
+        
+        new ApiResponse(res).success(
+            result.data.message,
+            {
+                userId: result.data.userId,
+                profilePhoto: result.data.profilePhoto,
+                profilePhotoThumbnail: result.data.profilePhotoThumbnail
+            }
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
 export default {
     getUserByID,
     recoverPassword,
@@ -262,5 +320,6 @@ export default {
     searchUsersByField,
     changeUserField,
     getProfileData,
-    confirmEmail
+    confirmEmail,
+    uploadProfilePhoto
 };

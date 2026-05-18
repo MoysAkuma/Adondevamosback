@@ -410,7 +410,48 @@ const usersService = {
       }
 
       return { status: 200, data: { message: "Email confirmed successfully", userid } };
+    },
+    async uploadProfilePhoto(userId, imageData, mimetype, extension) {
+      // Validate user exists
+      const userExists = await usersRepositoryInstance.getUserById(userId, "id");
+      if (userExists.status !== 200) {
+        return { status: 404, error: "User not found" };
+      }
+      
+      // Upload images to storage and get URLs
+      const uploadResult = await usersRepositoryInstance.uploadProfilePhotoToStorage(
+        userId,
+        imageData,
+        mimetype,
+        extension
+      );
+      
+      if (uploadResult.status !== 200) {
+        return { status: 500, error: uploadResult.error || "Failed to upload profile photo" };
+      }
+
+      // Update user record with photo URLs
+      const updateResult = await usersRepositoryInstance.updateProfilePhotoUrls(
+        userId,
+        uploadResult.data.avatarUrl,
+        uploadResult.data.thumbnailUrl
+      );
+      
+      if (updateResult.status !== 200) {
+        return { status: 500, error: "Failed to update profile photo URLs in database" };
+      }
+
+      return { 
+        status: 200, 
+        data: { 
+          message: "Profile photo uploaded successfully",
+          profilePhoto: updateResult.data.profile_photo,
+          profilePhotoThumbnail: updateResult.data.profile_photo_tn,
+          userId: userId
+        }
+      };
     }
+
 };
 
 export default usersService;
