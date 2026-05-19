@@ -4,10 +4,12 @@
  */
 
 import jwt from 'jsonwebtoken';
-import userService from './users.service.js';
+import usersRepository from '../repositories/users.repository.js';
 import sessionService from './session.service.js';
+import { userClient } from '../config/supabase.js';
 import { ApiError } from '../utils/apiError.js';
 import { env } from '../config/env.js';
+import { comparePassword } from '../utils/password.js';
 
 /**
  * Email validation function
@@ -60,14 +62,17 @@ const verifyToken = (token) => {
  */
 const login = async (id, password, req) => {
   try {
+    // Initialize repository
+    const userRepo = new usersRepository({ userClient });
+    
     // Check if id is email or tag
     const checkisEmail = isEmail(id);
     
-    // Search user (password verification happens inside these methods)
+    // Search user with password verification and get profile photo
     const data = checkisEmail
-      ? await userService.searchByEmail(id, password)
-      : await userService.searchByTag(id, password);
-      
+      ? await userRepo.searchByEmail(id, "id, name, tag, lastname, password, profile_photo_tn")
+      : await userRepo.searchByTag(id, "id, name, tag, lastname, password, profile_photo_tn");
+
     // Validate user found and password verified
     if (data.status === 404) {
       throw new ApiError(404, 'User not found');
@@ -85,8 +90,14 @@ const login = async (id, password, req) => {
       throw new ApiError(404, 'User not found');
     }
     
+    // Verify password using bcrypt
+    const isPasswordValid = await comparePassword(password, data.data.password);
+    if (!isPasswordValid) {
+      throw new ApiError(401, 'Invalid credentials');
+    }
+    
     // Check if user is admin
-    const isAdmin = (await userService.checkAdminRole(data.data.id)).data.isAdmin;
+    const isAdmin = (await userRepo.checkAdminRole(data.data.id)).data.isAdmin;
     
     // Generate JWT token
     const token = generateToken({
@@ -108,7 +119,8 @@ const login = async (id, password, req) => {
         tag: data.data.tag,
         role: isAdmin ? 'admin' : 'user',
         name: data.data.name,
-        lastname: data.data.lastname
+        lastname: data.data.lastname,
+        thumbnail: data.data.profile_photo_tn || null
       },
       token,
       status: data.status
@@ -139,6 +151,7 @@ const logout = async (req, res) => {
  */
 const checkAuth = async (req) => {
   try {
+    const userRepo = new usersRepository({ userClient: userClient });
     const sessionData = sessionService.validateSession(req);
 
     const authenticatedUserId = sessionData.isValid
@@ -150,14 +163,14 @@ const checkAuth = async (req) => {
     }
 
     // Verify user still exists in database
-    const data = await userService.getUserById(authenticatedUserId);
+    const data = await userRepo.getUserById(authenticatedUserId);
     
     if (data.status !== 200) {
       throw new ApiError(401, 'Invalid session');
     }
 
     const userRecord = Array.isArray(data.data) ? data.data[0] : data.data;
-    const adminRole = await userService.checkAdminRole(authenticatedUserId);
+    const adminRole = await userRepo.checkAdminRole(authenticatedUserId);
     const isAdmin = adminRole?.status === 200 ? !!adminRole.data?.isAdmin : !!sessionData.isAdmin;
     
     return {
@@ -184,11 +197,19 @@ const validateCredentials = async (id, password) => {
     throw new ApiError(400, 'ID and password are required');
   }
   
+  const userRepo = new usersRepository({ userClient: userClient });
   const checkisEmail = isEmail(id);
   
   const data = checkisEmail
-    ? await userService.searchByEmail(id, password)
-    : await userService.searchByTag(id, password);
+    ? await userRepo.searchByEmail(id, "id, name, tag, lastname, password")
+    : await userRepo.searchByTag(id, "id, name, tag, lastname, password");
+  
+  if (data.status === 200) {
+    const isPasswordValid = await comparePassword(password, data.data.password);
+    if (!isPasswordValid) {
+      return { status: 401, error: 'Invalid credentials' };
+    }
+  }
   
   return data;
 };

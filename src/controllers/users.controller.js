@@ -8,7 +8,7 @@ const getUserByID = async (req, res, next) => {
         //Get user id to search
         const { UserID } = req.params;
         const user = await usersService.getUserById(UserID, 
-            "name, lastname, email, tag, description, countryid, stateid, cityid, enabled, hide");
+            "name, lastname, email, tag, description, countryid, stateid, cityid, enabled, hide, profile_photo, profile_photo_tn");
         
         if (user.status != 200 ) throw new ApiError(500, "Failed");
 

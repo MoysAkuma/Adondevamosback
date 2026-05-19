@@ -17,7 +17,7 @@ class usersRepository {
   async getUserByEmail(email) {
     const { data, error } = await this.userClient
         .from('users')
-        .select("id, name, tag, password")
+        .select("id, name, tag, password, profile_photo")
         .ilike('email', email);
     if (error) return { status: 500, error: error.message };
     if (data.lenght === 0) return { status: 404, error: "User not found" };
@@ -184,7 +184,7 @@ class usersRepository {
         .select(fields)
         .ilike('email', email)
         .limit(1);
-      console.log("searchByEmail result:", { data, error });
+    
     if (error) return { status: 500, error: error.message };
     if (!data || data.length === 0) return { status: 404, error: "User not found" };
     return { status: 200, data : data[0] };
