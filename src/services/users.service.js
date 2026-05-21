@@ -15,7 +15,7 @@ const passwordResetsRepositoryInstance = new PasswordResetsRepository({ userClie
 const votesRepositoryInstance = new VotesRepository({ votesClient });
 
 const usersService = {
-  async getUserById(userId, fields = "name, lastname, email, tag, countryid, stateid, cityid") {
+  async getUserById(userId, fields = "name, lastname, email, tag, countryid, stateid, cityid, profile_photo, profile_photo_tn") {
     const user = await usersRepositoryInstance.getUserById(userId, fields);
     if (user.status != 200) return { status: 500, error: user.error || "Service error" };
     
@@ -27,7 +27,7 @@ const usersService = {
     return { status: 200, data: userWithUbicationNames.data || {} };
   },
 
-  async getUserByIdWithTrips(userId, fields = "name, lastname, email, tag, countryid, stateid, cityid") {
+  async getUserByIdWithTrips(userId, fields = "name, lastname, email, tag, countryid, stateid, cityid, profile_photo, profile_photo_tn") {
     // Get user info
     const user = await usersRepositoryInstance.getUserById(userId, fields);
     if (user.status != 200) return { status: 500, error: user.error || "Service error" };
@@ -326,9 +326,9 @@ const usersService = {
     },
 
     async getProfileData(userId) {
-      // Get user info with ubication
+      // Get user info with ubication and profile photos
       const user = await usersRepositoryInstance.getUserById(userId, 
-        "name, lastname, email, tag, description, countryid, stateid, cityid, enabled, hide");
+        "name, lastname, email, tag, description, countryid, stateid, cityid, enabled, hide, profile_photo, profile_photo_tn");
       if (user.status != 200) return { status: 500, error: user.error || "Service error" };
       
       // Get ubication names
