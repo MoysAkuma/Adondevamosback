@@ -241,6 +241,16 @@ const tripsService = {
     return await tripsRepo.searchTrips(filters, 'id,name,ownerid,initialdate,finaldate', userId, page, limit);
   },
 
+  async getTripsByOwner(ownerId, page = 1, limit = 50) {
+    return await tripsRepo.searchTrips(
+      { ownerid: ownerId },
+      'id,name,initialdate,finaldate',
+      null,
+      page,
+      limit
+    );
+  },
+
   async searchTrips(filters, 
     userId = null,
     page = 1,

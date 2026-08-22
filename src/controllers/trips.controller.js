@@ -148,6 +148,29 @@ const deleteTripbyID = async (req, res, next) => {
   }
 };
 
+const getTripsByOwner = async (req, res, next) => {
+  try {
+    const { UserId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+
+    const trips = await tripsService.getTripsByOwner(UserId, page, limit);
+
+    if (trips.status !== 200) {
+      throw new ApiError(trips.status, trips.message || 'No trips found for this user');
+    }
+
+    return new ApiResponse(res).success(
+      'Reading trips by owner success',
+      trips.data,
+      200,
+      trips.pagination
+    );
+  } catch (err) {
+    next(err instanceof ApiError ? err : new ApiError(err.status || 500, err.message));
+  }
+};
+
 //Get all countries
 const getAllTrips = async (req, res, next) => {
   const page = parseInt(req.query.page) || 1;
@@ -397,6 +420,7 @@ const setCoverImage = async (req, res, next) => {
 const tripsController = {
   createTrip,
   getTripbyID,
+  getTripsByOwner,
   updateTripbyID,
   deleteTripbyID,
   getAllTrips,

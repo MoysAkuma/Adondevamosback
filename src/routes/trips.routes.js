@@ -317,6 +317,38 @@ router.get('/Trips',
  *                   type: integer
  *                   example: 404
  */
+/**
+ * @swagger
+ * /Trips/owner/{UserId}:
+ *   get:
+ *     summary: Get trips created by a specific user
+ *     tags: [Trips]
+ *     parameters:
+ *       - in: path
+ *         name: UserId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The ID of the owner user
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *     responses:
+ *       200:
+ *         description: List of trips owned by the user
+ *       404:
+ *         description: No trips found for this user
+ */
+router.get('/Trips/owner/:UserId',
+    tripsController.getTripsByOwner);
+
 router.get('/Trips/:TripID', 
     tripsController.getTripbyID);
 

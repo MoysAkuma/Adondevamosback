@@ -163,6 +163,11 @@ class TripsRepository {
       countQuery = countQuery.lte('finaldate', filters.finaldate);
     }
 
+    if (filters.ownerid) {
+      query = query.eq('ownerid', filters.ownerid);
+      countQuery = countQuery.eq('ownerid', filters.ownerid);
+    }
+
     if (filters.mytrips){
       query = query.eq('ownerid', userId);
       countQuery = countQuery.eq('ownerid', userId);
