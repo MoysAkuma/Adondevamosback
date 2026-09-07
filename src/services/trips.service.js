@@ -44,7 +44,9 @@ const tripsService = {
     return saveImageUrls;
   },
 
-  async getTripById(tripId, userid = null, fields = null) {
+  async getTripById(tripId, 
+    userid = null, 
+    fields = null) {
     // base trip
     const base = await tripsRepo.getTripByIdRaw(tripId);
     if (base.status !== 200) return base;
@@ -101,6 +103,7 @@ const tripsService = {
         return {
           initialdate: item.initialdate,
           finaldate: item.finaldate,
+          orden: item.orden,
           place: placeInfo
         };
       });
@@ -199,6 +202,7 @@ const tripsService = {
       initialdate: tripRow.initialdate,
       finaldate: tripRow.finaldate,
       isinternational: tripRow.isinternational,
+      orden: tripRow.orden,
       cover_url: tripRow.cover_url
     };
 
@@ -238,13 +242,13 @@ const tripsService = {
   },
 
   async getAll(filters = {}, userId = null, page = 1, limit = 10) {
-    return await tripsRepo.searchTrips(filters, 'id,name,ownerid,initialdate,finaldate', userId, page, limit);
+    return await tripsRepo.searchTrips(filters, 'id,name,ownerid,initialdate,finaldate,orden', userId, page, limit);
   },
 
   async getTripsByOwner(ownerId, page = 1, limit = 50) {
     return await tripsRepo.searchTrips(
       { ownerid: ownerId },
-      'id,name,initialdate,finaldate',
+      'id,name,initialdate,finaldate,orden',
       null,
       page,
       limit
@@ -258,7 +262,7 @@ const tripsService = {
 
     //get trip list
     const foundedTrips = await tripsRepo.searchTrips(filters, 
-      'id,name,description,initialdate,finaldate,isinternational,ownerid', userId, page, limit);
+      'id,name,description,initialdate,finaldate,isinternational,ownerid,orden', userId, page, limit);
 
     if( foundedTrips.status != 200 ) {
       return foundedTrips;
@@ -302,7 +306,56 @@ const tripsService = {
     return await tripsRepo.searchItineraryByTripIDs(tripIds, fields);
   },
   async createItinerary(tripId, itineraryData) {
-    return await tripsRepo.createItinerary(tripId, itineraryData);
+    const existingItinerary = await tripsRepo.getItineraryByTripId(tripId);
+    if (existingItinerary.status !== 200) return existingItinerary;
+
+    const existingItems = existingItinerary.data || [];
+    const existingKeys = new Set(
+      existingItems.map(item => `${item.placeid}|${item.initialdate}|${item.finaldate}`)
+    );
+
+    const itemsToAdd = [];
+    for (const item of itineraryData || []) {
+      const key = `${item.placeid}|${item.initialdate}|${item.finaldate}`;
+      if (existingKeys.has(key)) {
+        continue;
+      }
+
+      existingKeys.add(key);
+      itemsToAdd.push(item);
+    }
+
+    if (itemsToAdd.length === 0) {
+      return { status: 201, data: existingItems };
+    }
+
+    if (existingItems.length === 0) {
+      return await tripsRepo.createItinerary(tripId, itemsToAdd);
+    }
+
+    const insertedItems = [];
+    for (const item of itemsToAdd) {
+      const result = await tripsRepo.addItineraryPlace(tripId, item);
+      if (result.status !== 201) {
+        return result;
+      }
+      insertedItems.push(...(result.data || []));
+    }
+
+    return {
+      status: 201,
+      data: [...existingItems, ...insertedItems]
+    };
+  },
+  async addItineraryPlace(tripId, itineraryItem) {
+    const trip = await tripsRepo.getTripByIdRaw(tripId);
+    if (trip.status !== 200) return trip;
+    if (!trip.data || trip.data.length === 0) {
+      return { status: 404, error: 'Trip not found' };
+    }
+
+    // Repeated places are allowed by design in trip itineraries.
+    return await tripsRepo.addItineraryPlace(tripId, itineraryItem);
   },
   async updateItinerary(tripId, itineraryData) {
     //get existing itinerary

@@ -53,6 +53,11 @@ export const TripsTable = {
       type: 'timestamp',
       default: 'now()',
       nullable: false
+    },
+    orden: {
+      type: 'integer',
+      default: 0,
+      nullable: false
     }
   },
 
@@ -108,6 +113,11 @@ export const TripsItineraryTable = {
     createddate: {
       type: 'timestamp',
       default: 'now()',
+      nullable: false
+    },
+    orden: {
+      type: 'integer',
+      default: 0,
       nullable: false
     }
   },
@@ -207,11 +217,32 @@ export const TripsGalleryTable = {
       type: 'timestamp',
       default: 'now()',
       nullable: false
+    },
+    iscover: {
+      type: 'boolean',
+      default: false,
+      nullable: false
+    },
+    placeid: {
+      type: 'integer',
+      nullable: true,
+      foreignKey: {
+        table: 'places',
+        column: 'id',
+        onDelete: 'SET NULL'
+      }
+    },
+    orden: {
+      type: 'integer',
+      default: 0,
+      nullable: false
     }
   },
 
   indexes: [
     { columns: ['tripid'] },
+    { columns: ['placeid'] },
+    { columns: ['tripid', 'orden'] },
     { columns: ['filename'] }
   ]
 };

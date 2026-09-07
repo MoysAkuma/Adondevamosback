@@ -59,6 +59,8 @@ const router = express.Router();
  *          finaldate:
  *            type: string
  *            format: date
+ *          orden:
+ *            type: integer
  *          place:
  *            $ref: '#/components/schemas/Place'
  *      User:
@@ -105,6 +107,8 @@ const router = express.Router();
  *          completeurl:
  *            type: string
  *            format: uri
+ *          orden:
+ *            type: integer
  *      Trip:
  *        type: object
  *        required:
@@ -129,6 +133,9 @@ const router = express.Router();
  *          isinternational:
  *            type: boolean
  *            description: Indicates if the trip is international
+ *          orden:
+ *            type: integer
+ *            description: The display order of the trip
  *          itinerary:
  *            type: array
  *            description: The itinerary of the trip
@@ -184,6 +191,9 @@ const router = express.Router();
  *            type: string
  *            format: date
  *            description: The end date of the trip
+ *          orden:
+ *            type: integer
+ *            description: The display order of the trip
  *          isinternational:
  *            type: boolean
  *            description: Indicates if the trip is international
@@ -588,9 +598,11 @@ router.post('/Trips/Search',
  *               - placeid: 3
  *                 initialdate: "2024-02-04"
  *                 finaldate: "2024-02-04"
+ *                 orden: 1
  *               - placeid: 5
  *                 initialdate: "2024-02-05"
  *                 finaldate: "2024-02-06"
+ *                 orden: 2
  *     responses:
  *       201:
  *         description: Itinerary created successfully
@@ -661,9 +673,11 @@ router.post('/Trips/:TripID/Itinerary',
  *               - placeid: 3
  *                 initialdate: "2024-02-04"
  *                 finaldate: "2024-02-05"
+ *                 orden: 1
  *               - placeid: 8
  *                 initialdate: "2024-02-06"
  *                 finaldate: "2024-02-07"
+ *                 orden: 2
  *     responses:
  *       201:
  *         description: Itinerary updated successfully
@@ -686,6 +700,63 @@ router.post('/Trips/:TripID/Itinerary',
 router.put('/Trips/:TripID/Itinerary',
     authenticate,
     tripsController.updateItinerary);
+
+/**
+ * @swagger
+ * /Trips/{TripID}/Itinerary:
+ *   patch:
+ *     summary: Add a single place to an existing itinerary
+ *     description: Appends one itinerary item. Repeated places are allowed.
+ *     tags: [Trips, Itinerary]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: TripID
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The ID of the trip
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - placeid
+ *               - initialdate
+ *               - finaldate
+ *             properties:
+ *               placeid:
+ *                 type: integer
+ *                 description: The ID of the place to append
+ *               initialdate:
+ *                 type: string
+ *                 format: date
+ *               finaldate:
+ *                 type: string
+ *                 format: date
+ *               orden:
+ *                 type: integer
+ *           example:
+ *             placeid: 3
+ *             initialdate: "2024-02-08"
+ *             finaldate: "2024-02-08"
+ *             orden: 3
+ *     responses:
+ *       201:
+ *         description: Itinerary item added successfully
+ *       400:
+ *         description: Bad request
+ *       403:
+ *         description: Only trip creator or members can perform this action
+ *       404:
+ *         description: Trip not found
+ */
+router.patch('/Trips/:TripID/Itinerary',
+    authenticate,
+    tripsController.addItineraryPlace);
 
 /**
  * @swagger
@@ -908,14 +979,19 @@ router.get('/Trips/lasted/:Limit?',
  *                       description: File extension
  *                       default: jpg
  *                       example: jpg
+ *                     orden:
+ *                       type: integer
+ *                       description: Display order for the uploaded image
  *           example:
  *             images:
  *               - data: "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
  *                 mimetype: "image/jpeg"
  *                 extension: "jpg"
+ *                 orden: 1
  *               - data: "/9j/4AAQSkZJRg..."
  *                 mimetype: "image/png"
  *                 extension: "png"
+ *                 orden: 2
  *     responses:
  *       201:
  *         description: Images uploaded successfully

@@ -65,8 +65,9 @@ const createTrip = async (req, res, next) => {
         name : validatedData.name, 
         description : validatedData.description, 
         initialdate : validatedData.initialdate,
-        finaldate : validatedData.finaldate,
-        ownerid : userId
+      finaldate : validatedData.finaldate,
+      orden : validatedData.orden,
+      ownerid : userId
     });
     
     if (data.status != 201) throw new ApiError(500, data.message);
@@ -116,7 +117,8 @@ const updateTripbyID = async (req, res, next) => {
         name : validatedData.name, 
         description : validatedData.description, 
         initialdate : validatedData.initialdate,
-        finaldate : validatedData.finaldate,
+      finaldate : validatedData.finaldate,
+      orden : validatedData.orden,
         lastupdateddate : new Date().toISOString()
     });
 
@@ -279,6 +281,39 @@ const updateItinerary = async (req, res, next) => {
   }
 };
 
+const addItineraryPlace = async (req, res, next) => {
+  try {
+    const { TripID } = req.params;
+
+    await validateTripMemberOrCreator(req, TripID);
+
+    const { placeid, initialdate, finaldate, orden } = req.body;
+
+    if (!placeid || !initialdate || !finaldate) {
+      throw new ApiError(400, 'placeid, initialdate and finaldate are required');
+    }
+
+    const data = await tripsService.addItineraryPlace(TripID, {
+      placeid,
+      initialdate,
+      finaldate,
+      orden
+    });
+
+    if (data.status !== 201) {
+      throw new ApiError(data.status, 'Failed to add place to itinerary');
+    }
+
+    return new ApiResponse(res).success(
+      'Itinerary place added process success',
+      data.data,
+      data.status
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
 const createMemberList = async (req, res, next) => {
   try{
     //Get trip id to search
@@ -347,7 +382,8 @@ const uploadImages = async (req, res, next) => {
       return {
         buffer: buffer,
         mimetype: img.mimetype || 'image/jpeg',
-        extension: img.extension || 'jpg'
+        extension: img.extension || 'jpg',
+        orden: img.orden
       };
     });
 
@@ -428,6 +464,7 @@ const tripsController = {
   searchTrips,
   createItinerary,
   updateItinerary,
+  addItineraryPlace,
   createMemberList,
   updateMemberList,
   uploadImages,

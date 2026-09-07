@@ -40,13 +40,28 @@ class TripsRepository {
     return { status: 200, data };
   }
 
-  async getTripByIdRaw(id, fields = 'id,name,cover_url,ownerid,description,initialdate,finaldate,isinternational') {
-    const { data, error } = await this.tripsClient
+  async getTripByIdRaw(id, fields = 'id,name,cover_url,ownerid,description,initialdate,finaldate,isinternational,orden') {
+    const fallbackFields = 'id,name,cover_url,ownerid,description,initialdate,finaldate,isinternational';
+    const primary = await this.tripsClient
       .from('trips')
       .select(fields)
       .eq('id', id);
-    if (error) return { status: 500, error };
-    return { status: 200, data };
+
+    if (!primary.error) {
+      return { status: 200, data: primary.data };
+    }
+
+    if (String(primary.error.message || '').includes('orden')) {
+      const fallback = await this.tripsClient
+        .from('trips')
+        .select(fallbackFields)
+        .eq('id', id);
+
+      if (fallback.error) return { status: 500, error: fallback.error };
+      return { status: 200, data: fallback.data };
+    }
+
+    return { status: 500, error: primary.error };
   }
 
   async getOwnerById(id) {
@@ -59,14 +74,29 @@ class TripsRepository {
   }
 
   async getItineraryByTripId(tripId, 
-    fields = 'id,initialdate,finaldate,placeid') {
-    const { data, error } = await this.tripsClient
+    fields = 'id,initialdate,finaldate,placeid,orden') {
+    const fallbackFields = 'id,initialdate,finaldate,placeid';
+    const primary = await this.tripsClient
       .from('trips_itinerary')
       .select(fields)
-      .eq('tripid', tripId);
-    
-    if (error) return { status: 500, error };
-    return { status: 200, data };
+      .eq('tripid', tripId)
+      .order('orden', { ascending: true });
+
+    if (!primary.error) {
+      return { status: 200, data: primary.data };
+    }
+
+    if (String(primary.error.message || '').includes('orden')) {
+      const fallback = await this.tripsClient
+        .from('trips_itinerary')
+        .select(fallbackFields)
+        .eq('tripid', tripId);
+
+      if (fallback.error) return { status: 500, error: fallback.error };
+      return { status: 200, data: fallback.data };
+    }
+
+    return { status: 500, error: primary.error };
   }
 
   async getMembersListByTripId(tripId) {
@@ -92,7 +122,7 @@ class TripsRepository {
   }
 
   async searchTrips(filters = {}, 
-    fields = 'id,name,ownerid,initialdate,finaldate', 
+    fields = 'id,name,ownerid,initialdate,finaldate,orden', 
     userId = null,
     page = 1,
     limit = 10) {
@@ -211,24 +241,56 @@ class TripsRepository {
   }
 
   async getNewsTrips(limit = 5, 
-    fields = 'id,name,initialdate,finaldate') {
-    const { data, error } = await this.tripsClient
+    fields = 'id,name,initialdate,finaldate,orden') {
+    const fallbackFields = 'id,name,initialdate,finaldate';
+    const primary = await this.tripsClient
       .from('trips')
       .select(fields)
       .order('createddate', { ascending: false })
       .limit(limit);
-    if (error) return { status: 500, error };
-    return { status: 200, data };
+
+    if (!primary.error) {
+      return { status: 200, data: primary.data };
+    }
+
+    if (String(primary.error.message || '').includes('orden')) {
+      const fallback = await this.tripsClient
+        .from('trips')
+        .select(fallbackFields)
+        .order('createddate', { ascending: false })
+        .limit(limit);
+
+      if (fallback.error) return { status: 500, error: fallback.error };
+      return { status: 200, data: fallback.data };
+    }
+
+    return { status: 500, error: primary.error };
   }
 
   async searchItineraryByTripIDs(tripIds, 
-    fields = 'tripid,initialdate,finaldate,placeid') {
-    const { data, error } = await this.tripsClient
+    fields = 'tripid,initialdate,finaldate,placeid,orden') {
+    const fallbackFields = 'tripid,initialdate,finaldate,placeid';
+    const primary = await this.tripsClient
       .from('trips_itinerary')
       .select(fields)
-      .in('tripid', tripIds);
-    if (error) return { status: 500, error };
-    return { status: 200, data };
+      .in('tripid', tripIds)
+      .order('orden', { ascending: true });
+
+    if (!primary.error) {
+      return { status: 200, data: primary.data };
+    }
+
+    if (String(primary.error.message || '').includes('orden')) {
+      const fallback = await this.tripsClient
+        .from('trips_itinerary')
+        .select(fallbackFields)
+        .in('tripid', tripIds);
+
+      if (fallback.error) return { status: 500, error: fallback.error };
+      return { status: 200, data: fallback.data };
+    }
+
+    return { status: 500, error: primary.error };
   }
   async getVotesSummaryByTripId(tripId) {
     const { data, error } = await 
@@ -257,11 +319,12 @@ class TripsRepository {
     return { status: 200, data: { value: true } };
   }
   async createItinerary(tripId, itineraryData) {
-    const payload = itineraryData.map(item => ({
+    const payload = itineraryData.map((item, index) => ({
       initialdate: item.initialdate,
       finaldate: item.finaldate,
       placeid: item.placeid,
-      tripid: tripId
+      tripid: tripId,
+      orden: item.orden ?? index + 1
     }));
     const { data, error } = await this.tripsClient
       .from('trips_itinerary')
@@ -269,6 +332,31 @@ class TripsRepository {
         payload
       )
       .select();
+    if (error) return { status: 500, error };
+    return { status: 201, data };
+  }
+
+  async addItineraryPlace(tripId, itineraryItem) {
+    const { data: currentItinerary } = await this.tripsClient
+      .from('trips_itinerary')
+      .select('orden')
+      .eq('tripid', tripId)
+      .order('orden', { ascending: false })
+      .limit(1);
+
+    const payload = {
+      initialdate: itineraryItem.initialdate,
+      finaldate: itineraryItem.finaldate,
+      placeid: itineraryItem.placeid,
+      tripid: tripId,
+      orden: itineraryItem.orden ?? ((currentItinerary?.[0]?.orden ?? -1) + 1)
+    };
+
+    const { data, error } = await this.tripsClient
+      .from('trips_itinerary')
+      .insert(payload)
+      .select();
+
     if (error) return { status: 500, error };
     return { status: 201, data };
   }
@@ -369,7 +457,8 @@ class TripsRepository {
         uploadedUrls.push({
           fileName: fileName,
           url: urlData.publicUrl,
-          iscover: image.iscover || false
+          iscover: image.iscover || false,
+          orden: image.orden
         });
       }
 
@@ -396,11 +485,12 @@ class TripsRepository {
     const { data, error } = await this.tripsClient
       .from('trips_gallery')
       .insert(
-        imageUrls.map(item => ({
+        imageUrls.map((item, index) => ({
           tripid: tripid,
           filename: item.fileName,
           completeurl: item.url,
-          iscover: item.iscover || false
+          iscover: item.iscover || false,
+          orden: item.orden ?? index + 1
         }))
       )
       .select();
@@ -422,15 +512,30 @@ class TripsRepository {
     return { status: 200, data: data };
   }
   async getTripImages(tripId) {
-    const { data, error } = await this.tripsClient
+    const primary = await this.tripsClient
       .from('trips_gallery')
-      .select('id,filename,completeurl,iscover')
+      .select('id,filename,completeurl,iscover,orden')
       .eq('tripid', tripId);
-    if (error) return { status: 500, error: error.message };
+
+    let data = primary.data;
+    if (primary.error) {
+      if (String(primary.error.message || '').includes('orden')) {
+        const fallback = await this.tripsClient
+          .from('trips_gallery')
+          .select('id,filename,completeurl,iscover')
+          .eq('tripid', tripId);
+
+        if (fallback.error) return { status: 500, error: fallback.error.message };
+        data = fallback.data;
+      } else {
+        return { status: 500, error: primary.error.message };
+      }
+    }
     
     // Add thumbnail URLs for each image
     const bucketName = 'adondevamosNoGallery';
-    const galleryWithThumbnails = data.map(item => {
+    const orderedData = [...(data || [])].sort((left, right) => (left.orden ?? 0) - (right.orden ?? 0));
+    const galleryWithThumbnails = orderedData.map(item => {
       // Construct thumbnail path: trips/file.jpg -> trips/thumbnails/file.jpg
       const thumbnailFilename = item.filename.replace('trips/', 'trips/thumbnails/');
       const { data: thumbnailUrlData } = this.tripsClient.storage
@@ -448,13 +553,27 @@ class TripsRepository {
   
   async deleteImageFromGallery(imageId) {
     // First get the image details to retrieve the filename and cover status
-    const { data: imageData, error: fetchError } = await this.tripsClient
+    const primary = await this.tripsClient
       .from('trips_gallery')
-      .select('filename, tripid, iscover')
+      .select('filename, tripid, iscover, orden')
       .eq('id', imageId)
       .single();
-    
-    if (fetchError) return { status: 500, error: fetchError.message };
+    let imageData = primary.data;
+
+    if (primary.error) {
+      if (String(primary.error.message || '').includes('orden')) {
+        const fallback = await this.tripsClient
+          .from('trips_gallery')
+          .select('filename, tripid, iscover')
+          .eq('id', imageId)
+          .single();
+
+        if (fallback.error) return { status: 500, error: fallback.error.message };
+        imageData = fallback.data;
+      } else {
+        return { status: 500, error: primary.error.message };
+      }
+    }
     if (!imageData) return { status: 404, error: 'Image not found' };
     
     const { tripid, iscover } = imageData;
@@ -523,14 +642,29 @@ class TripsRepository {
 
   async setCoverImage(tripId, imageId) {
     // First, get the image URL
-    const { data: imageData, error: fetchError } = await this.tripsClient
+    const primary = await this.tripsClient
       .from('trips_gallery')
-      .select('completeurl')
+      .select('completeurl, orden')
       .eq('id', imageId)
       .eq('tripid', tripId)
       .single();
-    
-    if (fetchError) return { status: 500, error: fetchError.message };
+
+    let imageData = primary.data;
+    if (primary.error) {
+      if (String(primary.error.message || '').includes('orden')) {
+        const fallback = await this.tripsClient
+          .from('trips_gallery')
+          .select('completeurl')
+          .eq('id', imageId)
+          .eq('tripid', tripId)
+          .single();
+
+        if (fallback.error) return { status: 500, error: fallback.error.message };
+        imageData = fallback.data;
+      } else {
+        return { status: 500, error: primary.error.message };
+      }
+    }
     if (!imageData) return { status: 404, error: 'Image not found' };
     
     // Update all images for this trip to set iscover = false
