@@ -155,8 +155,18 @@ const getTripsByOwner = async (req, res, next) => {
     const { UserId } = req.params;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
+    const action = req.query.action || null;
+    const placeIdsParam = req.query.placeids || req.query.list || req.query.placeid || null;
+    const placeIds = placeIdsParam ? String(placeIdsParam).split(',').map(value => value.trim()).filter(Boolean) : [];
 
-    const trips = await tripsService.getTripsByOwner(UserId, page, limit);
+    if (action === 'additinerary' && placeIds.length === 0) {
+      throw new ApiError(400, 'placeid/placeids is required when action=additinerary');
+    }
+
+    const trips = await tripsService.getTripsByOwner(UserId, page, limit, {
+      action,
+      placeIds
+    });
 
     if (trips.status !== 200) {
       throw new ApiError(trips.status, trips.message || 'No trips found for this user');
@@ -223,20 +233,22 @@ const searchTrips = async (req, res, next) => {
   try{
     const { userId } = getAuthenticatedUser(req);
     //Get filters to search
-    const { filters } = req.body;
+    const filters = req.body?.filters || {};
     
     // Get pagination parameters from query string
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit, 10) || 10);
     
     //call search
     const foundedTrips = await tripsService.searchTrips(filters, userId, page, limit);
-    if (!foundedTrips.data) throw new ApiError(404, 
-      foundedTrips.message || 'No results to show');
+    if (foundedTrips.status !== 200) throw new ApiError(
+      foundedTrips.status || 500,
+      foundedTrips.message || 'Failed to search trips'
+    );
     
     return new ApiResponse(res).success(
       'Search trips sucess', 
-      foundedTrips.data,
+      foundedTrips.data || [],
       200,
       foundedTrips.pagination);
   } catch(err){

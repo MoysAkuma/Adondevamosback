@@ -245,17 +245,78 @@ const tripsService = {
     return await tripsRepo.searchTrips(filters, 'id,name,ownerid,initialdate,finaldate,orden', userId, page, limit);
   },
 
-  async getTripsByOwner(ownerId, page = 1, limit = 50) {
-    return await tripsRepo.searchTrips(
+  async getTripsByOwner(ownerId, page = 1, limit = 50, options = {}) {
+    const { action = null, placeIds = [] } = options;
+
+    const trips = await tripsRepo.searchTrips(
       { ownerid: ownerId },
-      'id,name,initialdate,finaldate,orden',
+      'id,name,initialdate,finaldate',
       null,
       page,
       limit
     );
+
+    if (trips.status !== 200) {
+      return trips;
+    }
+
+    if (action !== 'additinerary') {
+      return trips;
+    }
+
+    const normalizedPlaceIds = [...new Set(
+      (Array.isArray(placeIds) ? placeIds : [placeIds])
+        .flatMap(value => String(value).split(','))
+        .map(value => Number(value))
+        .filter(value => Number.isFinite(value) && value > 0)
+    )];
+
+    if (normalizedPlaceIds.length === 0) {
+      return { status: 400, message: 'placeid/placeids is required when action=additinerary' };
+    }
+
+    const tripIds = (trips.data || []).map(trip => trip.id);
+    if (tripIds.length === 0) {
+      return {
+        ...trips,
+        data: []
+      };
+    }
+
+    const itinerary = await tripsRepo.searchItineraryByTripIDs(tripIds, 'tripid,placeid');
+    if (itinerary.status !== 200 && itinerary.status !== 404) {
+      return itinerary;
+    }
+
+    const itineraryRows = itinerary.status === 404 ? [] : (itinerary.data || []);
+
+    const tripPlaceMap = new Map();
+    for (const item of itineraryRows) {
+      const tripId = Number(item.tripid);
+      if (!tripPlaceMap.has(tripId)) {
+        tripPlaceMap.set(tripId, new Set());
+      }
+      tripPlaceMap.get(tripId).add(Number(item.placeid));
+    }
+
+    return {
+      ...trips,
+      data: (trips.data || []).map(trip => {
+        const tripPlaces = tripPlaceMap.get(Number(trip.id)) || new Set();
+        const hasPlaceInItinerary = normalizedPlaceIds.some(placeId => tripPlaces.has(placeId));
+
+        return {
+          id: trip.id,
+          name: trip.name,
+          initialdate: trip.initialdate,
+          finaldate: trip.finaldate,
+          hasPlaceInItinerary
+        };
+      })
+    };
   },
 
-  async searchTrips(filters, 
+  async searchTrips(filters = {}, 
     userId = null,
     page = 1,
     limit = 10) {
@@ -264,15 +325,29 @@ const tripsService = {
     const foundedTrips = await tripsRepo.searchTrips(filters, 
       'id,name,description,initialdate,finaldate,isinternational,ownerid,orden', userId, page, limit);
 
-    if( foundedTrips.status != 200 ) {
+    if (foundedTrips.status != 200) {
       return foundedTrips;
     }
-    //get owners info
-    const ownerIds = [...new Set(foundedTrips.data.map(trip => trip.ownerid))];
-    const ownersInfo = await tripsRepo.getUsersByIds(ownerIds, 'id,name,lastname,email,tag');
-    if(ownersInfo.status != 200){
-      return ApiError("owners info error", ownersInfo.status )
+
+    if (!Array.isArray(foundedTrips.data) || foundedTrips.data.length === 0) {
+      return {
+        status: 200,
+        data: [],
+        pagination: foundedTrips.pagination
+      };
     }
+
+    //get owners info
+    const ownerIds = [...new Set(foundedTrips.data.map(trip => trip.ownerid).filter(Boolean))];
+
+    let ownersInfo = { status: 200, data: [] };
+    if (ownerIds.length > 0) {
+      ownersInfo = await tripsRepo.getUsersByIds(ownerIds, 'id,name,lastname,email,tag');
+      if (ownersInfo.status != 200) {
+        return { status: ownersInfo.status || 500, message: 'owners info error', error: ownersInfo.error };
+      }
+    }
+
     const ownerMap = new Map(ownersInfo.data.map(o => [o.id, o]));
     //attach owner info to trips
     const tripsWithOwners = foundedTrips.data.map(trip => ({

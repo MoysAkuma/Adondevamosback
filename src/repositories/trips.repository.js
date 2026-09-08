@@ -126,6 +126,27 @@ class TripsRepository {
     userId = null,
     page = 1,
     limit = 10) {
+
+    const safePage = Number.isFinite(Number(page)) && Number(page) > 0 ? Number(page) : 1;
+    const safeLimit = Number.isFinite(Number(limit)) && Number(limit) > 0 ? Number(limit) : 10;
+
+    const buildPagination = (totalCount, currentPage, currentLimit) => {
+      const totalPages = totalCount === 0 ? 0 : Math.ceil(totalCount / currentLimit);
+      return {
+        page: currentPage,
+        limit: currentLimit,
+        totalCount,
+        totalPages,
+        hasNextPage: totalPages > 0 && currentPage < totalPages,
+        hasPreviousPage: currentPage > 1
+      };
+    };
+
+    const emptyPaginatedResult = {
+      status: 200,
+      data: [],
+      pagination: buildPagination(0, safePage, safeLimit)
+    };
     
     // Get total count first with same filters
     let countQuery = this.tripsClient.from('trips').select('id', { count: 'exact', head: false });
@@ -153,7 +174,7 @@ class TripsRepository {
       if (placesError) return { status: 500, error: placesError };
       
       if (!placesData || placesData.length === 0) {
-        return { status: 404, message: "No results to show" };
+        return emptyPaginatedResult;
       }
       
       const placeIds = placesData.map(place => place.id);
@@ -167,7 +188,7 @@ class TripsRepository {
       if (itineraryError) return { status: 500, error: itineraryError };
       
       if (!itineraryData || itineraryData.length === 0) {
-        return { status: 404, message: "No results to show" };
+        return emptyPaginatedResult;
       }
       
       // Extract unique trip IDs from itinerary results
@@ -203,9 +224,21 @@ class TripsRepository {
       countQuery = countQuery.eq('ownerid', userId);
     }
 
-    if (filters.membertrips){
-      query = query.in('id', this.tripsClient.from('trips_members').select('tripid').eq('userid', userId));
-      countQuery = countQuery.in('id', this.tripsClient.from('trips_members').select('tripid').eq('userid', userId));
+    if (filters.membertrips) {
+      const { data: memberTripsData, error: memberTripsError } = await this.tripsClient
+        .from('trips_members')
+        .select('tripid')
+        .eq('userid', userId);
+
+      if (memberTripsError) return { status: 500, error: memberTripsError };
+
+      const memberTripIds = [...new Set((memberTripsData || []).map(item => item.tripid))];
+      if (memberTripIds.length === 0) {
+        return emptyPaginatedResult;
+      }
+
+      query = query.in('id', memberTripIds);
+      countQuery = countQuery.in('id', memberTripIds);
     }
     
     // Get total count
@@ -213,30 +246,22 @@ class TripsRepository {
     if (countError) return { status: 500, error: countError };
     
     const totalCount = count || 0;
-    const totalPages = Math.ceil(totalCount / limit);
+    const pagination = buildPagination(totalCount, safePage, safeLimit);
     
     // Apply pagination
-    const from = (page - 1) * limit;
-    const to = from + limit - 1;
+    const from = (safePage - 1) * safeLimit;
+    const to = from + safeLimit - 1;
     query = query.range(from, to);
     
     query = query.order('createddate', { ascending: false });
     
     const { data, error } = await query;
     if (error) return { status: 500, error };
-    if (!data || data.length === 0) return { status: 404, message: "No results to show" };
     
     return { 
       status: 200, 
-      data,
-      pagination: {
-        page,
-        limit,
-        totalCount,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1
-      }
+      data: data || [],
+      pagination
     };
   }
 
