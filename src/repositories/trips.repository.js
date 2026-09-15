@@ -483,7 +483,9 @@ class TripsRepository {
           fileName: fileName,
           url: urlData.publicUrl,
           iscover: image.iscover || false,
-          orden: image.orden
+          orden: image.orden,
+          placeid: image.placeid || null,
+          descripcion: image.descripcion || ''
         });
       }
 
@@ -515,7 +517,9 @@ class TripsRepository {
           filename: item.fileName,
           completeurl: item.url,
           iscover: item.iscover || false,
-          orden: item.orden ?? index + 1
+          orden: item.orden ?? index + 1,
+          descripcion: item.descripcion || '',
+          placeid: item.placeid || null
         }))
       )
       .select();
@@ -537,24 +541,33 @@ class TripsRepository {
     return { status: 200, data: data };
   }
   async getTripImages(tripId) {
-    const primary = await this.tripsClient
-      .from('trips_gallery')
-      .select('id,filename,completeurl,iscover,orden')
-      .eq('tripid', tripId);
+    const selectVariants = [
+      'id,filename,completeurl,iscover,orden,placeid,descripcion',
+      'id,filename,completeurl,iscover,placeid,descripcion',
+      'id,filename,completeurl,iscover,orden',
+      'id,filename,completeurl,iscover'
+    ];
 
-    let data = primary.data;
-    if (primary.error) {
-      if (String(primary.error.message || '').includes('orden')) {
-        const fallback = await this.tripsClient
-          .from('trips_gallery')
-          .select('id,filename,completeurl,iscover')
-          .eq('tripid', tripId);
+    let data = null;
+    let lastError = null;
 
-        if (fallback.error) return { status: 500, error: fallback.error.message };
-        data = fallback.data;
-      } else {
-        return { status: 500, error: primary.error.message };
+    for (const fields of selectVariants) {
+      const result = await this.tripsClient
+        .from('trips_gallery')
+        .select(fields)
+        .eq('tripid', tripId);
+
+      if (!result.error) {
+        data = result.data;
+        lastError = null;
+        break;
       }
+
+      lastError = result.error;
+    }
+
+    if (lastError) {
+      return { status: 500, error: lastError.message };
     }
     
     // Add thumbnail URLs for each image
@@ -569,6 +582,8 @@ class TripsRepository {
       
       return {
         ...item,
+        descripcion: item.descripcion || '',
+        placeid: item.placeid || null,
         thumbnailurl: thumbnailUrlData.publicUrl
       };
     });

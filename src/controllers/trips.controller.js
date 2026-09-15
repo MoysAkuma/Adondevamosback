@@ -381,6 +381,15 @@ const uploadImages = async (req, res, next) => {
         throw new ApiError(400, `Image data is required for image at index ${index}`);
       }
 
+      const parsedPlaceId =
+        img.placeid === null || img.placeid === undefined || img.placeid === ''
+          ? null
+          : Number(img.placeid);
+
+      if (parsedPlaceId !== null && Number.isNaN(parsedPlaceId)) {
+        throw new ApiError(400, `Invalid placeid for image at index ${index}`);
+      }
+
       // Handle base64 data
       let buffer;
       if (img.data.startsWith('data:')) {
@@ -395,7 +404,10 @@ const uploadImages = async (req, res, next) => {
         buffer: buffer,
         mimetype: img.mimetype || 'image/jpeg',
         extension: img.extension || 'jpg',
-        orden: img.orden
+        orden: img.orden,
+        iscover: Boolean(img.iscover),
+        placeid: parsedPlaceId,
+        descripcion: typeof img.descripcion === 'string' ? img.descripcion.trim() : ''
       };
     });
 

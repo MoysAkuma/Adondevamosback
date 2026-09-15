@@ -236,7 +236,11 @@ export const TripsGalleryTable = {
       type: 'integer',
       default: 0,
       nullable: false
-    }
+    },
+    descripcion: {
+      type: 'text',
+      nullable: false
+    },
   },
 
   indexes: [

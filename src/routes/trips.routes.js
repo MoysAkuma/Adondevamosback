@@ -109,6 +109,11 @@ const router = express.Router();
  *            format: uri
  *          orden:
  *            type: integer
+ *          placeid:
+ *            type: integer
+ *            nullable: true
+ *          descripcion:
+ *            type: string
  *      Trip:
  *        type: object
  *        required:
@@ -982,16 +987,31 @@ router.get('/Trips/lasted/:Limit?',
  *                     orden:
  *                       type: integer
  *                       description: Display order for the uploaded image
+ *                     iscover:
+ *                       type: boolean
+ *                       description: Sets this image as trip cover when true
+ *                     placeid:
+ *                       type: integer
+ *                       nullable: true
+ *                       description: Optional place association for this photo
+ *                     descripcion:
+ *                       type: string
+ *                       description: Optional description for this photo
  *           example:
  *             images:
  *               - data: "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
  *                 mimetype: "image/jpeg"
  *                 extension: "jpg"
  *                 orden: 1
+ *                 iscover: true
+ *                 placeid: 3
+ *                 descripcion: "Atardecer en el mirador"
  *               - data: "/9j/4AAQSkZJRg..."
  *                 mimetype: "image/png"
  *                 extension: "png"
  *                 orden: 2
+ *                 placeid: 5
+ *                 descripcion: "Cena en la plaza principal"
  *     responses:
  *       201:
  *         description: Images uploaded successfully
