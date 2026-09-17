@@ -1048,6 +1048,10 @@ router.post('/Trips/:TripID/Images',
     authenticate,
     tripsController.uploadImages);
 
+router.put('/Trips/:TripID/Images',
+    authenticate,
+    tripsController.updateImagesMetadata);
+
 /**
  * @swagger
  * /Trips/{TripID}/Images/{ImageID}:

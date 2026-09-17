@@ -601,6 +601,16 @@ const tripsService = {
     }
     
     return await tripsRepo.setCoverImage(tripId, imageId);
+  },
+
+  async updateImagesMetadata(tripId, imagesMetadata) {
+    const trip = await tripsRepo.getTripByIdRaw(tripId);
+    if (trip.status !== 200) return trip;
+    if (!trip.data || trip.data.length === 0) {
+      return { status: 404, error: 'Trip not found' };
+    }
+
+    return await tripsRepo.updateImagesMetadata(tripId, imagesMetadata);
   }
 };
 

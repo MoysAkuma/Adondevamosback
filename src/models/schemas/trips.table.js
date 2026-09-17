@@ -241,6 +241,11 @@ export const TripsGalleryTable = {
       type: 'text',
       nullable: false
     },
+    captureddate : {
+      type: 'date',
+      default: null,
+      nullable: true
+    },
   },
 
   indexes: [

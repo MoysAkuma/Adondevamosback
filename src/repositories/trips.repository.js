@@ -485,6 +485,7 @@ class TripsRepository {
           iscover: image.iscover || false,
           orden: image.orden,
           placeid: image.placeid || null,
+          captureddate: image.captureddate || null,
           descripcion: image.descripcion || ''
         });
       }
@@ -519,7 +520,8 @@ class TripsRepository {
           iscover: item.iscover || false,
           orden: item.orden ?? index + 1,
           descripcion: item.descripcion || '',
-          placeid: item.placeid || null
+          placeid: item.placeid || null,
+          captureddate: item.captureddate || null
         }))
       )
       .select();
@@ -542,8 +544,8 @@ class TripsRepository {
   }
   async getTripImages(tripId) {
     const selectVariants = [
-      'id,filename,completeurl,iscover,orden,placeid,descripcion',
-      'id,filename,completeurl,iscover,placeid,descripcion',
+      'id,filename,completeurl,iscover,orden,placeid,descripcion,captureddate',
+      'id,filename,completeurl,iscover,placeid,descripcion,captureddate',
       'id,filename,completeurl,iscover,orden',
       'id,filename,completeurl,iscover'
     ];
@@ -573,7 +575,7 @@ class TripsRepository {
     // Add thumbnail URLs for each image
     const bucketName = 'adondevamosNoGallery';
     const orderedData = [...(data || [])].sort((left, right) => (left.orden ?? 0) - (right.orden ?? 0));
-    const galleryWithThumbnails = orderedData.map(item => {
+    const galleryWithThumbnails = orderedData.map((item, index) => {
       // Construct thumbnail path: trips/file.jpg -> trips/thumbnails/file.jpg
       const thumbnailFilename = item.filename.replace('trips/', 'trips/thumbnails/');
       const { data: thumbnailUrlData } = this.tripsClient.storage
@@ -582,8 +584,10 @@ class TripsRepository {
       
       return {
         ...item,
+        orden: item.orden ?? index + 1,
         descripcion: item.descripcion || '',
         placeid: item.placeid || null,
+        captureddate: item.captureddate || null,
         thumbnailurl: thumbnailUrlData.publicUrl
       };
     });
@@ -732,6 +736,42 @@ class TripsRepository {
     if (updateTripError) return { status: 500, error: updateTripError.message };
     
     return { status: 200, data: { message: 'Cover image updated successfully', coverUrl: imageData.completeurl } };
+  }
+
+  async updateImagesMetadata(tripId, imagesMetadata) {
+    const updatedImages = [];
+
+    for (const image of imagesMetadata) {
+      const imageId = Number(image.id);
+
+      if (!Number.isFinite(imageId) || imageId <= 0) {
+        return { status: 400, error: 'Each image must have a valid id' };
+      }
+
+      const result = await this.tripsClient
+        .from('trips_gallery')
+        .update({
+          orden: image.orden,
+          placeid: image.placeid ?? null,
+          captureddate: image.captureddate || null,
+          descripcion: image.descripcion || ''
+        })
+        .eq('tripid', tripId)
+        .eq('id', imageId)
+        .select('id,filename,completeurl,iscover,orden,placeid,descripcion,captureddate');
+
+      if (result.error) {
+        return { status: 500, error: result.error.message };
+      }
+
+      if (!result.data || result.data.length === 0) {
+        return { status: 404, error: `Image ${imageId} not found for this trip` };
+      }
+
+      updatedImages.push(result.data[0]);
+    }
+
+    return { status: 200, data: updatedImages };
   }
   
   async getItineraryVotesSummaryByTripId(tripId) {

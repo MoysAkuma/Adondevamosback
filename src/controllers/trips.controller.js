@@ -390,6 +390,24 @@ const uploadImages = async (req, res, next) => {
         throw new ApiError(400, `Invalid placeid for image at index ${index}`);
       }
 
+      const parsedCapturedDate =
+        img.captureddate === null || img.captureddate === undefined || img.captureddate === ''
+          ? null
+          : String(img.captureddate).trim();
+
+      if (parsedCapturedDate !== null && Number.isNaN(Date.parse(parsedCapturedDate))) {
+        throw new ApiError(400, `Invalid captureddate for image at index ${index}`);
+      }
+
+      const parsedOrder =
+        img.orden === null || img.orden === undefined || img.orden === ''
+          ? index + 1
+          : Number(img.orden);
+
+      if (!Number.isFinite(parsedOrder) || parsedOrder <= 0) {
+        throw new ApiError(400, `Invalid orden for image at index ${index}`);
+      }
+
       // Handle base64 data
       let buffer;
       if (img.data.startsWith('data:')) {
@@ -404,9 +422,10 @@ const uploadImages = async (req, res, next) => {
         buffer: buffer,
         mimetype: img.mimetype || 'image/jpeg',
         extension: img.extension || 'jpg',
-        orden: img.orden,
+        orden: parsedOrder,
         iscover: Boolean(img.iscover),
         placeid: parsedPlaceId,
+        captureddate: parsedCapturedDate,
         descripcion: typeof img.descripcion === 'string' ? img.descripcion.trim() : ''
       };
     });
@@ -424,6 +443,72 @@ const uploadImages = async (req, res, next) => {
     );
   } catch (err) {
     next(err);
+  }
+};
+
+const updateImagesMetadata = async (req, res, next) => {
+  try {
+    const { TripID } = req.params;
+
+    await validateTripAdminOrCreator(req, TripID);
+
+    if (!req.body.images || !Array.isArray(req.body.images)) {
+      throw new ApiError(400, 'Images array is required in request body');
+    }
+
+    const metadata = req.body.images.map((img, index) => {
+      const parsedImageId = Number(img.id);
+      if (!Number.isFinite(parsedImageId) || parsedImageId <= 0) {
+        throw new ApiError(400, `Invalid image id at index ${index}`);
+      }
+
+      const parsedPlaceId =
+        img.placeid === null || img.placeid === undefined || img.placeid === ''
+          ? null
+          : Number(img.placeid);
+
+      if (parsedPlaceId !== null && Number.isNaN(parsedPlaceId)) {
+        throw new ApiError(400, `Invalid placeid for image at index ${index}`);
+      }
+
+      const parsedCapturedDate =
+        img.captureddate === null || img.captureddate === undefined || img.captureddate === ''
+          ? null
+          : String(img.captureddate).trim();
+
+      if (parsedCapturedDate !== null && Number.isNaN(Date.parse(parsedCapturedDate))) {
+        throw new ApiError(400, `Invalid captureddate for image at index ${index}`);
+      }
+
+      const parsedOrder =
+        img.orden === null || img.orden === undefined || img.orden === ''
+          ? index + 1
+          : Number(img.orden);
+
+      if (!Number.isFinite(parsedOrder) || parsedOrder <= 0) {
+        throw new ApiError(400, `Invalid orden for image at index ${index}`);
+      }
+
+      return {
+        id: parsedImageId,
+        orden: parsedOrder,
+        placeid: parsedPlaceId,
+        captureddate: parsedCapturedDate,
+        descripcion: typeof img.descripcion === 'string' ? img.descripcion.trim() : ''
+      };
+    });
+
+    const result = await tripsService.updateImagesMetadata(TripID, metadata);
+    if (result.status !== 200) {
+      throw new ApiError(result.status, result.error || 'Failed to update image metadata');
+    }
+
+    return new ApiResponse(res).success(
+      'Image metadata updated successfully',
+      result.data
+    );
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -492,6 +577,7 @@ const tripsController = {
   createMemberList,
   updateMemberList,
   uploadImages,
+  updateImagesMetadata,
   deleteImage,
   setCoverImage
 };
