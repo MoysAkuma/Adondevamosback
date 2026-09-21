@@ -116,10 +116,16 @@ const tripsService = {
       // first get member list to get all member user IDs
       const membersList = await tripsRepo.getMembersListByTripId(tripId);
       let itineraryMemberVotes = { status: 200, data: {} };
-      if (membersList.status === 200 && membersList.data && membersList.data.length > 0) {
-        const memberUserIds = membersList.data.map(m => m.userid);
+      if (membersList.status === 200) {
+        const memberUserIds = [...new Set([
+          ...(membersList.data || []).map(m => m.userid),
+          tripRow.ownerid
+        ].filter(Boolean))];
+
+        if (memberUserIds.length > 0) {
         itineraryMemberVotes = await tripsRepo.getItineraryVotesByMembersByTripId(tripId, memberUserIds);
         if (itineraryMemberVotes.status !== 200) return itineraryMemberVotes;
+        }
       }
       
       // get user votes for itinerary items if user is provided
