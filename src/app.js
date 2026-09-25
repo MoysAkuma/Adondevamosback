@@ -13,12 +13,10 @@ import rankingRoutes from './routes/ranking.routes.js';
 import errorMiddleware from './middleware/error.middleware.js'
 import authRoutes from './routes/auth.routes.js';
 import { env } from './config/env.js';
+import setupSwagger from './config/swagger.setup.js';
 dotenv.config();
 
 const app = express();
-
-// Swagger documentation
-import swaggerConfig from './config/swagger.config.js';
 
 const corsOptions = {
   origin: (origin, callback) => {
@@ -65,7 +63,7 @@ app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser());
 
 //swagger setup
-swaggerConfig(app);
+setupSwagger(app);
 
 // Redis and session setup
 redisConfig(app);
