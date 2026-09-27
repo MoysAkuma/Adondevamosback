@@ -113,6 +113,15 @@ class cataloguesRepository {
         if (error) return { status: 500, error: error.message };
         return { status: 201, data: insertedData };
     }
+    async findOne({ tableName, id }) {
+        const { data, error } = await this.cataloguesClient
+            .from(tableName)
+            .select()
+            .eq('id', id)
+            .single();
+        if (error) return { status: 500, error: error.message };
+        return { status: 200, data };
+    }
 };
 
 export default cataloguesRepository;
