@@ -336,11 +336,8 @@ const usersService = {
       if (ubicationNames.status !== 200) return ubicationNames;
       const userWithUbicationNames = matchUbicationNames(user, ubicationNames);
 
-      // Get last 3 trips created by user
-      const tripsResult = await tripsService.searchTrips({ 
-        ownerid: userId,
-        fields: 'id,name,description,initialdate,finaldate,ownerid,statics,itinerary'
-      });
+      // Get trips created by user using owner-specific query path
+      const tripsResult = await tripsService.getTripsByOwner(userId, 1, 100);
       let createdTrips = [];
       if (tripsResult.status === 200 && tripsResult.data) {
         createdTrips = tripsResult.data
