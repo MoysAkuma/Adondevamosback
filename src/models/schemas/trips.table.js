@@ -53,11 +53,6 @@ export const TripsTable = {
       type: 'timestamp',
       default: 'now()',
       nullable: false
-    },
-    orden: {
-      type: 'integer',
-      default: 0,
-      nullable: false
     }
   },
 

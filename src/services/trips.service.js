@@ -329,7 +329,7 @@ const tripsService = {
 
     //get trip list
     const foundedTrips = await tripsRepo.searchTrips(filters, 
-      'id,name,description,initialdate,finaldate,isinternational,ownerid,orden', userId, page, limit);
+      'id,name,description,initialdate,finaldate,isinternational,ownerid', userId, page, limit);
 
     if (foundedTrips.status != 200) {
       return foundedTrips;

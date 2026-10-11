@@ -261,7 +261,7 @@ const createItinerary = async (req, res, next) => {
     //Get trip id to search
     const { TripID } = req.params;
 
-    await validateTripAdminOrCreator(req, TripID);
+    await validateTripMemberOrCreator(req, TripID);
     //GetrqBody
     const { Itinerary } = req.body;
     const data = await tripsService.createItinerary(TripID, Itinerary);
@@ -368,7 +368,7 @@ const uploadImages = async (req, res, next) => {
   try {
     const { TripID } = req.params;
 
-    await validateTripAdminOrCreator(req, TripID);
+    await validateTripMemberOrCreator(req, TripID);
     
     // Validate request has images
     if (!req.body.images || !Array.isArray(req.body.images)) {
@@ -450,7 +450,7 @@ const updateImagesMetadata = async (req, res, next) => {
   try {
     const { TripID } = req.params;
 
-    await validateTripAdminOrCreator(req, TripID);
+    await validateTripMemberOrCreator(req, TripID);
 
     if (!req.body.images || !Array.isArray(req.body.images)) {
       throw new ApiError(400, 'Images array is required in request body');
@@ -516,7 +516,7 @@ const deleteImage = async (req, res, next) => {
   try {
     const { TripID, ImageID } = req.params;
 
-    await validateTripAdminOrCreator(req, TripID);
+    await validateTripMemberOrCreator(req, TripID);
     
     if (!ImageID) {
       throw new ApiError(400, 'Image ID is required');
@@ -541,7 +541,7 @@ const setCoverImage = async (req, res, next) => {
   try {
     const { TripID, ImageID } = req.params;
 
-    await validateTripAdminOrCreator(req, TripID);
+    await validateTripMemberOrCreator(req, TripID);
     
     if (!ImageID) {
       throw new ApiError(400, 'Image ID is required');
