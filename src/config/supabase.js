@@ -19,6 +19,10 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
   }
 });
 
+const publicServiceClient = createClient(supabaseUrl, supabaseServiceKey, {
+  db: { schema: 'public' }
+});
+
 // User client
 const userClient = createClient(supabaseUrl, supabaseServiceKey, {
   db: { schema: 'users' }
@@ -47,6 +51,7 @@ const votesClient = createClient(supabaseUrl, supabaseServiceKey, {
 export { 
   supabase as default,
   supabase as publicSchemaClient,
+  publicServiceClient,
   userClient,
   cataloguesClient,
   clientTrips,

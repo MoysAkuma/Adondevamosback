@@ -37,7 +37,7 @@ export const votes_results_trips = {
             autoIncrement: false,
             nullable: true
         },
-        oudateddate : {
+        updateddate : {
             type: 'timestamp',
             primaryKey: false,
             autoIncrement: false,
@@ -45,6 +45,24 @@ export const votes_results_trips = {
         },
         generatedby : {
             type: 'VARCHAR(30)',
+            primaryKey: false,
+            autoIncrement: false,
+            nullable: true
+        },
+        count_first: {
+            type : 'integer',
+            primaryKey: false,
+            autoIncrement: false,
+            nullable: true
+        },
+        count_second: {
+            type : 'integer',
+            primaryKey: false,
+            autoIncrement: false,
+            nullable: true
+        },
+        count_third: {
+            type : 'integer',
             primaryKey: false,
             autoIncrement: false,
             nullable: true
@@ -91,7 +109,7 @@ export const votes_results_places = {
             autoIncrement: false,
             nullable: true
         },
-        oudateddate : {
+        updateddate : {
             type: 'timestamp',
             primaryKey: false,
             autoIncrement: false,
@@ -99,6 +117,24 @@ export const votes_results_places = {
         },
         generatedby : {
             type: 'VARCHAR(30)',
+            primaryKey: false,
+            autoIncrement: false,
+            nullable: true
+        },
+        count_first: {
+            type : 'integer',
+            primaryKey: false,
+            autoIncrement: false,
+            nullable: true
+        },
+        count_second: {
+            type : 'integer',
+            primaryKey: false,
+            autoIncrement: false,
+            nullable: true
+        },
+        count_third: {
+            type : 'integer',
             primaryKey: false,
             autoIncrement: false,
             nullable: true
@@ -145,7 +181,7 @@ export const votes_results_itinerary = {
             autoIncrement: false,
             nullable: true
         },
-        oudateddate : {
+        updateddate : {
             type: 'timestamp',
             primaryKey: false,
             autoIncrement: false,
@@ -153,6 +189,24 @@ export const votes_results_itinerary = {
         },
         generatedby : {
             type: 'VARCHAR(30)',
+            primaryKey: false,
+            autoIncrement: false,
+            nullable: true
+        },
+        count_first: {
+            type : 'integer',
+            primaryKey: false,
+            autoIncrement: false,
+            nullable: true
+        },
+        count_second: {
+            type : 'integer',
+            primaryKey: false,
+            autoIncrement: false,
+            nullable: true
+        },
+        count_third: {
+            type : 'integer',
             primaryKey: false,
             autoIncrement: false,
             nullable: true

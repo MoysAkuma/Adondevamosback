@@ -190,6 +190,10 @@ The Swagger interface provides detailed information about:
 - **GET** `/v1/Votes/Trip/:tripId` - Retrieve votes by trip
 - **GET** `/v1/Votes/Place/:placeId` - Retrieve votes by place
 - **POST** `/v1/Votes/:userid` - Create a new vote
+- Vote creation/toggle automatically recalculates today ranking and upserts:
+  - `public.votes_results_places`
+  - `public.votes_results_trips`
+  - `public.votes_results_itinerary`
 
 ### Catalogues
 - **GET** `/v1/Catalogues/all` - Retrieve all catalogues catalogues

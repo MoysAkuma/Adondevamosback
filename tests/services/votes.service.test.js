@@ -12,7 +12,8 @@ const votesRepo = {
   createVotePlace: jest.fn(),
   updateVote: jest.fn(),
   getVotesByTripId: jest.fn(),
-  getVotesByPlaceId: jest.fn()
+  getVotesByPlaceId: jest.fn(),
+  updateDailyVotesResults: jest.fn()
 };
 
 const mockVotesRepoConstructor = jest.fn(() => votesRepo);
@@ -22,7 +23,8 @@ jest.unstable_mockModule('../../src/repositories/votes.repository.js', () => ({
 }));
 
 jest.unstable_mockModule('../../src/config/supabase.js', () => ({
-  votesClient: {}
+  votesClient: {},
+  publicServiceClient: {}
 }));
 
 const { default: votesService } = await import('../../src/services/votes.services.js');
@@ -35,40 +37,48 @@ describe('votes.service', () => {
   test('createVote toggles existing trip vote', async () => {
     votesRepo.getUserVoteByTripIdAndUserId.mockResolvedValue({ status: 200, data: { id: 8, value: true } });
     votesRepo.updateVoteTrips.mockResolvedValue({ status: 200, data: { value: false } });
+    votesRepo.updateDailyVotesResults.mockResolvedValue({ status: 200 });
 
     const result = await votesService.createVote(5, { tripid: 10 });
 
     expect(votesRepo.updateVoteTrips).toHaveBeenCalledWith(5, false, 10, 8);
+    expect(votesRepo.updateDailyVotesResults).toHaveBeenCalledTimes(1);
     expect(result.status).toBe(200);
   });
 
   test('createVote creates trip vote when none exists', async () => {
     votesRepo.getUserVoteByTripIdAndUserId.mockResolvedValue({ status: 404 });
     votesRepo.createVoteTrips.mockResolvedValue({ status: 201, data: {} });
+    votesRepo.updateDailyVotesResults.mockResolvedValue({ status: 200 });
 
     const result = await votesService.createVote(5, { tripid: 10 });
 
     expect(votesRepo.createVoteTrips).toHaveBeenCalledWith(5, { tripid: 10 });
+    expect(votesRepo.updateDailyVotesResults).toHaveBeenCalledTimes(1);
     expect(result.status).toBe(201);
   });
 
   test('createVote toggles itinerary vote', async () => {
     votesRepo.getUserVoteByItineraryTripIdPlaceIdAndUserId.mockResolvedValue({ status: 200, data: { value: false } });
     votesRepo.updateVoteItinerary.mockResolvedValue({ status: 200, data: {} });
+    votesRepo.updateDailyVotesResults.mockResolvedValue({ status: 200 });
 
     const result = await votesService.createVote(6, { tripid: 1, placeid: 2 });
 
     expect(votesRepo.updateVoteItinerary).toHaveBeenCalledWith(6, true, 1, 2);
+    expect(votesRepo.updateDailyVotesResults).toHaveBeenCalledTimes(1);
     expect(result.status).toBe(200);
   });
 
   test('createVote creates place vote when none exists', async () => {
     votesRepo.getUserVoteByPlaceIdAndUserId.mockResolvedValue({ status: 404 });
     votesRepo.createVotePlace.mockResolvedValue({ status: 201, data: {} });
+    votesRepo.updateDailyVotesResults.mockResolvedValue({ status: 200 });
 
     const result = await votesService.createVote(7, { placeid: 99 });
 
     expect(votesRepo.createVotePlace).toHaveBeenCalledWith(7, { placeid: 99 });
+    expect(votesRepo.updateDailyVotesResults).toHaveBeenCalledTimes(1);
     expect(result.status).toBe(201);
   });
 

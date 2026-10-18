@@ -13,7 +13,7 @@ jest.unstable_mockModule('../../src/repositories/ranking.repository.js', () => (
 }));
 
 jest.unstable_mockModule('../../src/config/supabase.js', () => ({
-  votesClient: {},
+  publicServiceClient: {},
   clientPlaces: {},
   clientTrips: {}
 }));
