@@ -1,6 +1,14 @@
 import VotesRepository  from "../repositories/votes.repository.js";
-import { votesClient } from "../config/supabase.js";
-const votesRepositoryInstance = new VotesRepository({ votesClient });
+import { votesClient, publicServiceClient } from "../config/supabase.js";
+const votesRepositoryInstance = new VotesRepository({ votesClient, rankingClient: publicServiceClient });
+
+const refreshDailyVoteResults = async () => {
+  const refreshResult = await votesRepositoryInstance.updateDailyVotesResults();
+  if (refreshResult.status !== 200) {
+    return refreshResult;
+  }
+  return null;
+};
 
 const votesService = {
   createVote: async (userId, voteData) => {
@@ -18,16 +26,25 @@ const votesService = {
         case 200:
           //update vote
           let info = userVotedTrip.data;
-          return await votesRepositoryInstance.updateVoteTrips(
+          const voteResult = await votesRepositoryInstance.updateVoteTrips(
             userId, 
             !info.value,
             voteData.tripid,
             info.id );
+
+          if (voteResult.status !== 200) return voteResult;
+          const refreshError = await refreshDailyVoteResults();
+          if (refreshError) return refreshError;
+          return voteResult;
           break;
         case 404:
-          return await votesRepositoryInstance.createVoteTrips(
+          const createdTripVote = await votesRepositoryInstance.createVoteTrips(
             userId, 
             voteData);
+          if (createdTripVote.status !== 201) return createdTripVote;
+          const tripRefreshError = await refreshDailyVoteResults();
+          if (tripRefreshError) return tripRefreshError;
+          return createdTripVote;
           break;
       }
       
@@ -43,16 +60,25 @@ const votesService = {
         case 200:
           let info = userVotedItinerary.data;
           //update vote
-          return await votesRepositoryInstance.updateVoteItinerary(
+          const itineraryVoteResult = await votesRepositoryInstance.updateVoteItinerary(
             userId, 
             !info.value,
             voteData.tripid,
             voteData.placeid );
+
+          if (itineraryVoteResult.status !== 200) return itineraryVoteResult;
+          const itineraryRefreshError = await refreshDailyVoteResults();
+          if (itineraryRefreshError) return itineraryRefreshError;
+          return itineraryVoteResult;
           break;
         case 404:
-          return await votesRepositoryInstance.createVoteItinerary(
+          const createdItineraryVote = await votesRepositoryInstance.createVoteItinerary(
             userId, 
             voteData);
+          if (createdItineraryVote.status !== 201) return createdItineraryVote;
+          const createItineraryRefreshError = await refreshDailyVoteResults();
+          if (createItineraryRefreshError) return createItineraryRefreshError;
+          return createdItineraryVote;
           break;
       }
     } else if (!voteData.tripid && voteData.placeid) {
@@ -67,16 +93,24 @@ const votesService = {
         case 200:
           let info = userVotedPlace.data;
           //update vote
-          return await votesRepositoryInstance.updateVotePlace(
+          const placeVoteResult = await votesRepositoryInstance.updateVotePlace(
             userId, 
             !info.value,
             voteData.placeid, 
             info.id );
+          if (placeVoteResult.status !== 200) return placeVoteResult;
+          const placeRefreshError = await refreshDailyVoteResults();
+          if (placeRefreshError) return placeRefreshError;
+          return placeVoteResult;
           break;
         case 404:
-          return await votesRepositoryInstance.createVotePlace(
+          const createdPlaceVote = await votesRepositoryInstance.createVotePlace(
             userId, 
             voteData);
+          if (createdPlaceVote.status !== 201) return createdPlaceVote;
+          const createPlaceRefreshError = await refreshDailyVoteResults();
+          if (createPlaceRefreshError) return createPlaceRefreshError;
+          return createdPlaceVote;
           break;
       }
     }
@@ -86,6 +120,13 @@ const votesService = {
 
   updateVote: async (userId, voteData) => {
     const result = await votesRepositoryInstance.updateVote(userId, voteData);
+    if (result.status !== 200) {
+      return result;
+    }
+
+    const refreshError = await refreshDailyVoteResults();
+    if (refreshError) return refreshError;
+
     return result;
   },
   getVotesByTrip: async (tripId) => {

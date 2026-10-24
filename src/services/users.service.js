@@ -326,8 +326,13 @@ const usersService = {
     },
 
     async getProfileData(userId) {
+      const normalizedUserId = Number(userId);
+      if (!Number.isFinite(normalizedUserId) || normalizedUserId <= 0) {
+        return { status: 400, error: "Invalid user id" };
+      }
+
       // Get user info with ubication and profile photos
-      const user = await usersRepositoryInstance.getUserById(userId, 
+      const user = await usersRepositoryInstance.getUserById(normalizedUserId, 
         "name, lastname, email, tag, description, countryid, stateid, cityid, enabled, hide, profile_photo, profile_photo_tn");
       if (user.status != 200) return { status: 500, error: user.error || "Service error" };
       
@@ -336,30 +341,40 @@ const usersService = {
       if (ubicationNames.status !== 200) return ubicationNames;
       const userWithUbicationNames = matchUbicationNames(user, ubicationNames);
 
-      // Get last 3 trips created by user
-      const tripsResult = await tripsService.searchTrips({ 
-        ownerid: userId,
-        fields: 'id,name,description,initialdate,finaldate,ownerid,statics,itinerary'
-      });
+      // Get trips created by user using owner-specific query path
+      const tripsResult = await tripsService.getTripsByOwner(normalizedUserId, 1, 100);
       let createdTrips = [];
       if (tripsResult.status === 200 && tripsResult.data) {
         createdTrips = tripsResult.data
           .sort((a, b) => new Date(b.initialdate) - new Date(a.initialdate));
       }
 
+      // Get trips where user is member (from trips_members by userid)
+      const memberTripsResult = await tripsService.searchTrips(
+        { membertrips: true },
+        normalizedUserId,
+        1,
+        100
+      );
+      let memberTrips = [];
+      if (memberTripsResult.status === 200 && memberTripsResult.data) {
+        memberTrips = memberTripsResult.data
+          .sort((a, b) => new Date(b.initialdate) - new Date(a.initialdate));
+      }
+
       // Get vote counts
-      const tripVotesCount = await votesRepositoryInstance.countVotesByUserId(userId, 'trips');
-      const placeVotesCount = await votesRepositoryInstance.countVotesByUserId(userId, 'places');
+      const tripVotesCount = await votesRepositoryInstance.countVotesByUserId(normalizedUserId, 'trips');
+      const placeVotesCount = await votesRepositoryInstance.countVotesByUserId(normalizedUserId, 'places');
 
       // Get last 3 voted trips
-      const votedTripsResult = await votesRepositoryInstance.getVotedTripsByUserId(userId, 10);
+      const votedTripsResult = await votesRepositoryInstance.getVotedTripsByUserId(normalizedUserId, 10);
       let votedTrips = [];
       if (votedTripsResult.status === 200 && votedTripsResult.data) {
         // Get trip details for each voted trip
         const tripIds = votedTripsResult.data.map(v => v.tripid);
         if (tripIds.length > 0) {
           const votedTripsDetails = await Promise.all(
-            tripIds.map(tripId => tripsService.getTripById(tripId, userId, 
+            tripIds.map(tripId => tripsService.getTripById(tripId, normalizedUserId, 
               ['id', 'name', 'description', 'initialdate', 'finaldate', 'ownerid', 'statics', 'itinerary']))
           );
           votedTrips = votedTripsDetails
@@ -373,6 +388,7 @@ const usersService = {
         data: {
           user: userWithUbicationNames.data[0] || {},
           createdTrips: createdTrips,
+          memberTrips: memberTrips,
           votedTrips: votedTrips,
           voteCounts: {
             trips: tripVotesCount.status === 200 ? tripVotesCount.data : 0,

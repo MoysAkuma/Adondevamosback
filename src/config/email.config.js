@@ -1,5 +1,6 @@
-import { Resend } from 'resend';
+﻿import { Resend } from 'resend';
 import { env } from './env.js';
+import { loadTemplate } from './template.loader.js';
 
 const resend = new Resend(env.RESEND_API);
 
@@ -10,58 +11,7 @@ const resend = new Resend(env.RESEND_API);
  * @param {string} userName - User name
  */
 export async function sendPasswordResetLinkEmail(to, resetLink, userName = 'User') {
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #4CAF50; color: white; padding: 20px; text-align: center; }
-          .content { background-color: #f9f9f9; padding: 20px; border-radius: 5px; margin-top: 20px; }
-          .button-container { text-align: center; margin: 30px 0; }
-          .reset-button { 
-            background-color: #4CAF50; 
-            color: white; 
-            padding: 15px 30px; 
-            text-decoration: none; 
-            border-radius: 5px; 
-            display: inline-block;
-            font-weight: bold;
-          }
-          .reset-button:hover { background-color: #45a049; }
-          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
-          .warning { color: #ff9800; font-weight: bold; }
-          .expiry-note { background-color: #fff3cd; padding: 10px; border-left: 4px solid #ffc107; margin: 20px 0; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>Password Reset Request</h1>
-          </div>
-          <div class="content">
-            <p>Hello <strong>${userName}</strong>,</p>
-            <p>We received a request to reset your password for your AdondeVamos account.</p>
-            <p>Click the button below to reset your password:</p>
-            <div class="button-container">
-              <a href="${resetLink}" class="reset-button">Reset Password</a>
-            </div>
-            <p>If the button doesn't work, copy and paste this link into your browser:</p>
-            <p style="word-break: break-all; color: #666;">${resetLink}</p>
-            <div class="expiry-note">
-              <strong>⏰ Note:</strong> This link will expire in 1 hour for security reasons.
-            </div>
-            <p class="warning">⚠️ If you did not request this password reset, please ignore this email or contact support if you have concerns.</p>
-          </div>
-          <div class="footer">
-            <p>© ${new Date().getFullYear()} AdondeVamos. All rights reserved.</p>
-            <p>This is an automated email. Please do not reply.</p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
+  const htmlContent = loadTemplate('password-reset-link', { userName, resetLink });
 
   try {
     const { data, error } = await resend.emails.send({
@@ -89,42 +39,7 @@ export async function sendPasswordResetLinkEmail(to, resetLink, userName = 'User
  * @param {string} userName - User name
  */
 export async function sendPasswordRecoveryEmail(to, password, userName = 'User') {
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #4CAF50; color: white; padding: 20px; text-align: center; }
-          .content { background-color: #f9f9f9; padding: 20px; border-radius: 5px; margin-top: 20px; }
-          .password { background-color: #fff; padding: 15px; border-left: 4px solid #4CAF50; margin: 20px 0; }
-          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
-          .warning { color: #ff9800; font-weight: bold; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>Password Recovery</h1>
-          </div>
-          <div class="content">
-            <p>Hello <strong>${userName}</strong>,</p>
-            <p>We received a request to recover your password. Here are your account credentials:</p>
-            <div class="password">
-              <strong>Password:</strong> ${password}
-            </div>
-            <p class="warning">⚠️ For security reasons, please change your password after logging in.</p>
-            <p>If you did not request this, please contact support immediately.</p>
-          </div>
-          <div class="footer">
-            <p>© ${new Date().getFullYear()} AdondeVamos. All rights reserved.</p>
-            <p>This is an automated email. Please do not reply.</p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
+  const htmlContent = loadTemplate('password-recovery', { userName, password });
 
   try {
     const { data, error } = await resend.emails.send({
@@ -139,10 +54,8 @@ export async function sendPasswordRecoveryEmail(to, password, userName = 'User')
       throw new Error('Failed to send recovery email');
     }
 
-    
     return { success: true, messageId: data.id };
   } catch (error) {
-    
     throw new Error('Failed to send recovery email');
   }
 }
@@ -150,48 +63,12 @@ export async function sendPasswordRecoveryEmail(to, password, userName = 'User')
 /**
  * Send Create Account email
  * @param {string} to - Recipient email
- * @param {string} userName - User name
  * @param {string} tag - User tag
+ * @param {string} userName - User name
+ * @param {string} Ubication - User location
  */
-export async function sendCreateAccountEmail(to, 
-  tag, 
-  userName = 'User', 
-  Ubication = '') {
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #4c79adff; color: white; padding: 20px; text-align: center; }
-          .content { background-color: #e8ebc3ff; padding: 20px; border-radius: 5px; margin-top: 20px; }
-          .info { background-color: #b9f5e6ff; padding: 15px; border-left: 4px solid #4CAF50; margin: 20px 0; }
-          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
-          .warning { color: #ff9800; font-weight: bold; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>Welcome to AdondeVamos</h1>
-          </div>
-          <div class="content">
-            <p>Hello <strong>${userName}</strong>,</p>
-            <p>Your account has been successfully created. Here are your account details:</p>
-            <div class="info">
-              <strong>Tag:</strong> ${tag}<br/>
-              <strong>Ubication:</strong> ${Ubication}
-            </div>
-          </div>
-          <div class="footer">
-            <p>© ${new Date().getFullYear()} AdondeVamos. All rights reserved.</p>
-            <p>This is an automated email. Please do not reply.</p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
+export async function sendCreateAccountEmail(to, tag, userName = 'User', Ubication = '') {
+  const htmlContent = loadTemplate('create-account', { userName, tag, ubication: Ubication });
 
   try {
     const { data, error } = await resend.emails.send({
@@ -223,41 +100,7 @@ export async function sendCreateAccountEmail(to,
  * @param {string} ownerTag - Owner tag
  */
 export async function sendAddedToTripEmail(to, userName, tripName, ownerName, ownerTag) {
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #4c79adff; color: white; padding: 20px; text-align: center; }
-          .content { background-color: #e8ebc3ff; padding: 20px; border-radius: 5px; margin-top: 20px; }
-          .info { background-color: #b9f5e6ff; padding: 15px; border-left: 4px solid #4CAF50; margin: 20px 0; }
-          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>You've Been Added to a Trip!</h1>
-          </div>
-          <div class="content">
-            <p>Hello <strong>${userName}</strong>,</p>
-            <p>You have been added as a member to the following trip:</p>
-            <div class="info">
-              <strong>Trip:</strong> ${tripName}<br/>
-              <strong>Added by:</strong> ${ownerName} (@${ownerTag})
-            </div>
-            <p>Add your plans, photos and memories too! 🌍✈️</p>
-          </div>
-          <div class="footer">
-            <p>© ${new Date().getFullYear()} AdondeVamos. All rights reserved.</p>
-            <p>This is an automated email. Please do not reply.</p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
+  const htmlContent = loadTemplate('added-to-trip', { userName, tripName, ownerName, ownerTag });
 
   try {
     const { data, error } = await resend.emails.send({
@@ -289,41 +132,7 @@ export async function sendAddedToTripEmail(to, userName, tripName, ownerName, ow
  * @param {string} ownerTag - Owner tag
  */
 export async function sendRemovedFromTripEmail(to, userName, tripName, ownerName, ownerTag) {
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #ff9800; color: white; padding: 20px; text-align: center; }
-          .content { background-color: #f9f9f9; padding: 20px; border-radius: 5px; margin-top: 20px; }
-          .info { background-color: #fff; padding: 15px; border-left: 4px solid #ff9800; margin: 20px 0; }
-          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>You've Been Removed from a Trip</h1>
-          </div>
-          <div class="content">
-            <p>Hello <strong>${userName}</strong>,</p>
-            <p>You have been removed as a member from the following trip:</p>
-            <div class="info">
-              <strong>Trip:</strong> ${tripName}<br/>
-              <strong>Removed by:</strong> ${ownerName} (@${ownerTag})
-            </div>
-            <p>If you have any questions, please contact the trip organizer.</p>
-          </div>
-          <div class="footer">
-            <p>© ${new Date().getFullYear()} AdondeVamos. All rights reserved.</p>
-            <p>This is an automated email. Please do not reply.</p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
+  const htmlContent = loadTemplate('removed-from-trip', { userName, tripName, ownerName, ownerTag });
 
   try {
     const { data, error } = await resend.emails.send({
@@ -354,45 +163,7 @@ export async function sendRemovedFromTripEmail(to, userName, tripName, ownerName
  */
 export async function sendEmailConfirmationEmail(to, userName, confirmationToken) {
   const confirmationUrl = `${env.FRONTEND_URL || 'http://localhost:3000'}/confirm-email?token=${confirmationToken}`;
-  
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #4c79adff; color: white; padding: 20px; text-align: center; }
-          .content { background-color: #e8ebc3ff; padding: 20px; border-radius: 5px; margin-top: 20px; }
-          .button { background-color: #52B788; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0; font-weight: bold; }
-          .button:hover { background-color: #3D8B66; }
-          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
-          .warning { color: #ff9800; font-size: 12px; margin-top: 10px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>Confirm Your Email Address</h1>
-          </div>
-          <div class="content">
-            <p>Hello <strong>${userName}</strong>,</p>
-            <p>Thank you for creating an account with AdondeVamos! To complete your registration, please confirm your email address by clicking the button below:</p>
-            <div style="text-align: center;">
-              <a href="${confirmationUrl}" class="button">Confirm Email Address</a>
-            </div>
-            <p>Or copy and paste this link into your browser:</p>
-            <p style="background-color: #fff; padding: 10px; border: 1px solid #ddd; word-break: break-all;">${confirmationUrl}</p>
-            <p class="warning">⚠️ This link will expire in 24 hours. If you didn't create this account, please ignore this email.</p>
-          </div>
-          <div class="footer">
-            <p>© ${new Date().getFullYear()} AdondeVamos. All rights reserved.</p>
-            <p>This is an automated email. Please do not reply.</p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
+  const htmlContent = loadTemplate('confirm-email', { userName, confirmationUrl });
 
   try {
     const { data, error } = await resend.emails.send({

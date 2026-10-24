@@ -16,7 +16,8 @@ const createTripSchema = z.object({
         .max(500, 'Description must be at most 500 characters')
         .optional(),
     initialdate: dateField(),
-    finaldate: dateField()
+    finaldate: dateField(),
+    orden: z.coerce.number().int().min(0).optional()
 }).refine((data) => data.finaldate >= data.initialdate, {
     message: 'Final date must be equal to or after the initial date',
     path: ['finaldate']
@@ -32,7 +33,8 @@ const updateTripSchema = z.object({
         .max(500, 'Description must be at most 500 characters')
         .optional(),
     initialdate: dateField().optional(),
-    finaldate: dateField().optional()
+    finaldate: dateField().optional(),
+    orden: z.coerce.number().int().min(0).optional()
 }).refine((data) => Object.keys(data).length > 0, {
     message: 'No valid fields provided to update'
 }).refine((data) => {

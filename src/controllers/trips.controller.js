@@ -65,8 +65,9 @@ const createTrip = async (req, res, next) => {
         name : validatedData.name, 
         description : validatedData.description, 
         initialdate : validatedData.initialdate,
-        finaldate : validatedData.finaldate,
-        ownerid : userId
+      finaldate : validatedData.finaldate,
+      orden : validatedData.orden,
+      ownerid : userId
     });
     
     if (data.status != 201) throw new ApiError(500, data.message);
@@ -116,7 +117,8 @@ const updateTripbyID = async (req, res, next) => {
         name : validatedData.name, 
         description : validatedData.description, 
         initialdate : validatedData.initialdate,
-        finaldate : validatedData.finaldate,
+      finaldate : validatedData.finaldate,
+      orden : validatedData.orden,
         lastupdateddate : new Date().toISOString()
     });
 
@@ -145,6 +147,39 @@ const deleteTripbyID = async (req, res, next) => {
       resp.data);
   } catch (err) {
     next(err);
+  }
+};
+
+const getTripsByOwner = async (req, res, next) => {
+  try {
+    const { UserId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const action = req.query.action || null;
+    const placeIdsParam = req.query.placeids || req.query.list || req.query.placeid || null;
+    const placeIds = placeIdsParam ? String(placeIdsParam).split(',').map(value => value.trim()).filter(Boolean) : [];
+
+    if (action === 'additinerary' && placeIds.length === 0) {
+      throw new ApiError(400, 'placeid/placeids is required when action=additinerary');
+    }
+
+    const trips = await tripsService.getTripsByOwner(UserId, page, limit, {
+      action,
+      placeIds
+    });
+
+    if (trips.status !== 200) {
+      throw new ApiError(trips.status, trips.message || 'No trips found for this user');
+    }
+
+    return new ApiResponse(res).success(
+      'Reading trips by owner success',
+      trips.data,
+      200,
+      trips.pagination
+    );
+  } catch (err) {
+    next(err instanceof ApiError ? err : new ApiError(err.status || 500, err.message));
   }
 };
 
@@ -198,20 +233,22 @@ const searchTrips = async (req, res, next) => {
   try{
     const { userId } = getAuthenticatedUser(req);
     //Get filters to search
-    const { filters } = req.body;
+    const filters = req.body?.filters || {};
     
     // Get pagination parameters from query string
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit, 10) || 10);
     
     //call search
     const foundedTrips = await tripsService.searchTrips(filters, userId, page, limit);
-    if (!foundedTrips.data) throw new ApiError(404, 
-      foundedTrips.message || 'No results to show');
+    if (foundedTrips.status !== 200) throw new ApiError(
+      foundedTrips.status || 500,
+      foundedTrips.message || 'Failed to search trips'
+    );
     
     return new ApiResponse(res).success(
       'Search trips sucess', 
-      foundedTrips.data,
+      foundedTrips.data || [],
       200,
       foundedTrips.pagination);
   } catch(err){
@@ -224,7 +261,7 @@ const createItinerary = async (req, res, next) => {
     //Get trip id to search
     const { TripID } = req.params;
 
-    await validateTripAdminOrCreator(req, TripID);
+    await validateTripMemberOrCreator(req, TripID);
     //GetrqBody
     const { Itinerary } = req.body;
     const data = await tripsService.createItinerary(TripID, Itinerary);
@@ -252,6 +289,39 @@ const updateItinerary = async (req, res, next) => {
       new ApiResponse(res).success('Itinerary update process sucess', data.data, data.status);
   }
   catch(err){
+    next(err);
+  }
+};
+
+const addItineraryPlace = async (req, res, next) => {
+  try {
+    const { TripID } = req.params;
+
+    await validateTripMemberOrCreator(req, TripID);
+
+    const { placeid, initialdate, finaldate, orden } = req.body;
+
+    if (!placeid || !initialdate || !finaldate) {
+      throw new ApiError(400, 'placeid, initialdate and finaldate are required');
+    }
+
+    const data = await tripsService.addItineraryPlace(TripID, {
+      placeid,
+      initialdate,
+      finaldate,
+      orden
+    });
+
+    if (data.status !== 201) {
+      throw new ApiError(data.status, 'Failed to add place to itinerary');
+    }
+
+    return new ApiResponse(res).success(
+      'Itinerary place added process success',
+      data.data,
+      data.status
+    );
+  } catch (err) {
     next(err);
   }
 };
@@ -298,7 +368,7 @@ const uploadImages = async (req, res, next) => {
   try {
     const { TripID } = req.params;
 
-    await validateTripAdminOrCreator(req, TripID);
+    await validateTripMemberOrCreator(req, TripID);
     
     // Validate request has images
     if (!req.body.images || !Array.isArray(req.body.images)) {
@@ -309,6 +379,33 @@ const uploadImages = async (req, res, next) => {
     const images = req.body.images.map((img, index) => {
       if (!img.data) {
         throw new ApiError(400, `Image data is required for image at index ${index}`);
+      }
+
+      const parsedPlaceId =
+        img.placeid === null || img.placeid === undefined || img.placeid === ''
+          ? null
+          : Number(img.placeid);
+
+      if (parsedPlaceId !== null && Number.isNaN(parsedPlaceId)) {
+        throw new ApiError(400, `Invalid placeid for image at index ${index}`);
+      }
+
+      const parsedCapturedDate =
+        img.captureddate === null || img.captureddate === undefined || img.captureddate === ''
+          ? null
+          : String(img.captureddate).trim();
+
+      if (parsedCapturedDate !== null && Number.isNaN(Date.parse(parsedCapturedDate))) {
+        throw new ApiError(400, `Invalid captureddate for image at index ${index}`);
+      }
+
+      const parsedOrder =
+        img.orden === null || img.orden === undefined || img.orden === ''
+          ? index + 1
+          : Number(img.orden);
+
+      if (!Number.isFinite(parsedOrder) || parsedOrder <= 0) {
+        throw new ApiError(400, `Invalid orden for image at index ${index}`);
       }
 
       // Handle base64 data
@@ -324,7 +421,12 @@ const uploadImages = async (req, res, next) => {
       return {
         buffer: buffer,
         mimetype: img.mimetype || 'image/jpeg',
-        extension: img.extension || 'jpg'
+        extension: img.extension || 'jpg',
+        orden: parsedOrder,
+        iscover: Boolean(img.iscover),
+        placeid: parsedPlaceId,
+        captureddate: parsedCapturedDate,
+        descripcion: typeof img.descripcion === 'string' ? img.descripcion.trim() : ''
       };
     });
 
@@ -344,11 +446,77 @@ const uploadImages = async (req, res, next) => {
   }
 };
 
+const updateImagesMetadata = async (req, res, next) => {
+  try {
+    const { TripID } = req.params;
+
+    await validateTripMemberOrCreator(req, TripID);
+
+    if (!req.body.images || !Array.isArray(req.body.images)) {
+      throw new ApiError(400, 'Images array is required in request body');
+    }
+
+    const metadata = req.body.images.map((img, index) => {
+      const parsedImageId = Number(img.id);
+      if (!Number.isFinite(parsedImageId) || parsedImageId <= 0) {
+        throw new ApiError(400, `Invalid image id at index ${index}`);
+      }
+
+      const parsedPlaceId =
+        img.placeid === null || img.placeid === undefined || img.placeid === ''
+          ? null
+          : Number(img.placeid);
+
+      if (parsedPlaceId !== null && Number.isNaN(parsedPlaceId)) {
+        throw new ApiError(400, `Invalid placeid for image at index ${index}`);
+      }
+
+      const parsedCapturedDate =
+        img.captureddate === null || img.captureddate === undefined || img.captureddate === ''
+          ? null
+          : String(img.captureddate).trim();
+
+      if (parsedCapturedDate !== null && Number.isNaN(Date.parse(parsedCapturedDate))) {
+        throw new ApiError(400, `Invalid captureddate for image at index ${index}`);
+      }
+
+      const parsedOrder =
+        img.orden === null || img.orden === undefined || img.orden === ''
+          ? index + 1
+          : Number(img.orden);
+
+      if (!Number.isFinite(parsedOrder) || parsedOrder <= 0) {
+        throw new ApiError(400, `Invalid orden for image at index ${index}`);
+      }
+
+      return {
+        id: parsedImageId,
+        orden: parsedOrder,
+        placeid: parsedPlaceId,
+        captureddate: parsedCapturedDate,
+        descripcion: typeof img.descripcion === 'string' ? img.descripcion.trim() : ''
+      };
+    });
+
+    const result = await tripsService.updateImagesMetadata(TripID, metadata);
+    if (result.status !== 200) {
+      throw new ApiError(result.status, result.error || 'Failed to update image metadata');
+    }
+
+    return new ApiResponse(res).success(
+      'Image metadata updated successfully',
+      result.data
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 const deleteImage = async (req, res, next) => {
   try {
     const { TripID, ImageID } = req.params;
 
-    await validateTripAdminOrCreator(req, TripID);
+    await validateTripMemberOrCreator(req, TripID);
     
     if (!ImageID) {
       throw new ApiError(400, 'Image ID is required');
@@ -373,7 +541,7 @@ const setCoverImage = async (req, res, next) => {
   try {
     const { TripID, ImageID } = req.params;
 
-    await validateTripAdminOrCreator(req, TripID);
+    await validateTripMemberOrCreator(req, TripID);
     
     if (!ImageID) {
       throw new ApiError(400, 'Image ID is required');
@@ -397,6 +565,7 @@ const setCoverImage = async (req, res, next) => {
 const tripsController = {
   createTrip,
   getTripbyID,
+  getTripsByOwner,
   updateTripbyID,
   deleteTripbyID,
   getAllTrips,
@@ -404,9 +573,11 @@ const tripsController = {
   searchTrips,
   createItinerary,
   updateItinerary,
+  addItineraryPlace,
   createMemberList,
   updateMemberList,
   uploadImages,
+  updateImagesMetadata,
   deleteImage,
   setCoverImage
 };

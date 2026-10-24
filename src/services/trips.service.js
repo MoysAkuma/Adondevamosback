@@ -44,7 +44,9 @@ const tripsService = {
     return saveImageUrls;
   },
 
-  async getTripById(tripId, userid = null, fields = null) {
+  async getTripById(tripId, 
+    userid = null, 
+    fields = null) {
     // base trip
     const base = await tripsRepo.getTripByIdRaw(tripId);
     if (base.status !== 200) return base;
@@ -101,6 +103,7 @@ const tripsService = {
         return {
           initialdate: item.initialdate,
           finaldate: item.finaldate,
+          orden: item.orden,
           place: placeInfo
         };
       });
@@ -113,10 +116,16 @@ const tripsService = {
       // first get member list to get all member user IDs
       const membersList = await tripsRepo.getMembersListByTripId(tripId);
       let itineraryMemberVotes = { status: 200, data: {} };
-      if (membersList.status === 200 && membersList.data && membersList.data.length > 0) {
-        const memberUserIds = membersList.data.map(m => m.userid);
+      if (membersList.status === 200) {
+        const memberUserIds = [...new Set([
+          ...(membersList.data || []).map(m => m.userid),
+          tripRow.ownerid
+        ].filter(Boolean))];
+
+        if (memberUserIds.length > 0) {
         itineraryMemberVotes = await tripsRepo.getItineraryVotesByMembersByTripId(tripId, memberUserIds);
         if (itineraryMemberVotes.status !== 200) return itineraryMemberVotes;
+        }
       }
       
       // get user votes for itinerary items if user is provided
@@ -199,6 +208,7 @@ const tripsService = {
       initialdate: tripRow.initialdate,
       finaldate: tripRow.finaldate,
       isinternational: tripRow.isinternational,
+      orden: tripRow.orden,
       cover_url: tripRow.cover_url
     };
 
@@ -238,10 +248,81 @@ const tripsService = {
   },
 
   async getAll(filters = {}, userId = null, page = 1, limit = 10) {
-    return await tripsRepo.searchTrips(filters, 'id,name,ownerid,initialdate,finaldate', userId, page, limit);
+    return await tripsRepo.searchTrips(filters, 'id,name,ownerid,initialdate,finaldate,orden', userId, page, limit);
   },
 
-  async searchTrips(filters, 
+  async getTripsByOwner(ownerId, page = 1, limit = 50, options = {}) {
+    const { action = null, placeIds = [] } = options;
+
+    const trips = await tripsRepo.searchTrips(
+      { ownerid: ownerId },
+      'id,name,initialdate,finaldate',
+      null,
+      page,
+      limit
+    );
+
+    if (trips.status !== 200) {
+      return trips;
+    }
+
+    if (action !== 'additinerary') {
+      return trips;
+    }
+
+    const normalizedPlaceIds = [...new Set(
+      (Array.isArray(placeIds) ? placeIds : [placeIds])
+        .flatMap(value => String(value).split(','))
+        .map(value => Number(value))
+        .filter(value => Number.isFinite(value) && value > 0)
+    )];
+
+    if (normalizedPlaceIds.length === 0) {
+      return { status: 400, message: 'placeid/placeids is required when action=additinerary' };
+    }
+
+    const tripIds = (trips.data || []).map(trip => trip.id);
+    if (tripIds.length === 0) {
+      return {
+        ...trips,
+        data: []
+      };
+    }
+
+    const itinerary = await tripsRepo.searchItineraryByTripIDs(tripIds, 'tripid,placeid');
+    if (itinerary.status !== 200 && itinerary.status !== 404) {
+      return itinerary;
+    }
+
+    const itineraryRows = itinerary.status === 404 ? [] : (itinerary.data || []);
+
+    const tripPlaceMap = new Map();
+    for (const item of itineraryRows) {
+      const tripId = Number(item.tripid);
+      if (!tripPlaceMap.has(tripId)) {
+        tripPlaceMap.set(tripId, new Set());
+      }
+      tripPlaceMap.get(tripId).add(Number(item.placeid));
+    }
+
+    return {
+      ...trips,
+      data: (trips.data || []).map(trip => {
+        const tripPlaces = tripPlaceMap.get(Number(trip.id)) || new Set();
+        const hasPlaceInItinerary = normalizedPlaceIds.some(placeId => tripPlaces.has(placeId));
+
+        return {
+          id: trip.id,
+          name: trip.name,
+          initialdate: trip.initialdate,
+          finaldate: trip.finaldate,
+          hasPlaceInItinerary
+        };
+      })
+    };
+  },
+
+  async searchTrips(filters = {}, 
     userId = null,
     page = 1,
     limit = 10) {
@@ -250,15 +331,29 @@ const tripsService = {
     const foundedTrips = await tripsRepo.searchTrips(filters, 
       'id,name,description,initialdate,finaldate,isinternational,ownerid', userId, page, limit);
 
-    if( foundedTrips.status != 200 ) {
+    if (foundedTrips.status != 200) {
       return foundedTrips;
     }
-    //get owners info
-    const ownerIds = [...new Set(foundedTrips.data.map(trip => trip.ownerid))];
-    const ownersInfo = await tripsRepo.getUsersByIds(ownerIds, 'id,name,lastname,email,tag');
-    if(ownersInfo.status != 200){
-      return ApiError("owners info error", ownersInfo.status )
+
+    if (!Array.isArray(foundedTrips.data) || foundedTrips.data.length === 0) {
+      return {
+        status: 200,
+        data: [],
+        pagination: foundedTrips.pagination
+      };
     }
+
+    //get owners info
+    const ownerIds = [...new Set(foundedTrips.data.map(trip => trip.ownerid).filter(Boolean))];
+
+    let ownersInfo = { status: 200, data: [] };
+    if (ownerIds.length > 0) {
+      ownersInfo = await tripsRepo.getUsersByIds(ownerIds, 'id,name,lastname,email,tag');
+      if (ownersInfo.status != 200) {
+        return { status: ownersInfo.status || 500, message: 'owners info error', error: ownersInfo.error };
+      }
+    }
+
     const ownerMap = new Map(ownersInfo.data.map(o => [o.id, o]));
     //attach owner info to trips
     const tripsWithOwners = foundedTrips.data.map(trip => ({
@@ -292,7 +387,56 @@ const tripsService = {
     return await tripsRepo.searchItineraryByTripIDs(tripIds, fields);
   },
   async createItinerary(tripId, itineraryData) {
-    return await tripsRepo.createItinerary(tripId, itineraryData);
+    const existingItinerary = await tripsRepo.getItineraryByTripId(tripId);
+    if (existingItinerary.status !== 200) return existingItinerary;
+
+    const existingItems = existingItinerary.data || [];
+    const existingKeys = new Set(
+      existingItems.map(item => `${item.placeid}|${item.initialdate}|${item.finaldate}`)
+    );
+
+    const itemsToAdd = [];
+    for (const item of itineraryData || []) {
+      const key = `${item.placeid}|${item.initialdate}|${item.finaldate}`;
+      if (existingKeys.has(key)) {
+        continue;
+      }
+
+      existingKeys.add(key);
+      itemsToAdd.push(item);
+    }
+
+    if (itemsToAdd.length === 0) {
+      return { status: 201, data: existingItems };
+    }
+
+    if (existingItems.length === 0) {
+      return await tripsRepo.createItinerary(tripId, itemsToAdd);
+    }
+
+    const insertedItems = [];
+    for (const item of itemsToAdd) {
+      const result = await tripsRepo.addItineraryPlace(tripId, item);
+      if (result.status !== 201) {
+        return result;
+      }
+      insertedItems.push(...(result.data || []));
+    }
+
+    return {
+      status: 201,
+      data: [...existingItems, ...insertedItems]
+    };
+  },
+  async addItineraryPlace(tripId, itineraryItem) {
+    const trip = await tripsRepo.getTripByIdRaw(tripId);
+    if (trip.status !== 200) return trip;
+    if (!trip.data || trip.data.length === 0) {
+      return { status: 404, error: 'Trip not found' };
+    }
+
+    // Repeated places are allowed by design in trip itineraries.
+    return await tripsRepo.addItineraryPlace(tripId, itineraryItem);
   },
   async updateItinerary(tripId, itineraryData) {
     //get existing itinerary
@@ -463,6 +607,16 @@ const tripsService = {
     }
     
     return await tripsRepo.setCoverImage(tripId, imageId);
+  },
+
+  async updateImagesMetadata(tripId, imagesMetadata) {
+    const trip = await tripsRepo.getTripByIdRaw(tripId);
+    if (trip.status !== 200) return trip;
+    if (!trip.data || trip.data.length === 0) {
+      return { status: 404, error: 'Trip not found' };
+    }
+
+    return await tripsRepo.updateImagesMetadata(tripId, imagesMetadata);
   }
 };
 

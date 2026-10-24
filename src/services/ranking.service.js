@@ -1,8 +1,8 @@
 import RankingRepository from '../repositories/ranking.repository.js';
-import { votesClient, clientPlaces, clientTrips } from '../config/supabase.js';
+import { publicServiceClient, clientPlaces, clientTrips } from '../config/supabase.js';
 
 const rankingRepo = new RankingRepository({ 
-    votesClient, 
+    rankingClient: publicServiceClient, 
     placesClient: clientPlaces, 
     tripsClient: clientTrips 
 });

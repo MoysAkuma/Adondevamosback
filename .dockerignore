@@ -1,0 +1,29 @@
+# ── Dependencies ──────────────────────────────────────────────────────────────
+# Rebuilt inside the container — never copy the host's node_modules
+node_modules/
+
+# ── Version control ───────────────────────────────────────────────────────────
+.git/
+.github/
+
+# ── Secrets — injected at runtime via GCP Secret Manager / env vars ───────────
+.env
+.env.*
+
+# ── Dev / test artifacts ──────────────────────────────────────────────────────
+test/
+tests/
+nodemon.json
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Documentation (not needed at runtime) ─────────────────────────────────────
+*.md
+*.sql
+
+# ── Editor / OS artifacts ─────────────────────────────────────────────────────
+.vscode/
+.DS_Store
+Thumbs.db

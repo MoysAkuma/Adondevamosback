@@ -40,13 +40,28 @@ class TripsRepository {
     return { status: 200, data };
   }
 
-  async getTripByIdRaw(id, fields = 'id,name,cover_url,ownerid,description,initialdate,finaldate,isinternational') {
-    const { data, error } = await this.tripsClient
+  async getTripByIdRaw(id, fields = 'id,name,cover_url,ownerid,description,initialdate,finaldate,isinternational,orden') {
+    const fallbackFields = 'id,name,cover_url,ownerid,description,initialdate,finaldate,isinternational';
+    const primary = await this.tripsClient
       .from('trips')
       .select(fields)
       .eq('id', id);
-    if (error) return { status: 500, error };
-    return { status: 200, data };
+
+    if (!primary.error) {
+      return { status: 200, data: primary.data };
+    }
+
+    if (String(primary.error.message || '').includes('orden')) {
+      const fallback = await this.tripsClient
+        .from('trips')
+        .select(fallbackFields)
+        .eq('id', id);
+
+      if (fallback.error) return { status: 500, error: fallback.error };
+      return { status: 200, data: fallback.data };
+    }
+
+    return { status: 500, error: primary.error };
   }
 
   async getOwnerById(id) {
@@ -59,14 +74,29 @@ class TripsRepository {
   }
 
   async getItineraryByTripId(tripId, 
-    fields = 'id,initialdate,finaldate,placeid') {
-    const { data, error } = await this.tripsClient
+    fields = 'id,initialdate,finaldate,placeid,orden') {
+    const fallbackFields = 'id,initialdate,finaldate,placeid';
+    const primary = await this.tripsClient
       .from('trips_itinerary')
       .select(fields)
-      .eq('tripid', tripId);
-    
-    if (error) return { status: 500, error };
-    return { status: 200, data };
+      .eq('tripid', tripId)
+      .order('orden', { ascending: true });
+
+    if (!primary.error) {
+      return { status: 200, data: primary.data };
+    }
+
+    if (String(primary.error.message || '').includes('orden')) {
+      const fallback = await this.tripsClient
+        .from('trips_itinerary')
+        .select(fallbackFields)
+        .eq('tripid', tripId);
+
+      if (fallback.error) return { status: 500, error: fallback.error };
+      return { status: 200, data: fallback.data };
+    }
+
+    return { status: 500, error: primary.error };
   }
 
   async getMembersListByTripId(tripId) {
@@ -92,10 +122,31 @@ class TripsRepository {
   }
 
   async searchTrips(filters = {}, 
-    fields = 'id,name,ownerid,initialdate,finaldate', 
+    fields = 'id,name,ownerid,initialdate,finaldate,orden', 
     userId = null,
     page = 1,
     limit = 10) {
+
+    const safePage = Number.isFinite(Number(page)) && Number(page) > 0 ? Number(page) : 1;
+    const safeLimit = Number.isFinite(Number(limit)) && Number(limit) > 0 ? Number(limit) : 10;
+
+    const buildPagination = (totalCount, currentPage, currentLimit) => {
+      const totalPages = totalCount === 0 ? 0 : Math.ceil(totalCount / currentLimit);
+      return {
+        page: currentPage,
+        limit: currentLimit,
+        totalCount,
+        totalPages,
+        hasNextPage: totalPages > 0 && currentPage < totalPages,
+        hasPreviousPage: currentPage > 1
+      };
+    };
+
+    const emptyPaginatedResult = {
+      status: 200,
+      data: [],
+      pagination: buildPagination(0, safePage, safeLimit)
+    };
     
     // Get total count first with same filters
     let countQuery = this.tripsClient.from('trips').select('id', { count: 'exact', head: false });
@@ -123,7 +174,7 @@ class TripsRepository {
       if (placesError) return { status: 500, error: placesError };
       
       if (!placesData || placesData.length === 0) {
-        return { status: 404, message: "No results to show" };
+        return emptyPaginatedResult;
       }
       
       const placeIds = placesData.map(place => place.id);
@@ -137,7 +188,7 @@ class TripsRepository {
       if (itineraryError) return { status: 500, error: itineraryError };
       
       if (!itineraryData || itineraryData.length === 0) {
-        return { status: 404, message: "No results to show" };
+        return emptyPaginatedResult;
       }
       
       // Extract unique trip IDs from itinerary results
@@ -163,14 +214,31 @@ class TripsRepository {
       countQuery = countQuery.lte('finaldate', filters.finaldate);
     }
 
+    if (filters.ownerid) {
+      query = query.eq('ownerid', filters.ownerid);
+      countQuery = countQuery.eq('ownerid', filters.ownerid);
+    }
+
     if (filters.mytrips){
       query = query.eq('ownerid', userId);
       countQuery = countQuery.eq('ownerid', userId);
     }
 
-    if (filters.membertrips){
-      query = query.in('id', this.tripsClient.from('trips_members').select('tripid').eq('userid', userId));
-      countQuery = countQuery.in('id', this.tripsClient.from('trips_members').select('tripid').eq('userid', userId));
+    if (filters.membertrips) {
+      const { data: memberTripsData, error: memberTripsError } = await this.tripsClient
+        .from('trips_members')
+        .select('tripid')
+        .eq('userid', userId);
+
+      if (memberTripsError) return { status: 500, error: memberTripsError };
+
+      const memberTripIds = [...new Set((memberTripsData || []).map(item => item.tripid))];
+      if (memberTripIds.length === 0) {
+        return emptyPaginatedResult;
+      }
+
+      query = query.in('id', memberTripIds);
+      countQuery = countQuery.in('id', memberTripIds);
     }
     
     // Get total count
@@ -178,52 +246,76 @@ class TripsRepository {
     if (countError) return { status: 500, error: countError };
     
     const totalCount = count || 0;
-    const totalPages = Math.ceil(totalCount / limit);
+    const pagination = buildPagination(totalCount, safePage, safeLimit);
     
     // Apply pagination
-    const from = (page - 1) * limit;
-    const to = from + limit - 1;
+    const from = (safePage - 1) * safeLimit;
+    const to = from + safeLimit - 1;
     query = query.range(from, to);
     
     query = query.order('createddate', { ascending: false });
     
     const { data, error } = await query;
     if (error) return { status: 500, error };
-    if (!data || data.length === 0) return { status: 404, message: "No results to show" };
     
     return { 
       status: 200, 
-      data,
-      pagination: {
-        page,
-        limit,
-        totalCount,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1
-      }
+      data: data || [],
+      pagination
     };
   }
 
   async getNewsTrips(limit = 5, 
-    fields = 'id,name,initialdate,finaldate') {
-    const { data, error } = await this.tripsClient
+    fields = 'id,name,initialdate,finaldate,orden') {
+    const fallbackFields = 'id,name,initialdate,finaldate';
+    const primary = await this.tripsClient
       .from('trips')
       .select(fields)
       .order('createddate', { ascending: false })
       .limit(limit);
-    if (error) return { status: 500, error };
-    return { status: 200, data };
+
+    if (!primary.error) {
+      return { status: 200, data: primary.data };
+    }
+
+    if (String(primary.error.message || '').includes('orden')) {
+      const fallback = await this.tripsClient
+        .from('trips')
+        .select(fallbackFields)
+        .order('createddate', { ascending: false })
+        .limit(limit);
+
+      if (fallback.error) return { status: 500, error: fallback.error };
+      return { status: 200, data: fallback.data };
+    }
+
+    return { status: 500, error: primary.error };
   }
 
   async searchItineraryByTripIDs(tripIds, 
-    fields = 'tripid,initialdate,finaldate,placeid') {
-    const { data, error } = await this.tripsClient
+    fields = 'tripid,initialdate,finaldate,placeid,orden') {
+    const fallbackFields = 'tripid,initialdate,finaldate,placeid';
+    const primary = await this.tripsClient
       .from('trips_itinerary')
       .select(fields)
-      .in('tripid', tripIds);
-    if (error) return { status: 500, error };
-    return { status: 200, data };
+      .in('tripid', tripIds)
+      .order('orden', { ascending: true });
+
+    if (!primary.error) {
+      return { status: 200, data: primary.data };
+    }
+
+    if (String(primary.error.message || '').includes('orden')) {
+      const fallback = await this.tripsClient
+        .from('trips_itinerary')
+        .select(fallbackFields)
+        .in('tripid', tripIds);
+
+      if (fallback.error) return { status: 500, error: fallback.error };
+      return { status: 200, data: fallback.data };
+    }
+
+    return { status: 500, error: primary.error };
   }
   async getVotesSummaryByTripId(tripId) {
     const { data, error } = await 
@@ -252,11 +344,12 @@ class TripsRepository {
     return { status: 200, data: { value: true } };
   }
   async createItinerary(tripId, itineraryData) {
-    const payload = itineraryData.map(item => ({
+    const payload = itineraryData.map((item, index) => ({
       initialdate: item.initialdate,
       finaldate: item.finaldate,
       placeid: item.placeid,
-      tripid: tripId
+      tripid: tripId,
+      orden: item.orden ?? index + 1
     }));
     const { data, error } = await this.tripsClient
       .from('trips_itinerary')
@@ -264,6 +357,31 @@ class TripsRepository {
         payload
       )
       .select();
+    if (error) return { status: 500, error };
+    return { status: 201, data };
+  }
+
+  async addItineraryPlace(tripId, itineraryItem) {
+    const { data: currentItinerary } = await this.tripsClient
+      .from('trips_itinerary')
+      .select('orden')
+      .eq('tripid', tripId)
+      .order('orden', { ascending: false })
+      .limit(1);
+
+    const payload = {
+      initialdate: itineraryItem.initialdate,
+      finaldate: itineraryItem.finaldate,
+      placeid: itineraryItem.placeid,
+      tripid: tripId,
+      orden: itineraryItem.orden ?? ((currentItinerary?.[0]?.orden ?? -1) + 1)
+    };
+
+    const { data, error } = await this.tripsClient
+      .from('trips_itinerary')
+      .insert(payload)
+      .select();
+
     if (error) return { status: 500, error };
     return { status: 201, data };
   }
@@ -364,7 +482,11 @@ class TripsRepository {
         uploadedUrls.push({
           fileName: fileName,
           url: urlData.publicUrl,
-          iscover: image.iscover || false
+          iscover: image.iscover || false,
+          orden: image.orden,
+          placeid: image.placeid || null,
+          captureddate: image.captureddate || null,
+          descripcion: image.descripcion || ''
         });
       }
 
@@ -391,11 +513,15 @@ class TripsRepository {
     const { data, error } = await this.tripsClient
       .from('trips_gallery')
       .insert(
-        imageUrls.map(item => ({
+        imageUrls.map((item, index) => ({
           tripid: tripid,
           filename: item.fileName,
           completeurl: item.url,
-          iscover: item.iscover || false
+          iscover: item.iscover || false,
+          orden: item.orden ?? index + 1,
+          descripcion: item.descripcion || '',
+          placeid: item.placeid || null,
+          captureddate: item.captureddate || null
         }))
       )
       .select();
@@ -417,15 +543,39 @@ class TripsRepository {
     return { status: 200, data: data };
   }
   async getTripImages(tripId) {
-    const { data, error } = await this.tripsClient
-      .from('trips_gallery')
-      .select('id,filename,completeurl,iscover')
-      .eq('tripid', tripId);
-    if (error) return { status: 500, error: error.message };
+    const selectVariants = [
+      'id,filename,completeurl,iscover,orden,placeid,descripcion,captureddate',
+      'id,filename,completeurl,iscover,placeid,descripcion,captureddate',
+      'id,filename,completeurl,iscover,orden',
+      'id,filename,completeurl,iscover'
+    ];
+
+    let data = null;
+    let lastError = null;
+
+    for (const fields of selectVariants) {
+      const result = await this.tripsClient
+        .from('trips_gallery')
+        .select(fields)
+        .eq('tripid', tripId);
+
+      if (!result.error) {
+        data = result.data;
+        lastError = null;
+        break;
+      }
+
+      lastError = result.error;
+    }
+
+    if (lastError) {
+      return { status: 500, error: lastError.message };
+    }
     
     // Add thumbnail URLs for each image
     const bucketName = 'adondevamosNoGallery';
-    const galleryWithThumbnails = data.map(item => {
+    const orderedData = [...(data || [])].sort((left, right) => (left.orden ?? 0) - (right.orden ?? 0));
+    const galleryWithThumbnails = orderedData.map((item, index) => {
       // Construct thumbnail path: trips/file.jpg -> trips/thumbnails/file.jpg
       const thumbnailFilename = item.filename.replace('trips/', 'trips/thumbnails/');
       const { data: thumbnailUrlData } = this.tripsClient.storage
@@ -434,6 +584,10 @@ class TripsRepository {
       
       return {
         ...item,
+        orden: item.orden ?? index + 1,
+        descripcion: item.descripcion || '',
+        placeid: item.placeid || null,
+        captureddate: item.captureddate || null,
         thumbnailurl: thumbnailUrlData.publicUrl
       };
     });
@@ -443,13 +597,27 @@ class TripsRepository {
   
   async deleteImageFromGallery(imageId) {
     // First get the image details to retrieve the filename and cover status
-    const { data: imageData, error: fetchError } = await this.tripsClient
+    const primary = await this.tripsClient
       .from('trips_gallery')
-      .select('filename, tripid, iscover')
+      .select('filename, tripid, iscover, orden')
       .eq('id', imageId)
       .single();
-    
-    if (fetchError) return { status: 500, error: fetchError.message };
+    let imageData = primary.data;
+
+    if (primary.error) {
+      if (String(primary.error.message || '').includes('orden')) {
+        const fallback = await this.tripsClient
+          .from('trips_gallery')
+          .select('filename, tripid, iscover')
+          .eq('id', imageId)
+          .single();
+
+        if (fallback.error) return { status: 500, error: fallback.error.message };
+        imageData = fallback.data;
+      } else {
+        return { status: 500, error: primary.error.message };
+      }
+    }
     if (!imageData) return { status: 404, error: 'Image not found' };
     
     const { tripid, iscover } = imageData;
@@ -518,14 +686,29 @@ class TripsRepository {
 
   async setCoverImage(tripId, imageId) {
     // First, get the image URL
-    const { data: imageData, error: fetchError } = await this.tripsClient
+    const primary = await this.tripsClient
       .from('trips_gallery')
-      .select('completeurl')
+      .select('completeurl, orden')
       .eq('id', imageId)
       .eq('tripid', tripId)
       .single();
-    
-    if (fetchError) return { status: 500, error: fetchError.message };
+
+    let imageData = primary.data;
+    if (primary.error) {
+      if (String(primary.error.message || '').includes('orden')) {
+        const fallback = await this.tripsClient
+          .from('trips_gallery')
+          .select('completeurl')
+          .eq('id', imageId)
+          .eq('tripid', tripId)
+          .single();
+
+        if (fallback.error) return { status: 500, error: fallback.error.message };
+        imageData = fallback.data;
+      } else {
+        return { status: 500, error: primary.error.message };
+      }
+    }
     if (!imageData) return { status: 404, error: 'Image not found' };
     
     // Update all images for this trip to set iscover = false
@@ -553,6 +736,42 @@ class TripsRepository {
     if (updateTripError) return { status: 500, error: updateTripError.message };
     
     return { status: 200, data: { message: 'Cover image updated successfully', coverUrl: imageData.completeurl } };
+  }
+
+  async updateImagesMetadata(tripId, imagesMetadata) {
+    const updatedImages = [];
+
+    for (const image of imagesMetadata) {
+      const imageId = Number(image.id);
+
+      if (!Number.isFinite(imageId) || imageId <= 0) {
+        return { status: 400, error: 'Each image must have a valid id' };
+      }
+
+      const result = await this.tripsClient
+        .from('trips_gallery')
+        .update({
+          orden: image.orden,
+          placeid: image.placeid ?? null,
+          captureddate: image.captureddate || null,
+          descripcion: image.descripcion || ''
+        })
+        .eq('tripid', tripId)
+        .eq('id', imageId)
+        .select('id,filename,completeurl,iscover,orden,placeid,descripcion,captureddate');
+
+      if (result.error) {
+        return { status: 500, error: result.error.message };
+      }
+
+      if (!result.data || result.data.length === 0) {
+        return { status: 404, error: `Image ${imageId} not found for this trip` };
+      }
+
+      updatedImages.push(result.data[0]);
+    }
+
+    return { status: 200, data: updatedImages };
   }
   
   async getItineraryVotesSummaryByTripId(tripId) {

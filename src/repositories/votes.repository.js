@@ -1,6 +1,7 @@
 class VotesRepository {
-    constructor({ votesClient }) {
+    constructor({ votesClient, rankingClient }) {
         this.votesClient = votesClient;
+        this.rankingClient = rankingClient;
     }
     async getVotesByTrips(tripIds = [], 
         fields = 'id, tripid, userid, value') {
@@ -212,6 +213,131 @@ class VotesRepository {
             .limit(limit);
         if (error) return { status: 500, error: error.message };
         return { status: 200, data: data };
+    }
+
+    async updateDailyVotesResults() {
+        const tripsRanking = await this.getTopVotesByField('trips', 'tripid');
+        if (tripsRanking.status !== 200) return tripsRanking;
+
+        const placesRanking = await this.getTopVotesByField('places', 'placeid');
+        if (placesRanking.status !== 200) return placesRanking;
+
+        const itinerariesRanking = await this.getTopVotesByField('trips_itineraries', 'tripid');
+        if (itinerariesRanking.status !== 200) return itinerariesRanking;
+
+        const tripsResult = await this.upsertDailyRanking(
+            'votes_results_trips',
+            tripsRanking.data,
+            'votes-service'
+        );
+        if (tripsResult.status !== 200) return tripsResult;
+
+        const placesResult = await this.upsertDailyRanking(
+            'votes_results_places',
+            placesRanking.data,
+            'votes-service'
+        );
+        if (placesResult.status !== 200) return placesResult;
+
+        const itineraryResult = await this.upsertDailyRanking(
+            'votes_results_itinerary',
+            itinerariesRanking.data,
+            'votes-service'
+        );
+        if (itineraryResult.status !== 200) return itineraryResult;
+
+        return { status: 200 };
+    }
+
+    async getTopVotesByField(tableName, fieldName, limit = 3) {
+        const { data, error } = await this.votesClient
+            .from(tableName)
+            .select(fieldName)
+            .eq('value', true);
+
+        if (error) return { status: 500, error: error.message };
+
+        const counts = {};
+        for (const vote of data || []) {
+            const entityId = vote[fieldName];
+            if (entityId == null) continue;
+            counts[entityId] = (counts[entityId] || 0) + 1;
+        }
+
+        const ranking = Object.entries(counts)
+            .map(([id, total]) => ({ id: Number(id), total }))
+            .sort((a, b) => b.total - a.total)
+            .slice(0, limit);
+
+        return { status: 200, data: ranking };
+    }
+
+    async upsertDailyRanking(tableName, ranking = [], generatedBy = 'votes-service') {
+        if (!this.rankingClient) {
+            return { status: 500, error: 'Ranking client is not configured' };
+        }
+
+        const dayRange = this.getUtcDayRange();
+        const { data: existingRows, error: selectError } = await this.rankingClient
+            .from(tableName)
+            .select('id')
+            .gte('createddate', dayRange.start)
+            .lt('createddate', dayRange.end)
+            .order('createddate', { ascending: false })
+            .limit(1);
+
+        if (selectError) return { status: 500, error: selectError.message };
+
+        const payload = {
+            first: ranking[0]?.id ?? null,
+            second: ranking[1]?.id ?? null,
+            third: ranking[2]?.id ?? null,
+            count_first: ranking[0]?.total ?? 0,
+            count_second: ranking[1]?.total ?? 0,
+            count_third: ranking[2]?.total ?? 0,
+            updateddate: new Date().toISOString(),
+            generatedby: generatedBy
+        };
+
+        if (existingRows && existingRows.length > 0) {
+            const { error: updateError } = await this.rankingClient
+                .from(tableName)
+                .update(payload)
+                .eq('id', existingRows[0].id);
+
+            if (updateError) return { status: 500, error: updateError.message };
+            return { status: 200 };
+        }
+
+        const { error: insertError } = await this.rankingClient
+            .from(tableName)
+            .insert({
+                createddate: new Date().toISOString(),
+                ...payload
+            });
+
+        if (insertError) return { status: 500, error: insertError.message };
+        return { status: 200 };
+    }
+
+    getUtcDayRange() {
+        const now = new Date();
+        const startDate = new Date(Date.UTC(
+            now.getUTCFullYear(),
+            now.getUTCMonth(),
+            now.getUTCDate(),
+            0,
+            0,
+            0,
+            0
+        ));
+        const endDate = new Date(startDate);
+        endDate.setUTCDate(endDate.getUTCDate() + 1);
+
+        return {
+            start: startDate.toISOString(),
+            end: endDate.toISOString()
+        };
     }
 
 };
