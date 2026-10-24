@@ -357,7 +357,6 @@ const usersService = {
         100
       );
       let memberTrips = [];
-      console.log("Member trips result:", memberTripsResult);
       if (memberTripsResult.status === 200 && memberTripsResult.data) {
         memberTrips = memberTripsResult.data
           .sort((a, b) => new Date(b.initialdate) - new Date(a.initialdate));
