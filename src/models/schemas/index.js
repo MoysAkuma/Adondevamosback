@@ -22,7 +22,8 @@ export {
 export { 
   PlacesTable, 
   FacilitiesTable, 
-  PlacesFacilitiesTable 
+  PlacesFacilitiesTable,
+  PlacesGalleryTable
 } from './places.table.js';
 
 // Catalogue/Ubication tables
@@ -59,7 +60,8 @@ export const DatabaseSchema = {
   places: {
     places: () => import('./places.table.js').then(m => m.PlacesTable),
     facilities: () => import('./places.table.js').then(m => m.FacilitiesTable),
-    places_facilities: () => import('./places.table.js').then(m => m.PlacesFacilitiesTable)
+    places_facilities: () => import('./places.table.js').then(m => m.PlacesFacilitiesTable),
+    places_gallery: () => import('./places.table.js').then(m => m.PlacesGalleryTable)
   },
   
   catalogues: {

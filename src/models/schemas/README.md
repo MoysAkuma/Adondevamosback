@@ -6,7 +6,7 @@ This folder contains all database table schema definitions for the AdondeVamos a
 
 - **users.table.js** - User-related tables (users, admins, confirmations)
 - **trips.table.js** - Trip-related tables (trips, trips_itinerary, trips_members, trips_gallery)
-- **places.table.js** - Place-related tables (places, facilities, places_facilities)
+- **places.table.js** - Place-related tables (places, facilities, places_facilities, places_gallery)
 - **catalogues.table.js** - Catalogue/Location tables (countries, states, cities)
 - **votes.table.js** - Vote tables (trips, places, trips_itineraries votes)
 - **index.js** - Central export point for all schemas
@@ -89,6 +89,7 @@ export const TableName = {
 - `places` - Place information
 - `facilities` - Available facilities
 - `places_facilities` - Place-facility relationships
+- `places_gallery` - Place images
 
 **Catalogues Domain:**
 - `countries` - Country catalogue

@@ -159,8 +159,71 @@ export const PlacesFacilitiesTable = {
   ]
 };
 
+/**
+ * Places Gallery Table Schema
+ * Defines the structure of the 'places_gallery' table
+ */
+export const PlacesGalleryTable = {
+  tableName: 'places_gallery',
+  schema: 'places',
+  
+  columns: {
+    id: {
+      type: 'integer',
+      primaryKey: true,
+      autoIncrement: true,
+      nullable: false
+    },
+    createddate: {
+      type: 'timestamp',
+      default: 'now()',
+      nullable: false
+    },
+    filename: {
+      type: 'varchar',
+      nullable: true
+    },
+    completeurl: {
+      type: 'varchar',
+      nullable: true
+    },
+    placeid: {
+      type: 'integer',
+      nullable: true,
+      foreignKey: {
+        table: 'places',
+        column: 'id',
+        onDelete: 'SET NULL'
+      }
+    },
+    iscover: {
+      type: 'boolean',
+      nullable: true
+    },
+    description: {
+      type: 'varchar',
+      nullable: true
+    },
+    orden: {
+      type: 'integer',
+      nullable: true
+    },
+    capturedate: {
+      type: 'date',
+      nullable: true
+    }
+  },
+
+  indexes: [
+    { columns: ['placeid'] },
+    { columns: ['iscover'] },
+    { columns: ['orden'] }
+  ]
+};
+
 export default {
   PlacesTable,
   FacilitiesTable,
-  PlacesFacilitiesTable
+  PlacesFacilitiesTable,
+  PlacesGalleryTable
 };
