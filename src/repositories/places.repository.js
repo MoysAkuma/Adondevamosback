@@ -61,29 +61,54 @@ class PlacesRepository {
     fields = 'id,name,countryid,stateid,cityid,address',
     page = 1,
     limit = 10) {
-    let query = 
-    this.placesClient.from('places').
-    select(fields)
-    .range((page - 1) * limit, page * limit - 1)
-    .order('createddate', { ascending: false });
-    
-    if (filters.name) {
-      query = query.ilike('name', `%${filters.name}%`);
-    }
-    if (filters.countryid) {
-      query = query.eq('countryid', filters.countryid);
-    }
-    if (filters.stateid) {
-      query = query.eq('stateid', filters.stateid);
-    }
-    if (filters.cityid) {
-      query = query.eq('cityid', filters.cityid);
-    }
+
+    const safePage = Number.isFinite(Number(page)) && Number(page) > 0 ? Number(page) : 1;
+    const safeLimit = Number.isFinite(Number(limit)) && Number(limit) > 0 ? Number(limit) : 10;
+
+    const applyFilters = (query) => {
+      if (filters.name) {
+        query = query.ilike('name', `%${filters.name}%`);
+      }
+      if (filters.countryid) {
+        query = query.eq('countryid', filters.countryid);
+      }
+      if (filters.stateid) {
+        query = query.eq('stateid', filters.stateid);
+      }
+      if (filters.cityid) {
+        query = query.eq('cityid', filters.cityid);
+      }
+      return query;
+    };
+
+    const countQuery = applyFilters(this.placesClient.from('places').select('id', { count: 'exact', head: true }));
+    const { count, error: countError } = await countQuery;
+    if (countError) return { status: 500, error: countError };
+
+    const totalCount = count || 0;
+    const totalPages = totalCount === 0 ? 0 : Math.ceil(totalCount / safeLimit);
+    const pagination = {
+      page: safePage,
+      limit: safeLimit,
+      totalCount,
+      totalPages,
+      hasNextPage: totalPages > 0 && safePage < totalPages,
+      hasPreviousPage: safePage > 1
+    };
+
+    if (totalCount === 0) return { status: 200, data: [], pagination };
+
+    const from = (safePage - 1) * safeLimit;
+    const to = from + safeLimit - 1;
+    const query = applyFilters(this.placesClient.from('places').select(fields))
+      .order('createddate', { ascending: false })
+      .range(from, to);
+
     const { data, error } = await query;
     if (error) return { status: 500, error };
-    if (!data || data.length === 0) return { status: 404, message: "No results to show" };
-    return { status: 200, data : data };
+    return { status: 200, data: data || [], pagination };
   }
+
   async getFacilitiesByPlaceId(placeId) {
     const { data, error } = await this.placesClient
       .from('places_facilities')
@@ -277,16 +302,30 @@ class PlacesRepository {
     
     return { status: 200, data: data };
   }
+  async getGalleryImagesByPlaceIds(placeIds) {
+    if (!placeIds || placeIds.length === 0) return { status: 200, data: [] };
+
+    const { data, error } = await this.placesClient
+      .from('places_gallery')
+      .select('id,placeid,completeurl,iscover')
+      .in('placeid', placeIds)
+      .order('iscover', { ascending: false })
+      .order('id', { ascending: true });
+
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data: data || [] };
+  }
+
   async getGalleryByPlaceId(placeId) {
     const { data, error } = await this.placesClient
       .from('places_gallery')
-      .select('id, filename, completeurl')
+      .select('id, filename, completeurl, orden, placeid, iscover, description, capturedate')
       .eq('placeid', placeId);
     if (error) return { status: 500, error: error.message };
     
     // Add thumbnail URLs for each image
     const bucketName = 'adondevamosNoGallery';
-    const galleryWithThumbnails = data.map(item => {
+    const galleryWithThumbnails = data.map(({ description, capturedate, ...item }) => {
       // Construct thumbnail path: places/file.jpg -> places/thumbnails/file.jpg
       const thumbnailFilename = item.filename.replace('places/', 'places/thumbnails/');
       const { data: thumbnailUrlData } = this.placesClient.storage
@@ -295,6 +334,8 @@ class PlacesRepository {
       
       return {
         ...item,
+        description: description || '',
+        captureddate: capturedate || null,
         thumbnailurl: thumbnailUrlData.publicUrl
       };
     });
@@ -390,6 +431,43 @@ class PlacesRepository {
     if (updatePlaceError) return { status: 500, error: updatePlaceError.message };
     
     return { status: 200, data: { message: 'Cover image updated successfully', coverUrl: imageData.completeurl } };
+  }
+
+  async updateImagesMetadata(placeId, imagesMetadata) {
+    const updatedImages = [];
+
+    for (const image of imagesMetadata) {
+      const { data, error } = await this.placesClient
+        .from('places_gallery')
+        .update({
+          orden: image.orden,
+          capturedate: image.captureddate || null,
+          description: image.descripcion || ''
+        })
+        .eq('placeid', placeId)
+        .eq('id', image.id)
+        .select('id,filename,completeurl,iscover,orden,placeid,description,capturedate');
+
+      if (error) return { status: 500, error: error.message };
+
+      if (!data || data.length === 0) {
+        return { status: 404, error: `Image ${image.id} not found for this place` };
+      }
+
+      const row = data[0];
+      updatedImages.push({
+        id: row.id,
+        filename: row.filename,
+        completeurl: row.completeurl,
+        iscover: row.iscover,
+        orden: row.orden,
+        placeid: row.placeid,
+        descripcion: row.description,
+        captureddate: row.capturedate
+      });
+    }
+
+    return { status: 200, data: updatedImages };
   }
       
 

@@ -83,11 +83,11 @@ const placesService = {
     return await placesRepo.searchPlacesByIDs(ids, fields);
   },
 
-  async searchPlaces(filters = {}, fields = 'id,name,countryid,stateid,cityid,address') {
-    const base = await placesRepo.searchPlaces(filters, fields);
+  async searchPlaces(filters = {}, fields = 'id,name,countryid,stateid,cityid,address,description,latitude,longitude', page = 1, limit = 10) {
+    const base = await placesRepo.searchPlaces(filters, fields, page, limit);
     
     if (base.status !== 200) return base;
-    if (!base.data || base.data.length === 0) return { status: 404 , message: "No results to show" };
+    if (!base.data || base.data.length === 0) return { status: 200, data: [], pagination: base.pagination };
     
     //get ubication names
     const ubicationNames = await ubicationService.getUbicationNamesByIDs(base.data);
@@ -100,7 +100,19 @@ const placesService = {
       delete place.stateid;
       delete place.cityid;
     });
-    return { status: 200, data: placesWithUbicationNames };
+    //get one gallery image per place (cover first)
+    const galleryResult = await placesRepo.getGalleryImagesByPlaceIds(placesWithUbicationNames.map(place => place.id));
+    if (galleryResult.status !== 200) return galleryResult;
+    const coverByPlaceId = new Map();
+    for (const image of galleryResult.data) {
+      if (!coverByPlaceId.has(image.placeid)) coverByPlaceId.set(image.placeid, image);
+    }
+    placesWithUbicationNames.forEach(place => {
+      const image = coverByPlaceId.get(place.id);
+      place.gallery = image ? [{ id: image.id, completeurl: image.completeurl, iscover: image.iscover }] : [];
+    });
+
+    return { status: 200, data: placesWithUbicationNames, pagination: base.pagination };
   },
   async searchPlacesByField(field, name, 
     fields = 'id,name,countryid,stateid,cityid') {
@@ -197,6 +209,16 @@ const placesService = {
     }
     
     return await placesRepo.setCoverImage(placeId, imageId);
+  },
+
+  async updateImagesMetadata(placeId, imagesMetadata) {
+    const place = await placesRepo.getPlaceByIdRaw(placeId, 'id');
+    if (place.status !== 200) return place;
+    if (!place.data || place.data.length === 0) {
+      return { status: 404, error: 'Place not found' };
+    }
+
+    return await placesRepo.updateImagesMetadata(placeId, imagesMetadata);
   }
 };
 

@@ -542,6 +542,20 @@ class TripsRepository {
     
     return { status: 200, data: data };
   }
+  async getGalleryImagesByTripIds(tripIds) {
+    if (!tripIds || tripIds.length === 0) return { status: 200, data: [] };
+
+    const { data, error } = await this.tripsClient
+      .from('trips_gallery')
+      .select('id,tripid,completeurl,iscover')
+      .in('tripid', tripIds)
+      .order('iscover', { ascending: false })
+      .order('id', { ascending: true });
+
+    if (error) return { status: 500, error: error.message };
+    return { status: 200, data: data || [] };
+  }
+
   async getTripImages(tripId) {
     const selectVariants = [
       'id,filename,completeurl,iscover,orden,placeid,descripcion,captureddate',

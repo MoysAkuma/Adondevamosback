@@ -34,12 +34,18 @@ const searchPlaces = async (req, res, next) => {
   try {
     //Get filters
     const { filters } = req.body;
-    const foundedPlaces = await placesService.searchPlaces(filters);
+    // Get pagination parameters from query string
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit, 10) || 10);
+
+    const foundedPlaces = await placesService.searchPlaces(filters, undefined, page, limit);
     if (!foundedPlaces.data) throw new ApiError(foundedPlaces.status, foundedPlaces.message || 'No results to show');
     
     return new ApiResponse(res).success(
       'Reading process sucess', 
-      foundedPlaces.data ? foundedPlaces.data : {});
+      foundedPlaces.data ? foundedPlaces.data : {},
+      200,
+      foundedPlaces.pagination);
 
   } catch (err) {
     next(err instanceof ApiError ? err : new ApiError(err.status || 500, err.message));
@@ -256,6 +262,61 @@ const setCoverImage = async (req, res, next) => {
   }
 };
 
+const updateImagesMetadata = async (req, res, next) => {
+  try {
+    const { PlaceID } = req.params;
+
+    if (!req.body.images || !Array.isArray(req.body.images)) {
+      throw new ApiError(400, 'Images array is required in request body');
+    }
+
+    const metadata = req.body.images.map((img, index) => {
+      const parsedImageId = Number(img.id);
+      if (!Number.isFinite(parsedImageId) || parsedImageId <= 0) {
+        throw new ApiError(400, `Invalid image id at index ${index}`);
+      }
+
+      const parsedCapturedDate =
+        img.captureddate === null || img.captureddate === undefined || img.captureddate === ''
+          ? null
+          : String(img.captureddate).trim();
+
+      if (parsedCapturedDate !== null && Number.isNaN(Date.parse(parsedCapturedDate))) {
+        throw new ApiError(400, `Invalid captureddate for image at index ${index}`);
+      }
+
+      const parsedOrder =
+        img.orden === null || img.orden === undefined || img.orden === ''
+          ? index + 1
+          : Number(img.orden);
+
+      if (!Number.isFinite(parsedOrder) || parsedOrder <= 0) {
+        throw new ApiError(400, `Invalid orden for image at index ${index}`);
+      }
+
+      return {
+        id: parsedImageId,
+        orden: parsedOrder,
+        captureddate: parsedCapturedDate,
+        descripcion: typeof img.descripcion === 'string' ? img.descripcion.trim() : ''
+      };
+    });
+
+    const result = await placesService.updateImagesMetadata(PlaceID, metadata);
+
+    if (result.status !== 200) {
+      throw new ApiError(result.status, result.error || 'Failed to update image metadata');
+    }
+
+    return new ApiResponse(res).success(
+      'Image metadata updated successfully',
+      result.data
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 const placesController = {
     getPlaceByID,
     searchPlaces,
@@ -267,6 +328,7 @@ const placesController = {
     addFacilities,
     getNewPlaces,
     deleteImage,
-    setCoverImage
+    setCoverImage,
+    updateImagesMetadata
 };
 export default placesController;

@@ -355,11 +355,24 @@ const tripsService = {
     }
 
     const ownerMap = new Map(ownersInfo.data.map(o => [o.id, o]));
-    //attach owner info to trips
-    const tripsWithOwners = foundedTrips.data.map(trip => ({
-      ...trip,
-      owner: ownerMap.get(trip.ownerid) || null
-    }));
+
+    //get one gallery image per trip (cover first)
+    const galleryResult = await tripsRepo.getGalleryImagesByTripIds(foundedTrips.data.map(trip => trip.id));
+    if (galleryResult.status != 200) return galleryResult;
+    const coverByTripId = new Map();
+    for (const image of galleryResult.data) {
+      if (!coverByTripId.has(image.tripid)) coverByTripId.set(image.tripid, image);
+    }
+
+    //attach owner info and cover image to trips
+    const tripsWithOwners = foundedTrips.data.map(trip => {
+      const image = coverByTripId.get(trip.id);
+      return {
+        ...trip,
+        owner: ownerMap.get(trip.ownerid) || null,
+        gallery: image ? [{ id: image.id, completeurl: image.completeurl, iscover: image.iscover }] : []
+      };
+    });
     
     return { 
       status: 200, 

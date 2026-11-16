@@ -15,6 +15,10 @@ const router = express.Router();
         authenticate,
         placesController.uploadImages);
 
+    router.put('/Places/:PlaceID/Images',
+        authenticate,
+        placesController.updateImagesMetadata);
+
     router.post('/Places',
         authenticate,
         placesController.createPlace);
