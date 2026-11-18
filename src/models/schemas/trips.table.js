@@ -250,10 +250,68 @@ export const TripsGalleryTable = {
     { columns: ['filename'] }
   ]
 };
+export const TripsCommentsTable = {
+  tableName: 'trips_comments',
+  schema: 'trips',
+  
+  columns: {
+    id: {
+      type: 'uuid',
+      primaryKey: true,
+      default: 'uuid_generate_v4()',
+      nullable: false
+    },
+    trip_id: {
+      type: 'integer',
+      nullable: false,
+      foreignKey: {
+        table: 'trips',
+        column: 'id',
+        onDelete: 'CASCADE'
+      }
+    },
+    userid: {
+      type: 'integer',
+      nullable: false,
+      foreignKey: {
+        table: 'users',
+        column: 'id',
+        onDelete: 'CASCADE'
+      }
+    },
+    title: {
+      type: 'text',
+      nullable: false
+    },
+    body: {
+      type: 'text',
+      nullable: false
+    },
+    createddate: {
+      type: 'timestamp',
+      default: 'now()',
+      nullable: false
+    },
+    answerd_to: {
+      type: 'uuid',
+      nullable: true,
+      foreignKey: {
+        table: 'trips_comments',
+        column: 'id',
+        onDelete: 'SET NULL'
+      }
+    }
+  },
 
+  indexes: [
+    { columns: ['trip_id'] },
+    { columns: ['userid'] }
+  ]
+};
 export default {
   TripsTable,
   TripsItineraryTable,
   TripsMembersTable,
-  TripsGalleryTable
+  TripsGalleryTable,
+  TripsCommentsTable
 };

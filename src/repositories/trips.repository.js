@@ -850,6 +850,51 @@ class TripsRepository {
     
     return { status: 200, data: memberVoteCounts };
   }
+  async getCommentById(commentId) {
+    const { data, error } = await this.tripsClient
+      .from('trips_comments')
+      .select('*')
+      .eq('id', commentId);
+
+    if (error) return { status: 500, error };
+
+    if (!data || data.length === 0) {
+      return { status: 404, error: `Comment ${commentId} not found` };
+    }
+
+    return { status: 200, data };
+  }
+  async saveComment(tripId, commentData) {
+    const { data, error } = await this.tripsClient
+      .from('trips_comments')
+      .insert([{ trip_id: tripId, ...commentData }])
+      .select('*');
+
+    if (error) return { status: 500, error };
+
+    return { status: 200, data };
+  }
+  async updateComment(commentId, commentData) {
+    const updatedDate = new Date();
+    const { data, error } = await this.tripsClient
+      .from('trips_comments')
+      .update({ ...commentData, updateddate: updatedDate })
+      .eq('id', commentId);
+
+    if (error) return { status: 500, error };
+
+    return { status: 200, data };
+  }
+  async deleteComment(commentId) {
+    const { data, error } = await this.tripsClient
+      .from('trips_comments')
+      .delete()
+      .eq('id', commentId);
+
+    if (error) return { status: 500, error };
+
+    return { status: 200, data };
+  }
 }
 
 export default TripsRepository;

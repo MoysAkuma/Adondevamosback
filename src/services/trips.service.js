@@ -630,7 +630,41 @@ const tripsService = {
     }
 
     return await tripsRepo.updateImagesMetadata(tripId, imagesMetadata);
+  },
+  async saveComment(tripId, commentData) {
+    const trip = await tripsRepo.getTripByIdRaw(tripId);
+    if (trip.status !== 200) return trip;
+    if (!trip.data || trip.data.length === 0) {
+      return { status: 404, error: 'Trip not found' };
+    }
+
+    if (commentData.answerd_to){
+      const parentComment = await tripsRepo.getCommentById(commentData.answerd_to);
+      if (parentComment.status !== 200) return parentComment;
+      if (!parentComment.data || parentComment.data.length === 0) {
+        return { status: 404, error: 'Previus comment not found' };
+      }
+    }
+
+    return await tripsRepo.saveComment(tripId, commentData);
+  },
+  async updateComment(commentId, commentData) {
+    const comment = await tripsRepo.getCommentById(commentId);
+    if (comment.status !== 200) return comment;
+    if (!comment.data || comment.data.length === 0) {
+      return { status: 404, error: 'Comment not found' };
+    }
+    return await tripsRepo.updateComment(commentId, commentData);
+  },
+  async deleteComment(commentId) {
+    const comment = await tripsRepo.getCommentById(commentId);
+    if (comment.status !== 200) return comment;
+    if (!comment.data || comment.data.length === 0) {
+      return { status: 404, error: 'Comment not found' };
+    }
+    return await tripsRepo.deleteComment(commentId);
   }
+
 };
 
 export default tripsService;

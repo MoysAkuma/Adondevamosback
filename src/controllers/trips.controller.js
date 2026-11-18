@@ -82,7 +82,7 @@ const createTrip = async (req, res, next) => {
 const getTripbyID = async (req, res, next) => {
   try {
     //Get trip id to search
-    const { TripID } = req.params;
+    const TripID = TripModel.validateId(req.params.TripID);
     
     // Get optional fields parameter from query string
     const { fields } = req.query;
@@ -106,7 +106,7 @@ const getTripbyID = async (req, res, next) => {
 const updateTripbyID = async (req, res, next) => {
   try {
     //Get trip id to search
-    const { TripID } = req.params;
+    const TripID = TripModel.validateId(req.params.TripID);
 
     await validateTripAdminOrCreator(req, TripID);
 
@@ -135,7 +135,7 @@ const updateTripbyID = async (req, res, next) => {
 const deleteTripbyID = async (req, res, next) => {
   try {
     //Get trip id to search
-    const { TripID } = req.params;
+    const TripID = TripModel.validateId(req.params.TripID);
 
     await validateTripAdminOrCreator(req, TripID);
 
@@ -259,7 +259,7 @@ const searchTrips = async (req, res, next) => {
 const createItinerary = async (req, res, next) => {
   try{
     //Get trip id to search
-    const { TripID } = req.params;
+    const TripID = TripModel.validateId(req.params.TripID);
 
     await validateTripMemberOrCreator(req, TripID);
     //GetrqBody
@@ -277,7 +277,7 @@ const createItinerary = async (req, res, next) => {
 const updateItinerary = async (req, res, next) => {
   try{
     //Get trip id to search
-    const { TripID } = req.params;
+    const TripID = TripModel.validateId(req.params.TripID);
 
     await validateTripMemberOrCreator(req, TripID);
 
@@ -295,21 +295,17 @@ const updateItinerary = async (req, res, next) => {
 
 const addItineraryPlace = async (req, res, next) => {
   try {
-    const { TripID } = req.params;
+    const TripID = TripModel.validateId(req.params.TripID);
 
     await validateTripMemberOrCreator(req, TripID);
 
-    const { placeid, initialdate, finaldate, orden } = req.body;
-
-    if (!placeid || !initialdate || !finaldate) {
-      throw new ApiError(400, 'placeid, initialdate and finaldate are required');
-    }
+    const validatedData = TripModel.forItineraryPlace(req.body);
 
     const data = await tripsService.addItineraryPlace(TripID, {
-      placeid,
-      initialdate,
-      finaldate,
-      orden
+      placeid: validatedData.placeid,
+      initialdate: validatedData.initialdate,
+      finaldate: validatedData.finaldate,
+      orden: validatedData.orden
     });
 
     if (data.status !== 201) {
@@ -329,7 +325,7 @@ const addItineraryPlace = async (req, res, next) => {
 const createMemberList = async (req, res, next) => {
   try{
     //Get trip id to search
-    const { TripID } = req.params;
+    const TripID = TripModel.validateId(req.params.TripID);
 
     await validateTripAdminOrCreator(req, TripID);
 
@@ -347,7 +343,7 @@ const createMemberList = async (req, res, next) => {
 const updateMemberList = async (req, res, next) => {
   try{
     //Get trip id to search
-    const { TripID } = req.params;
+    const TripID = TripModel.validateId(req.params.TripID);
 
     await validateTripAdminOrCreator(req, TripID);
 
@@ -366,7 +362,7 @@ const updateMemberList = async (req, res, next) => {
 
 const uploadImages = async (req, res, next) => {
   try {
-    const { TripID } = req.params;
+    const TripID = TripModel.validateId(req.params.TripID);
 
     await validateTripMemberOrCreator(req, TripID);
     
@@ -448,7 +444,7 @@ const uploadImages = async (req, res, next) => {
 
 const updateImagesMetadata = async (req, res, next) => {
   try {
-    const { TripID } = req.params;
+    const TripID = TripModel.validateId(req.params.TripID);
 
     await validateTripMemberOrCreator(req, TripID);
 
@@ -514,13 +510,10 @@ const updateImagesMetadata = async (req, res, next) => {
 
 const deleteImage = async (req, res, next) => {
   try {
-    const { TripID, ImageID } = req.params;
+    const TripID = TripModel.validateId(req.params.TripID);
+    const ImageID = TripModel.validateImageId(req.params.ImageID);
 
     await validateTripMemberOrCreator(req, TripID);
-    
-    if (!ImageID) {
-      throw new ApiError(400, 'Image ID is required');
-    }
     
     const deleteResult = await tripsService.deleteImage(TripID, ImageID);
     
@@ -539,13 +532,10 @@ const deleteImage = async (req, res, next) => {
 
 const setCoverImage = async (req, res, next) => {
   try {
-    const { TripID, ImageID } = req.params;
+    const TripID = TripModel.validateId(req.params.TripID);
+    const ImageID = TripModel.validateImageId(req.params.ImageID);
 
     await validateTripMemberOrCreator(req, TripID);
-    
-    if (!ImageID) {
-      throw new ApiError(400, 'Image ID is required');
-    }
     
     const result = await tripsService.setCoverImage(TripID, ImageID);
     
@@ -557,6 +547,64 @@ const setCoverImage = async (req, res, next) => {
       'Cover image set successfully',
       result.data
     );
+  } catch (error) {
+    next(error);
+  }
+};
+
+const createComment = async (req, res, next) => {
+  try {
+    const TripID = TripModel.validateId(req.params.TripID);
+    const validateRequest = TripModel.forCreateComment(req.body);
+    const commentData = validateRequest;
+
+    await validateTripMemberOrCreator(req, TripID);
+
+    const result = await tripsService.createComment(TripID, commentData);
+
+    if (result.status !== 200) {
+      throw new ApiError(result.status, result.error || 'Failed to create comment');
+    }
+
+    return new ApiResponse(res).successNoData(201);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateComment = async (req, res, next) => {
+  try {
+    const CommentID = TripModel.validateId(req.params.CommentID);
+    const validateRequest = TripModel.forUpdateComment(req.body);
+    const commentData = validateRequest;
+
+    await validateTripMemberOrCreator(req, CommentID);
+
+    const result = await tripsService.updateComment(CommentID, commentData);
+
+    if (result.status !== 200) {
+      throw new ApiError(result.status, result.error || 'Failed to update comment');
+    }
+
+    return new ApiResponse(res).successNoData(200);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteComment = async (req, res, next) => {
+  try {
+    const CommentID = req.params.CommentID;
+
+    await validateTripMemberOrCreator(req, CommentID);
+
+    const result = await tripsService.deleteComment(CommentID);
+
+    if (result.status !== 200) {
+      throw new ApiError(result.status, result.error || 'Failed to delete comment');
+    }
+
+    return new ApiResponse(res).successNoData(200);
   } catch (error) {
     next(error);
   }
@@ -579,7 +627,10 @@ const tripsController = {
   uploadImages,
   updateImagesMetadata,
   deleteImage,
-  setCoverImage
+  setCoverImage,
+  createComment,
+  updateComment,
+  deleteComment
 };
 
 export default tripsController;

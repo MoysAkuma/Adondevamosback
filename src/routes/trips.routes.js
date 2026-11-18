@@ -65,5 +65,14 @@ router.delete('/Trips/:TripID/Images/:ImageID',
 router.put('/Trips/:TripID/Images/:ImageID/SetCover',
     authenticate,
     tripsController.setCoverImage);
-    
+router.post('/Trips/:TripID/Comments',
+    authenticate,
+    tripsController.createComment);
+router.put('/Trips/:TripID/Comments/:CommentID',
+    authenticate,
+    tripsController.updateComment);
+router.delete('/Trips/:TripID/Comments/:CommentID',
+    authenticate,
+    tripsController.deleteComment);
+
 export default router;
