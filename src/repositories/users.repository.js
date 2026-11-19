@@ -353,6 +353,88 @@ class usersRepository {
     if (!data || data.length === 0) return { status: 404, error: "User not found or not updated" };
     return { status: 200, data: data[0] };
   }
+  async getFriendRequestById(friendRequestId) {
+    const { data, error } = await this.userClient
+      .from('friends')
+      .select('id, sender_id, addressed_id, status')
+      .eq('id', friendRequestId)
+      .maybeSingle();
+
+    if (error) return { status: 500, error: error.message };
+    if (!data) return { status: 404, error: "Friend request not found" };
+    return { status: 200, data: data };
+  }
+  async saveFriendRequest(senderId, addressedId) {
+    const { data, error } = await this.userClient
+      .from('friends')
+      .insert({
+        sender_id: senderId,
+        addressed_id: addressedId,
+        status: 'pending'
+      })
+      .select('id, sender_id, addressed_id, status');
+
+    if (error) return { status: 500, error: error.message };
+    if (!data || data.length === 0) return { status: 404, error: "Friend request not created" };
+    return { status: 200, data: data[0] };
+  }
+  async changeFriendRequestStatus(friendRequestId, status) {
+    if (!['pending', 'accepted', 'rejected'].includes(status)) {
+      return { status: 400, error: "Invalid status" };
+    }
+    const { data, error } = await this.userClient
+      .from('friends')
+      .update({
+        status: status
+      })
+      .eq('id', friendRequestId)
+      .select('id');
+
+    if (error) return { status: 500, error: error.message };
+    if (!data || data.length === 0) return { status: 404, error: "Friend request not found or not updated" };
+    return { status: 200 };
+  }
+  async getInvitationById(invitationId) {
+    const { data, error } = await this.userClient
+      .from('invitations')
+      .select('id, sender_id, email, status')
+      .eq('id', invitationId)
+      .maybeSingle();
+
+    if (error) return { status: 500, error: error.message };
+    if (!data) return { status: 404, error: "Invitation not found" };
+    return { status: 200, data: data };
+  }
+  async saveInvitation(senderId, email) {
+    const { data, error } = await this.userClient
+      .from('invitations')
+      .insert({
+        sender_id: senderId,
+        email: email,
+        status: 'pending'
+      })
+      .select('id, sender_id, email, status');
+
+    if (error) return { status: 500, error: error.message };
+    if (!data || data.length === 0) return { status: 404, error: "Invitation not created" };
+    return { status: 200, data: data[0] };
+  }
+  async changeInvitationStatus(invitationId, status) {
+    if (!['pending', 'accepted', 'rejected'].includes(status)) {
+      return { status: 400, error: "Invalid status" };
+    }
+    const { data, error } = await this.userClient
+      .from('invitations')
+      .update({
+        status: status
+      })
+      .eq('id', invitationId)
+      .select('id');
+
+    if (error) return { status: 500, error: error.message };
+    if (!data || data.length === 0) return { status: 404, error: "Invitation not found or not updated" };
+    return { status: 200 };
+  }
 };
 
 export default usersRepository;

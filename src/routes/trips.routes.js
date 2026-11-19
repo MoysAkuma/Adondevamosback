@@ -74,5 +74,7 @@ router.put('/Trips/:TripID/Comments/:CommentID',
 router.delete('/Trips/:TripID/Comments/:CommentID',
     authenticate,
     tripsController.deleteComment);
+router.get('/Trips/:TripID/Comments',
+    tripsController.getCommentsByTripId);
 
 export default router;

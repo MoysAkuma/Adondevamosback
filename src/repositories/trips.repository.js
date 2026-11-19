@@ -850,16 +850,16 @@ class TripsRepository {
     
     return { status: 200, data: memberVoteCounts };
   }
-  async getCommentById(commentId) {
+  async getCommentsByTripId(tripId) {
     const { data, error } = await this.tripsClient
       .from('trips_comments')
       .select('*')
-      .eq('id', commentId);
+      .eq('trip_id', tripId);
 
     if (error) return { status: 500, error };
 
     if (!data || data.length === 0) {
-      return { status: 404, error: `Comment ${commentId} not found` };
+      return { status: 404, error: `Comments for trip ${tripId} not found` };
     }
 
     return { status: 200, data };
@@ -895,6 +895,7 @@ class TripsRepository {
 
     return { status: 200, data };
   }
+  
 }
 
 export default TripsRepository;

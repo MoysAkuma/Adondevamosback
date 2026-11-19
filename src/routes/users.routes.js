@@ -31,6 +31,26 @@ router.post('/Users/:UserID/ProfilePhoto',
     usersController.uploadProfilePhoto
 );
 
+router.post('/Users/:UserID/FriendRequests',
+    authenticate,
+    usersController.sendFriendRequest
+);
+
+router.patch('/Users/:UserID/FriendRequests/:FriendRequestID',
+    authenticate,
+    usersController.changeFriendRequestStatus
+);
+
+router.post('/Users/:UserID/Invitations',
+    authenticate,
+    usersController.sendInvitation
+);
+
+router.patch('/Users/:UserID/Invitations/:InvitationID',
+    authenticate,
+    usersController.changeInvitationStatus
+);
+
 // Generic parameterized routes come after specific routes
 router.post('/Users',
     usersController.createUser);

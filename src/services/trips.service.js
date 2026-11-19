@@ -23,6 +23,8 @@ const tripsService = {
     return await tripsRepo.updateTrip(tripId, updateTripRq);
   },
 
+  
+
   async deleteTrip(tripId) {
     return await tripsRepo.deleteTrip(tripId);
   },
@@ -663,7 +665,10 @@ const tripsService = {
       return { status: 404, error: 'Comment not found' };
     }
     return await tripsRepo.deleteComment(commentId);
-  }
+  },
+  async getCommentsByTripId(tripId) {
+    return await tripsRepo.getCommentsByTripId(tripId);
+  },
 
 };
 

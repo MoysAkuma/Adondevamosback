@@ -466,8 +466,76 @@ const usersService = {
           userId: userId
         }
       };
-    }
+    },
 
+    async sendFriendRequest(senderId, addressedId) {
+      const sender = Number(senderId);
+      const addressed = Number(addressedId);
+      if (!Number.isInteger(addressed) || addressed <= 0) {
+        return { status: 400, error: "Invalid addressed user id" };
+      }
+      if (sender === addressed) {
+        return { status: 400, error: "You cannot send a friend request to yourself" };
+      }
+
+      const addressedUser = await usersRepositoryInstance.getUserById(addressed, "id");
+      if (addressedUser.status !== 200) return { status: 500, error: addressedUser.error || "Service error" };
+      if (addressedUser.data.length === 0) return { status: 404, error: "Addressed user not found" };
+
+      const result = await usersRepositoryInstance.saveFriendRequest(sender, addressed);
+      if (result.status !== 200) return { status: result.status, error: result.error || "Failed to create friend request" };
+      return { status: 201, data: result.data };
+    },
+
+    async changeFriendRequestStatus(userId, friendRequestId, status) {
+      if (!['accepted', 'rejected'].includes(status)) {
+        return { status: 400, error: "Status must be 'accepted' or 'rejected'" };
+      }
+
+      const friendRequest = await usersRepositoryInstance.getFriendRequestById(friendRequestId);
+      if (friendRequest.status !== 200) return { status: friendRequest.status, error: friendRequest.error };
+      if (Number(friendRequest.data.addressed_id) !== Number(userId)) {
+        return { status: 403, error: "Only the addressed user can respond to this friend request" };
+      }
+      if (friendRequest.data.status !== 'pending') {
+        return { status: 409, error: "Friend request has already been answered" };
+      }
+
+      const result = await usersRepositoryInstance.changeFriendRequestStatus(friendRequestId, status);
+      if (result.status !== 200) return { status: result.status, error: result.error || "Failed to update friend request" };
+      return { status: 200 };
+    },
+
+    async sendInvitation(senderId, email) {
+      const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+      if (!normalizedEmail) return { status: 400, error: "Email is required" };
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+        return { status: 400, error: "Invalid email" };
+      }
+
+      const result = await usersRepositoryInstance.saveInvitation(Number(senderId), normalizedEmail);
+      if (result.status !== 200) return { status: result.status, error: result.error || "Failed to create invitation" };
+      return { status: 201, data: result.data };
+    },
+
+    async changeInvitationStatus(userId, invitationId, status) {
+      if (!['accepted', 'rejected'].includes(status)) {
+        return { status: 400, error: "Status must be 'accepted' or 'rejected'" };
+      }
+
+      const invitation = await usersRepositoryInstance.getInvitationById(invitationId);
+      if (invitation.status !== 200) return { status: invitation.status, error: invitation.error };
+      if (Number(invitation.data.sender_id) !== Number(userId)) {
+        return { status: 403, error: "Only the sender can update this invitation" };
+      }
+      if (invitation.data.status !== 'pending') {
+        return { status: 409, error: "Invitation has already been answered" };
+      }
+
+      const result = await usersRepositoryInstance.changeInvitationStatus(invitationId, status);
+      if (result.status !== 200) return { status: result.status, error: result.error || "Failed to update invitation" };
+      return { status: 200 };
+    }
 };
 
 export default usersService;

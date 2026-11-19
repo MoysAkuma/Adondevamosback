@@ -610,6 +610,25 @@ const deleteComment = async (req, res, next) => {
   }
 };
 
+const getCommentsByTripId = async (req, res, next) => {
+  try {
+    const TripID = TripModel.validateId(req.params.TripID);
+
+    const result = await tripsService.getCommentsByTripId(TripID);
+
+    if (result.status !== 200) {
+      throw new ApiError(result.status, result.error || 'Failed to get comments for trip');
+    }
+
+    return new ApiResponse(res).success(
+      'Comments retrieved successfully',
+      result.data
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 const tripsController = {
   createTrip,
   getTripbyID,
@@ -630,7 +649,8 @@ const tripsController = {
   setCoverImage,
   createComment,
   updateComment,
-  deleteComment
+  deleteComment,
+  getCommentsByTripId
 };
 
 export default tripsController;

@@ -11,7 +11,13 @@ const usersRepo = {
   verifyEmailConfirmationToken: jest.fn(),
   confirmEmail: jest.fn(),
   uploadProfilePhotoToStorage: jest.fn(),
-  updateProfilePhotoUrls: jest.fn()
+  updateProfilePhotoUrls: jest.fn(),
+  saveFriendRequest: jest.fn(),
+  getFriendRequestById: jest.fn(),
+  changeFriendRequestStatus: jest.fn(),
+  saveInvitation: jest.fn(),
+  getInvitationById: jest.fn(),
+  changeInvitationStatus: jest.fn()
 };
 
 const passwordResetsRepo = {
@@ -136,6 +142,46 @@ describe('users.service', () => {
     const result = await usersService.createUser({ email: 'a@a.com', tag: 'aa', password: 'x' });
 
     expect(result).toEqual({ status: 409, error: 'Email already exists' });
+  });
+
+  test('sendFriendRequest rejects a request to yourself', async () => {
+    const result = await usersService.sendFriendRequest(5, 5);
+
+    expect(result.status).toBe(400);
+    expect(usersRepo.saveFriendRequest).not.toHaveBeenCalled();
+  });
+
+  test('changeFriendRequestStatus returns 403 when user is not the addressed user', async () => {
+    usersRepo.getFriendRequestById.mockResolvedValue({
+      status: 200,
+      data: { id: 1, sender_id: 3, addressed_id: 7, status: 'pending' }
+    });
+
+    const result = await usersService.changeFriendRequestStatus(3, 1, 'accepted');
+
+    expect(result.status).toBe(403);
+    expect(usersRepo.changeFriendRequestStatus).not.toHaveBeenCalled();
+  });
+
+  test('changeInvitationStatus returns 403 when user is not the sender', async () => {
+    usersRepo.getInvitationById.mockResolvedValue({
+      status: 200,
+      data: { id: 1, sender_id: 3, email: 'x@y.com', status: 'pending' }
+    });
+
+    const result = await usersService.changeInvitationStatus(9, 1, 'rejected');
+
+    expect(result.status).toBe(403);
+    expect(usersRepo.changeInvitationStatus).not.toHaveBeenCalled();
+  });
+
+  test('sendInvitation normalizes the email before saving', async () => {
+    usersRepo.saveInvitation.mockResolvedValue({ status: 200, data: { id: 11 } });
+
+    const result = await usersService.sendInvitation(4, '  Friend@Example.com ');
+
+    expect(usersRepo.saveInvitation).toHaveBeenCalledWith(4, 'friend@example.com');
+    expect(result).toEqual({ status: 201, data: { id: 11 } });
   });
 
   test('createUser hashes password and sends confirmation email on success', async () => {

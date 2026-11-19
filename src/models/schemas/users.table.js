@@ -197,8 +197,105 @@ export const ConfirmationsTable = {
   ]
 };
 
+/**
+ * Friends Table Schema
+ * Defines the structure of the 'friends' table
+ */
+export const FriendsTable = {
+  tableName: 'friends',
+  schema: 'users',
+
+  columns: {
+    id: {
+      type: 'integer',
+      primaryKey: true,
+      autoIncrement: true,
+      nullable: false
+    },
+    sender_id: {
+      type: 'integer',
+      nullable: false,
+      foreignKey: {
+        table: 'users',
+        column: 'id',
+        onDelete: 'CASCADE'
+      }
+    },
+    addressed_id: {
+      type: 'integer',
+      nullable: false,
+      foreignKey: {
+        table: 'users',
+        column: 'id',
+        onDelete: 'CASCADE'
+      }
+    },
+    createddate: {
+      type: 'timestamp',
+      default: 'now()',
+      nullable: false
+    },
+    status: {
+      type: 'varchar',
+      nullable: false
+    }
+  },
+
+  indexes: [
+    { columns: ['sender_id'] },
+    { columns: ['addressed_id'] }
+  ]
+};
+
+/**
+ * Invitations Table Schema
+ * Defines the structure of the 'invitations' table
+ */
+export const InvitationsTable = {
+  tableName: 'invitations',
+  schema: 'users',
+
+  columns: {
+    id: {
+      type: 'integer',
+      primaryKey: true,
+      autoIncrement: true,
+      nullable: false
+    },
+    sender_id: {
+      type: 'integer',
+      nullable: false,
+      foreignKey: {
+        table: 'users',
+        column: 'id',
+        onDelete: 'CASCADE'
+      }
+    },
+    email: {
+      type: 'varchar',
+      nullable: false
+    },
+    createddate: {
+      type: 'timestamp',
+      default: 'now()',
+      nullable: false
+    },
+    status: {
+      type: 'varchar',
+      nullable: false
+    }
+  },
+
+  indexes: [
+    { columns: ['sender_id'] },
+    { columns: ['email'] }
+  ]
+};
+
 export default {
   UsersTable,
   AdminsTable,
-  ConfirmationsTable
+  ConfirmationsTable,
+  FriendsTable,
+  InvitationsTable
 };

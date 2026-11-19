@@ -309,6 +309,80 @@ const uploadProfilePhoto = async (req, res, next) => {
     }
 };
 
+const assertSameUser = (req, UserID) => {
+    if (Number(req.user.userid) !== Number(UserID)) {
+        throw new ApiError(403, 'You can only manage your own friend requests and invitations');
+    }
+};
+
+const sendFriendRequest = async (req, res, next) => {
+    try {
+        const { UserID } = req.params;
+        const { addressedId } = req.body;
+        assertSameUser(req, UserID);
+
+        if (!addressedId) throw new ApiError(400, "addressedId is required");
+
+        const result = await usersService.sendFriendRequest(UserID, addressedId);
+        if (result.status !== 201) throw new ApiError(result.status, result.error || "Failed to send friend request");
+
+        new ApiResponse(res).success('Friend request sent successfully', result.data, 201);
+    } catch (error) {
+        next(error);
+    }
+};
+
+const changeFriendRequestStatus = async (req, res, next) => {
+    try {
+        const { UserID, FriendRequestID } = req.params;
+        const { status } = req.body;
+        assertSameUser(req, UserID);
+
+        if (!status) throw new ApiError(400, "status is required");
+
+        const result = await usersService.changeFriendRequestStatus(UserID, FriendRequestID, status);
+        if (result.status !== 200) throw new ApiError(result.status, result.error || "Failed to update friend request");
+
+        new ApiResponse(res).successNoData(200);
+    } catch (error) {
+        next(error);
+    }
+};
+
+const sendInvitation = async (req, res, next) => {
+    try {
+        const { UserID } = req.params;
+        const { email } = req.body;
+        assertSameUser(req, UserID);
+
+        if (!email) throw new ApiError(400, "email is required");
+
+        const result = await usersService.sendInvitation(UserID, email);
+        if (result.status !== 201) throw new ApiError(result.status, result.error || "Failed to send invitation");
+
+        new ApiResponse(res).success('Invitation sent successfully', result.data, 201);
+    } catch (error) {
+        next(error);
+    }
+};
+
+const changeInvitationStatus = async (req, res, next) => {
+    try {
+        const { UserID, InvitationID } = req.params;
+        const { status } = req.body;
+        assertSameUser(req, UserID);
+
+        if (!status) throw new ApiError(400, "status is required");
+
+        const result = await usersService.changeInvitationStatus(UserID, InvitationID, status);
+        if (result.status !== 200) throw new ApiError(result.status, result.error || "Failed to update invitation");
+
+        new ApiResponse(res).successNoData(200);
+    } catch (error) {
+        next(error);
+    }
+};
+
 export default {
     getUserByID,
     recoverPassword,
@@ -321,5 +395,9 @@ export default {
     changeUserField,
     getProfileData,
     confirmEmail,
-    uploadProfilePhoto
+    uploadProfilePhoto,
+    sendFriendRequest,
+    changeFriendRequestStatus,
+    sendInvitation,
+    changeInvitationStatus
 };

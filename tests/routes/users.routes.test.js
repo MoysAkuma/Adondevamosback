@@ -23,7 +23,11 @@ const mockUsersController = {
   getUserByID: jest.fn(),
   getProfileData: jest.fn(),
   editUser: jest.fn(),
-  changeUserField: jest.fn()
+  changeUserField: jest.fn(),
+  sendFriendRequest: jest.fn(),
+  changeFriendRequestStatus: jest.fn(),
+  sendInvitation: jest.fn(),
+  changeInvitationStatus: jest.fn()
 };
 
 jest.unstable_mockModule('express', () => ({
@@ -68,5 +72,12 @@ describe('users.routes', () => {
     expect(mockRouter.post).toHaveBeenCalledWith('/Users/:UserID/ProfilePhoto', mockAuthenticate, mockUploadMiddleware, mockUsersController.uploadProfilePhoto);
     expect(mockRouter.put).toHaveBeenCalledWith('/Users/:UserID', mockAuthenticate, mockUsersController.editUser);
     expect(mockRouter.patch).toHaveBeenCalledWith('/Users/:UserID/:field', mockAuthenticate, mockUsersController.changeUserField);
+  });
+
+  test('registers friend request and invitation routes', () => {
+    expect(mockRouter.post).toHaveBeenCalledWith('/Users/:UserID/FriendRequests', mockAuthenticate, mockUsersController.sendFriendRequest);
+    expect(mockRouter.patch).toHaveBeenCalledWith('/Users/:UserID/FriendRequests/:FriendRequestID', mockAuthenticate, mockUsersController.changeFriendRequestStatus);
+    expect(mockRouter.post).toHaveBeenCalledWith('/Users/:UserID/Invitations', mockAuthenticate, mockUsersController.sendInvitation);
+    expect(mockRouter.patch).toHaveBeenCalledWith('/Users/:UserID/Invitations/:InvitationID', mockAuthenticate, mockUsersController.changeInvitationStatus);
   });
 });
