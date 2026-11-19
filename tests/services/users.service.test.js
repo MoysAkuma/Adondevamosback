@@ -108,106 +108,76 @@ describe('users.service', () => {
     jest.clearAllMocks();
   });
 
-  test('getUserById returns 500 when repository fails', async () => {
-    usersRepo.getUserById.mockResolvedValue({ status: 500, error: 'db' });
+  test('getUserById propagates repository errors', async () => {
+    usersRepo.getUserById.mockRejectedValue(new Error('db'));
 
-    const result = await usersService.getUserById(1);
-
-    expect(result).toEqual({ status: 500, error: 'db' });
+    await expect(usersService.getUserById(1)).rejects.toThrow('db');
   });
 
   test('getUserById returns mapped ubication data on success', async () => {
-    usersRepo.getUserById.mockResolvedValue({
-      status: 200,
-      data: [{ id: 1, countryid: 1, stateid: 2, cityid: 3 }]
-    });
-    mockGetUbicationNamesByIDs.mockResolvedValue({
-      status: 200,
-      data: { countries: [], states: [], cities: [] }
-    });
+    usersRepo.getUserById.mockResolvedValue([{ id: 1, countryid: 1, stateid: 2, cityid: 3 }]);
+    mockGetUbicationNamesByIDs.mockResolvedValue({ countries: [], states: [], cities: [] });
     mockMatchUbicationNames.mockReturnValue({
-      status: 200,
       data: [{ id: 1, Country: null, State: null, City: null }]
     });
 
     const result = await usersService.getUserById(1);
 
-    expect(result.status).toBe(200);
-    expect(result.data[0].id).toBe(1);
+    expect(result[0].id).toBe(1);
   });
 
-  test('createUser returns 409 when email already exists', async () => {
-    usersRepo.getUsersByField.mockResolvedValueOnce({ status: 200, data: [{ id: 1 }] });
+  test('createUser throws conflict when email already exists', async () => {
+    usersRepo.getUsersByField.mockResolvedValueOnce([{ id: 1 }]);
 
-    const result = await usersService.createUser({ email: 'a@a.com', tag: 'aa', password: 'x' });
-
-    expect(result).toEqual({ status: 409, error: 'Email already exists' });
+    await expect(
+      usersService.createUser({ email: 'a@a.com', tag: 'aa', password: 'x' })
+    ).rejects.toMatchObject({ statusCode: 409, message: 'Email already exists' });
   });
 
   test('sendFriendRequest rejects a request to yourself', async () => {
-    const result = await usersService.sendFriendRequest(5, 5);
-
-    expect(result.status).toBe(400);
+    await expect(usersService.sendFriendRequest(5, 5)).rejects.toMatchObject({ statusCode: 400 });
     expect(usersRepo.saveFriendRequest).not.toHaveBeenCalled();
   });
 
-  test('changeFriendRequestStatus returns 403 when user is not the addressed user', async () => {
-    usersRepo.getFriendRequestById.mockResolvedValue({
-      status: 200,
-      data: { id: 1, sender_id: 3, addressed_id: 7, status: 'pending' }
-    });
+  test('changeFriendRequestStatus throws forbidden when user is not the addressed user', async () => {
+    usersRepo.getFriendRequestById.mockResolvedValue({ id: 1, sender_id: 3, addressed_id: 7, status: 'pending' });
 
-    const result = await usersService.changeFriendRequestStatus(3, 1, 'accepted');
-
-    expect(result.status).toBe(403);
+    await expect(usersService.changeFriendRequestStatus(3, 1, 'accepted')).rejects.toMatchObject({ statusCode: 403 });
     expect(usersRepo.changeFriendRequestStatus).not.toHaveBeenCalled();
   });
 
-  test('changeInvitationStatus returns 403 when user is not the sender', async () => {
-    usersRepo.getInvitationById.mockResolvedValue({
-      status: 200,
-      data: { id: 1, sender_id: 3, email: 'x@y.com', status: 'pending' }
-    });
+  test('changeInvitationStatus throws forbidden when user is not the sender', async () => {
+    usersRepo.getInvitationById.mockResolvedValue({ id: 1, sender_id: 3, email: 'x@y.com', status: 'pending' });
 
-    const result = await usersService.changeInvitationStatus(9, 1, 'rejected');
-
-    expect(result.status).toBe(403);
+    await expect(usersService.changeInvitationStatus(9, 1, 'rejected')).rejects.toMatchObject({ statusCode: 403 });
     expect(usersRepo.changeInvitationStatus).not.toHaveBeenCalled();
   });
 
   test('sendInvitation normalizes the email before saving', async () => {
-    usersRepo.saveInvitation.mockResolvedValue({ status: 200, data: { id: 11 } });
+    usersRepo.saveInvitation.mockResolvedValue({ id: 11 });
 
     const result = await usersService.sendInvitation(4, '  Friend@Example.com ');
 
     expect(usersRepo.saveInvitation).toHaveBeenCalledWith(4, 'friend@example.com');
-    expect(result).toEqual({ status: 201, data: { id: 11 } });
+    expect(result).toEqual({ id: 11 });
   });
 
   test('createUser hashes password and sends confirmation email on success', async () => {
     usersRepo.getUsersByField
-      .mockResolvedValueOnce({ status: 404, data: [] })
-      .mockResolvedValueOnce({ status: 404, data: [] });
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
 
     mockHashPassword.mockResolvedValue('hashed-pwd');
 
-    usersRepo.createUser.mockResolvedValue({
-      status: 201,
-      data: [{ id: 9, email: 'new@user.com', name: 'New', lastname: 'User', countryid: 1, stateid: 2, cityid: 3 }]
-    });
+    usersRepo.createUser.mockResolvedValue([
+      { id: 9, email: 'new@user.com', name: 'New', lastname: 'User', countryid: 1, stateid: 2, cityid: 3 }
+    ]);
 
-    usersRepo.createEmailConfirmation.mockResolvedValue({
-      status: 201,
-      data: { token: 'tok-123' }
-    });
+    usersRepo.createEmailConfirmation.mockResolvedValue({ token: 'tok-123' });
 
-    mockGetUbicationNamesByIDs.mockResolvedValue({
-      status: 200,
-      data: { countries: [], states: [], cities: [] }
-    });
+    mockGetUbicationNamesByIDs.mockResolvedValue({ countries: [], states: [], cities: [] });
 
     mockMatchUbicationNames.mockReturnValue({
-      status: 200,
       data: [{ id: 9, email: 'new@user.com', name: 'New', lastname: 'User' }]
     });
 
@@ -220,17 +190,14 @@ describe('users.service', () => {
     expect(mockHashPassword).toHaveBeenCalledWith('plain-pass');
     expect(usersRepo.createUser).toHaveBeenCalledWith(expect.objectContaining({ password: 'hashed-pwd' }));
     expect(mockSendEmailConfirmationEmail).toHaveBeenCalledWith('new@user.com', 'New User', 'tok-123');
-    expect(result.status).toBe(200);
+    expect(result[0].id).toBe(9);
   });
 
   test('recoverPassword creates token and sends reset email', async () => {
-    usersRepo.getUserByEmail.mockResolvedValue({
-      status: 200,
-      data: [{ id: 50, name: 'Mario', email: 'mario@mail.com' }]
-    });
+    usersRepo.getUserByEmail.mockResolvedValue([{ id: 50, name: 'Mario', email: 'mario@mail.com' }]);
     mockGenerateResetToken.mockReturnValue('reset-token');
-    passwordResetsRepo.deleteUserResetTokens.mockResolvedValue({ status: 200 });
-    passwordResetsRepo.createResetToken.mockResolvedValue({ status: 201, data: {} });
+    passwordResetsRepo.deleteUserResetTokens.mockResolvedValue(undefined);
+    passwordResetsRepo.createResetToken.mockResolvedValue({});
     mockSendPasswordResetLinkEmail.mockResolvedValue();
 
     const result = await usersService.recoverPassword('mario@mail.com');
@@ -241,55 +208,55 @@ describe('users.service', () => {
       'https://frontend.test/reset-password?token=reset-token',
       'Mario'
     );
-    expect(result.status).toBe(200);
+    expect(result).toEqual({ message: 'Password reset link sent to email' });
   });
 
-  test('verifyResetToken returns 404 for invalid token', async () => {
-    passwordResetsRepo.findResetToken.mockResolvedValue({ status: 404 });
+  test('verifyResetToken throws notFound for invalid token', async () => {
+    passwordResetsRepo.findResetToken.mockResolvedValue(null);
 
-    const result = await usersService.verifyResetToken('bad-token');
-
-    expect(result).toEqual({ status: 404, error: 'Invalid reset token' });
-  });
-
-  test('searchByEmail returns 401 when password does not match', async () => {
-    usersRepo.searchByEmail.mockResolvedValue({
-      status: 200,
-      data: { id: 2, email: 'x@y.com', password: 'hash' }
+    await expect(usersService.verifyResetToken('bad-token')).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Invalid reset token'
     });
+  });
+
+  test('searchByEmail throws unauthorized when password does not match', async () => {
+    usersRepo.searchByEmail.mockResolvedValue({ id: 2, email: 'x@y.com', password: 'hash' });
     mockComparePassword.mockResolvedValue(false);
 
-    const result = await usersService.searchByEmail('x@y.com', 'bad-pass');
-
-    expect(result).toEqual({ status: 401, error: 'Invalid credentials' });
+    await expect(usersService.searchByEmail('x@y.com', 'bad-pass')).rejects.toMatchObject({
+      statusCode: 401,
+      message: 'Invalid credentials'
+    });
   });
 
-  test('confirmEmail returns 400 when already confirmed', async () => {
+  test('confirmEmail throws badRequest when already confirmed', async () => {
     usersRepo.verifyEmailConfirmationToken.mockResolvedValue({
-      status: 200,
-      data: { userid: 5, expirationstamp: '2099-01-01T00:00:00.000Z', confirmed: true }
+      userid: 5,
+      expirationstamp: '2099-01-01T00:00:00.000Z',
+      confirmed: true
     });
 
-    const result = await usersService.confirmEmail('token');
-
-    expect(result).toEqual({ status: 400, error: 'Email already confirmed' });
+    await expect(usersService.confirmEmail('token')).rejects.toMatchObject({
+      statusCode: 400,
+      message: 'Email already confirmed'
+    });
   });
 
   test('uploadProfilePhoto uploads and updates user photo urls', async () => {
-    usersRepo.getUserById.mockResolvedValue({ status: 200, data: [{ id: 99 }] });
+    usersRepo.getUserById.mockResolvedValue([{ id: 99 }]);
     usersRepo.uploadProfilePhotoToStorage.mockResolvedValue({
-      status: 200,
-      data: { avatarUrl: 'avatar.webp', thumbnailUrl: 'thumb.webp' }
+      avatarUrl: 'avatar.webp',
+      thumbnailUrl: 'thumb.webp'
     });
     usersRepo.updateProfilePhotoUrls.mockResolvedValue({
-      status: 200,
-      data: { profile_photo: 'avatar.webp', profile_photo_tn: 'thumb.webp' }
+      profile_photo: 'avatar.webp',
+      profile_photo_tn: 'thumb.webp'
     });
 
     const result = await usersService.uploadProfilePhoto(99, Buffer.from('abc'), 'image/webp', 'webp');
 
-    expect(result.status).toBe(200);
-    expect(result.data.profilePhoto).toBe('avatar.webp');
-    expect(result.data.profilePhotoThumbnail).toBe('thumb.webp');
+    expect(result.profilePhoto).toBe('avatar.webp');
+    expect(result.profilePhotoThumbnail).toBe('thumb.webp');
   });
 });

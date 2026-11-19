@@ -13,7 +13,10 @@ const votesRepo = {
   updateVote: jest.fn(),
   getVotesByTripId: jest.fn(),
   getVotesByPlaceId: jest.fn(),
-  updateDailyVotesResults: jest.fn()
+  getTrueVotesByField: jest.fn(),
+  getRankingRowForDay: jest.fn(),
+  insertRankingRow: jest.fn(),
+  updateRankingRow: jest.fn()
 };
 
 const mockVotesRepoConstructor = jest.fn(() => votesRepo);
@@ -32,75 +35,74 @@ const { default: votesService } = await import('../../src/services/votes.service
 describe('votes.service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    votesRepo.getTrueVotesByField.mockResolvedValue([]);
+    votesRepo.getRankingRowForDay.mockResolvedValue(null);
+    votesRepo.insertRankingRow.mockResolvedValue({});
+    votesRepo.updateRankingRow.mockResolvedValue({});
   });
 
   test('createVote toggles existing trip vote', async () => {
-    votesRepo.getUserVoteByTripIdAndUserId.mockResolvedValue({ status: 200, data: { id: 8, value: true } });
-    votesRepo.updateVoteTrips.mockResolvedValue({ status: 200, data: { value: false } });
-    votesRepo.updateDailyVotesResults.mockResolvedValue({ status: 200 });
+    votesRepo.getUserVoteByTripIdAndUserId.mockResolvedValue({ id: 8, value: true });
+    votesRepo.updateVoteTrips.mockResolvedValue({ value: false });
 
     const result = await votesService.createVote(5, { tripid: 10 });
 
     expect(votesRepo.updateVoteTrips).toHaveBeenCalledWith(5, false, 10, 8);
-    expect(votesRepo.updateDailyVotesResults).toHaveBeenCalledTimes(1);
-    expect(result.status).toBe(200);
+    expect(votesRepo.getTrueVotesByField).toHaveBeenCalledTimes(3);
+    expect(result).toEqual({ value: false });
   });
 
   test('createVote creates trip vote when none exists', async () => {
-    votesRepo.getUserVoteByTripIdAndUserId.mockResolvedValue({ status: 404 });
-    votesRepo.createVoteTrips.mockResolvedValue({ status: 201, data: {} });
-    votesRepo.updateDailyVotesResults.mockResolvedValue({ status: 200 });
+    votesRepo.getUserVoteByTripIdAndUserId.mockResolvedValue(null);
+    votesRepo.createVoteTrips.mockResolvedValue({});
 
     const result = await votesService.createVote(5, { tripid: 10 });
 
     expect(votesRepo.createVoteTrips).toHaveBeenCalledWith(5, { tripid: 10 });
-    expect(votesRepo.updateDailyVotesResults).toHaveBeenCalledTimes(1);
-    expect(result.status).toBe(201);
+    expect(votesRepo.getTrueVotesByField).toHaveBeenCalledTimes(3);
+    expect(result).toEqual({});
   });
 
   test('createVote toggles itinerary vote', async () => {
-    votesRepo.getUserVoteByItineraryTripIdPlaceIdAndUserId.mockResolvedValue({ status: 200, data: { value: false } });
-    votesRepo.updateVoteItinerary.mockResolvedValue({ status: 200, data: {} });
-    votesRepo.updateDailyVotesResults.mockResolvedValue({ status: 200 });
+    votesRepo.getUserVoteByItineraryTripIdPlaceIdAndUserId.mockResolvedValue({ value: false });
+    votesRepo.updateVoteItinerary.mockResolvedValue({});
 
-    const result = await votesService.createVote(6, { tripid: 1, placeid: 2 });
+    await votesService.createVote(6, { tripid: 1, placeid: 2 });
 
     expect(votesRepo.updateVoteItinerary).toHaveBeenCalledWith(6, true, 1, 2);
-    expect(votesRepo.updateDailyVotesResults).toHaveBeenCalledTimes(1);
-    expect(result.status).toBe(200);
+    expect(votesRepo.getTrueVotesByField).toHaveBeenCalledTimes(3);
   });
 
   test('createVote creates place vote when none exists', async () => {
-    votesRepo.getUserVoteByPlaceIdAndUserId.mockResolvedValue({ status: 404 });
-    votesRepo.createVotePlace.mockResolvedValue({ status: 201, data: {} });
-    votesRepo.updateDailyVotesResults.mockResolvedValue({ status: 200 });
+    votesRepo.getUserVoteByPlaceIdAndUserId.mockResolvedValue(null);
+    votesRepo.createVotePlace.mockResolvedValue({});
 
-    const result = await votesService.createVote(7, { placeid: 99 });
+    await votesService.createVote(7, { placeid: 99 });
 
     expect(votesRepo.createVotePlace).toHaveBeenCalledWith(7, { placeid: 99 });
-    expect(votesRepo.updateDailyVotesResults).toHaveBeenCalledTimes(1);
-    expect(result.status).toBe(201);
+    expect(votesRepo.getTrueVotesByField).toHaveBeenCalledTimes(3);
   });
 
-  test('createVote returns 400 for invalid payload', async () => {
-    const result = await votesService.createVote(1, {});
-
-    expect(result).toEqual({ status: 400, error: 'Invalid vote data' });
+  test('createVote throws badRequest for invalid payload', async () => {
+    await expect(votesService.createVote(1, {})).rejects.toMatchObject({
+      statusCode: 400,
+      message: 'Invalid vote data'
+    });
   });
 
   test('getVotesByTrip returns summarized count', async () => {
-    votesRepo.getVotesByTripId.mockResolvedValue({ status: 200, data: [{}, {}, {}] });
+    votesRepo.getVotesByTripId.mockResolvedValue([{}, {}, {}]);
 
     const result = await votesService.getVotesByTrip(9);
 
-    expect(result).toEqual({ status: 200, data: { summary: 3 } });
+    expect(result).toEqual({ summary: 3 });
   });
 
   test('getVotesByPlace returns summarized count', async () => {
-    votesRepo.getVotesByPlaceId.mockResolvedValue({ status: 200, data: [{}, {}] });
+    votesRepo.getVotesByPlaceId.mockResolvedValue([{}, {}]);
 
     const result = await votesService.getVotesByPlace(9);
 
-    expect(result).toEqual({ status: 200, data: { summary: 2 } });
+    expect(result).toEqual({ summary: 2 });
   });
 });

@@ -9,63 +9,54 @@ import VotesRepository from "../repositories/votes.repository.js";
 import { votesClient } from "../config/supabase.js";
 import { hashPassword, comparePassword, generateTemporaryPassword, generateResetToken } from '../utils/password.js';
 import { env } from '../config/env.js';
+import exceptions from '../middleware/exceptions.middleware.js';
+import sharp from 'sharp';
 
 const usersRepositoryInstance = new usersRepository({ userClient });
 const passwordResetsRepositoryInstance = new PasswordResetsRepository({ userClient });
 const votesRepositoryInstance = new VotesRepository({ votesClient });
 
+/**
+ * Attaches ubication names (country, state, city) to a list of user rows.
+ * @param {Object[]} rows - User rows containing countryid, stateid and cityid
+ * @returns {Promise<Object[]>} Rows with Country, State and City objects
+ */
+const withUbicationNames = async (rows) => {
+  const ubicationNames = await ubicationService.getUbicationNamesByIDs(rows);
+  return matchUbicationNames({ data: rows }, { data: ubicationNames }).data;
+};
+
 const usersService = {
   async getUserById(userId, fields = "name, lastname, email, tag, countryid, stateid, cityid, profile_photo, profile_photo_tn") {
-    const user = await usersRepositoryInstance.getUserById(userId, fields);
-    if (user.status != 200) return { status: 500, error: user.error || "Service error" };
-    
-    // ubication names
-    const ubicationNames = await ubicationService.getUbicationNamesByIDs( user.data );
-    if (ubicationNames.status !== 200) return ubicationNames;
-    const userWithUbicationNames = matchUbicationNames( user, ubicationNames );
-
-    return { status: 200, data: userWithUbicationNames.data || {} };
+    const users = await usersRepositoryInstance.getUserById(userId, fields);
+    return await withUbicationNames(users);
   },
 
   async getUserByIdWithTrips(userId, fields = "name, lastname, email, tag, countryid, stateid, cityid, profile_photo, profile_photo_tn") {
     // Get user info
-    const user = await usersRepositoryInstance.getUserById(userId, fields);
-    if (user.status != 200) return { status: 500, error: user.error || "Service error" };
-    
-    // Get ubication names
-    const ubicationNames = await ubicationService.getUbicationNamesByIDs(user.data);
-    if (ubicationNames.status !== 200) return ubicationNames;
-    const userWithUbicationNames = matchUbicationNames(user, ubicationNames);
+    const users = await usersRepositoryInstance.getUserById(userId, fields);
+    const userWithUbicationNames = await withUbicationNames(users);
 
     // Get last 3 trips created by this user
     const tripsResult = await tripsService.searchTrips({ ownerid: userId });
-    let userTrips = [];
-    if (tripsResult.status === 200 && tripsResult.data) {
-      // Sort by initialdate descending and take first 3
-      userTrips = tripsResult.data
-        .sort((a, b) => new Date(b.initialdate) - new Date(a.initialdate))
-        .slice(0, 3);
-    }
+    const userTrips = (tripsResult?.data ?? [])
+      .sort((a, b) => new Date(b.initialdate) - new Date(a.initialdate))
+      .slice(0, 3);
 
-    return { 
-      status: 200, 
-      data: {
-        ...userWithUbicationNames.data,
-        recentTrips: userTrips
-      }
+    return {
+      ...(userWithUbicationNames[0] ?? {}),
+      recentTrips: userTrips
     };
   },
   async recoverPassword(email) {
     // Get user data
-    const userData = await usersRepositoryInstance.getUserByEmail(email);
+    const users = await usersRepositoryInstance.getUserByEmail(email);
     
-    if (userData.status != 200) return { status: 500, error: userData.error || "Service error" };
-    
-    if (!userData.data || userData.data.length === 0) {
-      return { status: 404, error: "User not found" };
+    if (!users || users.length === 0) {
+      throw exceptions.notFound("User not found");
     }
 
-    const user = userData.data[0];
+    const user = users[0];
     
     // Generate secure reset token
     const resetToken = generateResetToken();
@@ -78,16 +69,16 @@ const usersService = {
     await passwordResetsRepositoryInstance.deleteUserResetTokens(user.id);
     
     // Save reset token to database
-    const tokenResult = await passwordResetsRepositoryInstance.createResetToken(
+    const createdToken = await passwordResetsRepositoryInstance.createResetToken(
       user.id,
       email,
       resetToken,
       expiresAt.toISOString()
     );
     
-    if (tokenResult.status !== 201) {
-      console.error('Failed to create reset token:', tokenResult.error);
-      return { status: 500, error: tokenResult.error || "Failed to create reset token" };
+    if (!createdToken) {
+      console.error('Failed to create reset token');
+      throw exceptions.internal("Failed to create reset token");
     }
     
     // Create reset link for frontend
@@ -96,21 +87,19 @@ const usersService = {
     // Send email with reset link
     try {
       await sendPasswordResetLinkEmail(email, resetLink, user.name);
-      return { status: 200, data: { message: "Password reset link sent to email" } };
     } catch (error) {
-      return { status: 500, error: "Failed to send reset email" };
+      throw exceptions.internal("Failed to send reset email");
     }
+    return { message: "Password reset link sent to email" };
   },
 
   async resetPassword(token, newPassword) {
     // Find the reset token
-    const tokenResult = await passwordResetsRepositoryInstance.findResetToken(token);
+    const resetRecord = await passwordResetsRepositoryInstance.findResetToken(token);
     
-    if (tokenResult.status !== 200) {
-      return { status: 404, error: "Invalid or expired reset token" };
+    if (!resetRecord) {
+      throw exceptions.notFound("Invalid or expired reset token");
     }
-
-    const resetRecord = tokenResult.data;
     
     // Check if token has expired
     const now = new Date();
@@ -119,37 +108,31 @@ const usersService = {
     if (now > expiredAt) {
       // Delete expired token
       await passwordResetsRepositoryInstance.deleteResetToken(token);
-      return { status: 400, error: "Reset token has expired" };
+      throw exceptions.badRequest("Reset token has expired");
     }
     
     // Hash the new password
     const hashedPassword = await hashPassword(newPassword);
     
     // Update user password
-    const updateResult = await usersRepositoryInstance.updateUser(
+    await usersRepositoryInstance.updateUser(
       resetRecord.userid,
       { password: hashedPassword }
     );
     
-    if (updateResult.status !== 200) {
-      return { status: 500, error: "Failed to update password" };
-    }
-    
     // Delete the used token
     await passwordResetsRepositoryInstance.deleteResetToken(token);
     
-    return { status: 200, data: { message: "Password successfully reset" } };
+    return { message: "Password successfully reset" };
   },
 
   async verifyResetToken(token) {
     // Find the reset token
-    const tokenResult = await passwordResetsRepositoryInstance.findResetToken(token);
+    const resetRecord = await passwordResetsRepositoryInstance.findResetToken(token);
     
-    if (tokenResult.status !== 200) {
-      return { status: 404, error: "Invalid reset token" };
+    if (!resetRecord) {
+      throw exceptions.notFound("Invalid reset token");
     }
-
-    const resetRecord = tokenResult.data;
     
     // Check if token has expired
     const now = new Date();
@@ -158,15 +141,15 @@ const usersService = {
     if (now > expiredAt) {
       // Delete expired token
       await passwordResetsRepositoryInstance.deleteResetToken(token);
-      return { status: 400, error: "Reset token has expired" };
+      throw exceptions.badRequest("Reset token has expired");
     }
     
-    return { status: 200, data: { valid: true, email: resetRecord.email } };
+    return { valid: true, email: resetRecord.email };
   },
   async getUserByEmail(email) {
-    const user = await usersRepositoryInstance.getUserByEmail(email);
-    return user;
+    return await usersRepositoryInstance.getUserByEmail(email);
   },
+
   async getUserByField(field, value, fieldsToReturn = "id, name, lastname, email, tag, description, countryid, stateid, cityid, enabled, hide") {
     const user = await usersRepositoryInstance.getUsersByField(field, value, fieldsToReturn);
     
@@ -187,14 +170,14 @@ const usersService = {
   },
   async createUser(CreateUserRq) {
     //check if email or tag already exists
-    const checkUserEmail = await usersRepositoryInstance.getUsersByField('email', CreateUserRq.email);
-    if (checkUserEmail.status === 200) {
-      return { status: 409, error: "Email already exists" };
+    const existingByEmail = await usersRepositoryInstance.getUsersByField('email', CreateUserRq.email);
+    if (existingByEmail.length > 0) {
+      throw exceptions.conflict("Email already exists");
     }
 
-    const checkUserTag = await usersRepositoryInstance.getUsersByField('tag', CreateUserRq.tag);
-    if (checkUserTag.status === 200) {
-      return { status: 409, error: "Tag already exists" };
+    const existingByTag = await usersRepositoryInstance.getUsersByField('tag', CreateUserRq.tag);
+    if (existingByTag.length > 0) {
+      throw exceptions.conflict("Tag already exists");
     }
 
     // Hash password before storing
@@ -204,32 +187,30 @@ const usersService = {
       password: hashedPassword
     };
 
-    const user = await usersRepositoryInstance.createUser(userDataToCreate);
-    if (user.status != 201) return { status: 500, error: user.error || "Service error" };
+    const users = await usersRepositoryInstance.createUser(userDataToCreate);
 
-    // Create email confirmation record
-    const userId = user.data[0].id;
+    // Create email confirmation record (valid for 24 hours)
+    const userId = users[0].id;
     const userEmail = CreateUserRq.email;
-    const confirmation = await usersRepositoryInstance.createEmailConfirmation(userId, userEmail);
-    if (confirmation.status !== 201) {
-      console.error('Failed to create email confirmation:', confirmation.error);
+    const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    let confirmation = null;
+    try {
+      confirmation = await usersRepositoryInstance.createEmailConfirmation(userId, userEmail, expiration);
+    } catch (error) {
+      console.error('Failed to create email confirmation:', error.message);
       // Continue even if confirmation creation fails
     }
 
-    // ubication names
-    const ubicationNames = await ubicationService.getUbicationNamesByIDs( user.data );
-    if (ubicationNames.status !== 200) return ubicationNames;
-    const userWithUbicationNames = matchUbicationNames( user, ubicationNames );
-    
-    const infoToMail = userWithUbicationNames.data[0];
+    const userWithUbicationNames = await withUbicationNames(users);
+    const infoToMail = userWithUbicationNames[0];
     
     // Send email confirmation with token
-    if (confirmation.status === 201 && confirmation.data && confirmation.data.token) {
+    if (confirmation && confirmation.token) {
       try {
         await sendEmailConfirmationEmail(
           infoToMail.email,
           infoToMail.name + " " + infoToMail.lastname,
-          confirmation.data.token
+          confirmation.token
         );
       } catch (error) {
         console.error('Failed to send confirmation email:', error);
@@ -241,13 +222,12 @@ const usersService = {
   },
   async updateUser(userId, UpdateUserRq) { 
     const userExists = await usersRepositoryInstance.getUserById(userId);
-    if (userExists.status !== 200) {
-      return { status: 404, error: "User not found" };
+    if (userExists.length === 0) {
+      throw exceptions.notFound("User not found");
     }
-    const user = await usersRepositoryInstance.updateUser(userId, UpdateUserRq);
-    if (user.status != 200) return { status: 500, error: user.error || "Service error" };
-    return user;
+    return await usersRepositoryInstance.updateUser(userId, UpdateUserRq);
   },
+
     async searchByText(text) {
         return await usersRepositoryInstance.searchByText(text);
     },
@@ -258,36 +238,36 @@ const usersService = {
         return await usersRepositoryInstance.checkTagExists(tag);
     },
     async searchByEmail(email, password) {
-        const result = await usersRepositoryInstance.searchByEmail(email);
-        if (result.status !== 200 || !result.data) {
-            return { status: 404, error: "User not found" };
+        const user = await usersRepositoryInstance.searchByEmail(email);
+        if (!user) {
+            throw exceptions.notFound("User not found");
         }
         
         // Compare password with hashed password
-        const isPasswordValid = await comparePassword(password, result.data.password);
+        const isPasswordValid = await comparePassword(password, user.password);
         if (!isPasswordValid) {
-            return { status: 401, error: "Invalid credentials" };
+            throw exceptions.unauthorized("Invalid credentials");
         }
         
         // Remove password from response
-        const { password: _, ...userWithoutPassword } = result.data;
-        return { status: 200, data: userWithoutPassword };
+        const { password: _, ...userWithoutPassword } = user;
+        return userWithoutPassword;
     },
     async searchByTag(tag, password) {
-        const result = await usersRepositoryInstance.searchByTag(tag);
-        if (result.status !== 200 || !result.data) {
-            return { status: 404, error: "User not found" };
+        const user = await usersRepositoryInstance.searchByTag(tag);
+        if (!user) {
+            throw exceptions.notFound("User not found");
         }
         
         // Compare password with hashed password
-        const isPasswordValid = await comparePassword(password, result.data.password);
+        const isPasswordValid = await comparePassword(password, user.password);
         if (!isPasswordValid) {
-            return { status: 401, error: "Invalid credentials" };
+            throw exceptions.unauthorized("Invalid credentials");
         }
         
         // Remove password from response
-        const { password: _, ...userWithoutPassword } = result.data;
-        return { status: 200, data: userWithoutPassword };
+        const { password: _, ...userWithoutPassword } = user;
+        return userWithoutPassword;
     },
     async searchOwnerInfo( userid, fields = "id, name, tag, email") {
         return await usersRepositoryInstance.searchOwnerInfo(userid, fields);
@@ -295,12 +275,12 @@ const usersService = {
     async changeUserField( userid, field, value, extrafields = {}) {
       const userExists = await usersRepositoryInstance.getUserById(userid, `id, ${field}` );
 
-      if (userExists.status !== 200) {
-        return { status: 409, error: "User not found" };
+      if (userExists.length === 0) {
+        throw exceptions.conflict("User not found");
       }
 
-      if (!(field in userExists.data[0])) {
-        return { status: 400, error: `Field ${field} does not exist on user` };
+      if (!(field in userExists[0])) {
+        throw exceptions.badRequest(`Field ${field} does not exist on user`);
       }
       
       // Special handling for password field
@@ -308,11 +288,11 @@ const usersService = {
         // Verify current password matches
         const isCurrentPasswordValid = await comparePassword(
           extrafields.current, 
-          userExists.data[0].password
+          userExists[0].password
         );
         
         if (!isCurrentPasswordValid) {
-          return { status: 400, error: "Current password is incorrect" };
+          throw exceptions.badRequest("Current password is incorrect");
         }
         
         // Hash new password before saving
@@ -320,34 +300,26 @@ const usersService = {
       }
 
       const updateData = { [field]: value };
-      const user = await usersRepositoryInstance.updateUser(userid, updateData);
-      if (user.status != 200) return { status: 500, error: user.error || "Service error" };
-      return { status: 200  };
+      await usersRepositoryInstance.updateUser(userid, updateData);
     },
 
     async getProfileData(userId) {
       const normalizedUserId = Number(userId);
       if (!Number.isFinite(normalizedUserId) || normalizedUserId <= 0) {
-        return { status: 400, error: "Invalid user id" };
+        throw exceptions.badRequest("Invalid user id");
       }
 
       // Get user info with ubication and profile photos
       const user = await usersRepositoryInstance.getUserById(normalizedUserId, 
         "name, lastname, email, tag, description, countryid, stateid, cityid, enabled, hide, profile_photo, profile_photo_tn");
-      if (user.status != 200) return { status: 500, error: user.error || "Service error" };
       
       // Get ubication names
-      const ubicationNames = await ubicationService.getUbicationNamesByIDs(user.data);
-      if (ubicationNames.status !== 200) return ubicationNames;
-      const userWithUbicationNames = matchUbicationNames(user, ubicationNames);
+      const userWithUbicationNames = await withUbicationNames(user);
 
       // Get trips created by user using owner-specific query path
       const tripsResult = await tripsService.getTripsByOwner(normalizedUserId, 1, 100);
-      let createdTrips = [];
-      if (tripsResult.status === 200 && tripsResult.data) {
-        createdTrips = tripsResult.data
-          .sort((a, b) => new Date(b.initialdate) - new Date(a.initialdate));
-      }
+      const createdTrips = (tripsResult?.data ?? [])
+        .sort((a, b) => new Date(b.initialdate) - new Date(a.initialdate));
 
       // Get trips where user is member (from trips_members by userid)
       const memberTripsResult = await tripsService.searchTrips(
@@ -356,44 +328,35 @@ const usersService = {
         1,
         100
       );
-      let memberTrips = [];
-      if (memberTripsResult.status === 200 && memberTripsResult.data) {
-        memberTrips = memberTripsResult.data
-          .sort((a, b) => new Date(b.initialdate) - new Date(a.initialdate));
-      }
+      const memberTrips = (memberTripsResult?.data ?? [])
+        .sort((a, b) => new Date(b.initialdate) - new Date(a.initialdate));
 
       // Get vote counts
       const tripVotesCount = await votesRepositoryInstance.countVotesByUserId(normalizedUserId, 'trips');
       const placeVotesCount = await votesRepositoryInstance.countVotesByUserId(normalizedUserId, 'places');
 
       // Get last 3 voted trips
-      const votedTripsResult = await votesRepositoryInstance.getVotedTripsByUserId(normalizedUserId, 10);
-      let votedTrips = [];
-      if (votedTripsResult.status === 200 && votedTripsResult.data) {
-        // Get trip details for each voted trip
-        const tripIds = votedTripsResult.data.map(v => v.tripid);
-        if (tripIds.length > 0) {
-          const votedTripsDetails = await Promise.all(
-            tripIds.map(tripId => tripsService.getTripById(tripId, normalizedUserId, 
-              ['id', 'name', 'description', 'initialdate', 'finaldate', 'ownerid', 'statics', 'itinerary']))
-          );
-          votedTrips = votedTripsDetails
-            .filter(t => t.status === 200 && t.data)
-            .map(t => t.data);
-        }
+      const votedTrips = [];
+      const votedTripsRows = await votesRepositoryInstance.getVotedTripsByUserId(normalizedUserId, 10);
+      if (votedTripsRows.length > 0) {
+        // Get trip details for each voted trip; trips that fail to load are skipped
+        const tripIds = votedTripsRows.map(v => v.tripid);
+        const votedTripsDetails = await Promise.all(
+          tripIds.map(tripId => tripsService.getTripById(tripId, normalizedUserId, 
+            ['id', 'name', 'description', 'initialdate', 'finaldate', 'ownerid', 'statics', 'itinerary'])
+            .catch(() => null))
+        );
+        votedTrips.push(...votedTripsDetails.filter(Boolean));
       }
 
-      return { 
-        status: 200, 
-        data: {
-          user: userWithUbicationNames.data[0] || {},
-          createdTrips: createdTrips,
-          memberTrips: memberTrips,
-          votedTrips: votedTrips,
-          voteCounts: {
-            trips: tripVotesCount.status === 200 ? tripVotesCount.data : 0,
-            places: placeVotesCount.status === 200 ? placeVotesCount.data : 0
-          }
+      return {
+        user: userWithUbicationNames[0] || {},
+        createdTrips: createdTrips,
+        memberTrips: memberTrips,
+        votedTrips: votedTrips,
+        voteCounts: {
+          trips: tripVotesCount ?? 0,
+          places: placeVotesCount ?? 0
         }
       };
     },
@@ -401,70 +364,70 @@ const usersService = {
     async confirmEmail(token) {
       // Verify token exists and get confirmation data
       const verification = await usersRepositoryInstance.verifyEmailConfirmationToken(token);
-      if (verification.status !== 200) {
-        return { status: 404, error: verification.error || "Invalid confirmation token" };
+      if (!verification) {
+        throw exceptions.notFound("Invalid confirmation token");
       }
 
-      const { userid, expirationstamp, confirmed } = verification.data;
+      const { userid, expirationstamp, confirmed } = verification;
 
       // Check if already confirmed
       if (confirmed) {
-        return { status: 400, error: "Email already confirmed" };
+        throw exceptions.badRequest("Email already confirmed");
       }
 
       // Check if token expired
       const now = new Date();
       const expirationDate = new Date(expirationstamp);
       if (now > expirationDate) {
-        return { status: 400, error: "Confirmation token has expired" };
+        throw exceptions.badRequest("Confirmation token has expired");
       }
 
       // Mark as confirmed
-      const confirmResult = await usersRepositoryInstance.confirmEmail(token);
-      if (confirmResult.status !== 200) {
-        return { status: 500, error: "Failed to confirm email" };
-      }
+      await usersRepositoryInstance.confirmEmail(token);
 
-      return { status: 200, data: { message: "Email confirmed successfully", userid } };
+      return { message: "Email confirmed successfully", userid };
     },
     async uploadProfilePhoto(userId, imageData, mimetype, extension) {
       // Validate user exists
       const userExists = await usersRepositoryInstance.getUserById(userId, "id");
-      if (userExists.status !== 200) {
-        return { status: 404, error: "User not found" };
+      if (userExists.length === 0) {
+        throw exceptions.notFound("User not found");
       }
-      
+
+      // Process images: 400x400 avatar and 150x150 thumbnail, both as WebP
+      const timestamp = Date.now();
+      const avatarFileName = `users/avatar/${userId}_${timestamp}.webp`;
+      const thumbnailFileName = `users/thumbnails/${userId}_${timestamp}.webp`;
+
+      const avatarBuffer = await sharp(imageData)
+        .resize(400, 400, { fit: 'cover', position: 'center' })
+        .webp({ quality: 90 })
+        .toBuffer();
+
+      const thumbnailBuffer = await sharp(imageData)
+        .resize(150, 150, { fit: 'cover', position: 'center' })
+        .webp({ quality: 85 })
+        .toBuffer();
+
       // Upload images to storage and get URLs
-      const uploadResult = await usersRepositoryInstance.uploadProfilePhotoToStorage(
-        userId,
-        imageData,
-        mimetype,
-        extension
+      const { avatarUrl, thumbnailUrl } = await usersRepositoryInstance.uploadProfilePhotoToStorage(
+        avatarFileName,
+        avatarBuffer,
+        thumbnailFileName,
+        thumbnailBuffer
       );
-      
-      if (uploadResult.status !== 200) {
-        return { status: 500, error: uploadResult.error || "Failed to upload profile photo" };
-      }
 
       // Update user record with photo URLs
-      const updateResult = await usersRepositoryInstance.updateProfilePhotoUrls(
-        userId,
-        uploadResult.data.avatarUrl,
-        uploadResult.data.thumbnailUrl
-      );
-      
-      if (updateResult.status !== 200) {
-        return { status: 500, error: "Failed to update profile photo URLs in database" };
+      const updated = await usersRepositoryInstance.updateProfilePhotoUrls(userId, avatarUrl, thumbnailUrl);
+      if (!updated) {
+        throw exceptions.internal("Failed to update profile photo URLs in database");
       }
 
-      return { 
-        status: 200, 
-        data: { 
-          message: "Profile photo uploaded successfully",
-          profilePhoto: updateResult.data.profile_photo,
-          profilePhotoThumbnail: updateResult.data.profile_photo_tn,
-          userId: userId
-        }
+      return {
+        message: "Profile photo uploaded successfully",
+        profilePhoto: updated.profile_photo,
+        profilePhotoThumbnail: updated.profile_photo_tn,
+        userId: userId
       };
     },
 
@@ -472,69 +435,66 @@ const usersService = {
       const sender = Number(senderId);
       const addressed = Number(addressedId);
       if (!Number.isInteger(addressed) || addressed <= 0) {
-        return { status: 400, error: "Invalid addressed user id" };
+        throw exceptions.badRequest("Invalid addressed user id");
       }
       if (sender === addressed) {
-        return { status: 400, error: "You cannot send a friend request to yourself" };
+        throw exceptions.badRequest("You cannot send a friend request to yourself");
       }
 
       const addressedUser = await usersRepositoryInstance.getUserById(addressed, "id");
-      if (addressedUser.status !== 200) return { status: 500, error: addressedUser.error || "Service error" };
-      if (addressedUser.data.length === 0) return { status: 404, error: "Addressed user not found" };
+      if (addressedUser.length === 0) {
+        throw exceptions.notFound("Addressed user not found");
+      }
 
-      const result = await usersRepositoryInstance.saveFriendRequest(sender, addressed);
-      if (result.status !== 200) return { status: result.status, error: result.error || "Failed to create friend request" };
-      return { status: 201, data: result.data };
+      return await usersRepositoryInstance.saveFriendRequest(sender, addressed);
     },
 
     async changeFriendRequestStatus(userId, friendRequestId, status) {
       if (!['accepted', 'rejected'].includes(status)) {
-        return { status: 400, error: "Status must be 'accepted' or 'rejected'" };
+        throw exceptions.badRequest("Status must be 'accepted' or 'rejected'");
       }
 
       const friendRequest = await usersRepositoryInstance.getFriendRequestById(friendRequestId);
-      if (friendRequest.status !== 200) return { status: friendRequest.status, error: friendRequest.error };
-      if (Number(friendRequest.data.addressed_id) !== Number(userId)) {
-        return { status: 403, error: "Only the addressed user can respond to this friend request" };
+      if (!friendRequest) {
+        throw exceptions.notFound("Friend request not found");
       }
-      if (friendRequest.data.status !== 'pending') {
-        return { status: 409, error: "Friend request has already been answered" };
+      if (Number(friendRequest.addressed_id) !== Number(userId)) {
+        throw exceptions.forbidden("Only the addressed user can respond to this friend request");
+      }
+      if (friendRequest.status !== 'pending') {
+        throw exceptions.conflict("Friend request has already been answered");
       }
 
-      const result = await usersRepositoryInstance.changeFriendRequestStatus(friendRequestId, status);
-      if (result.status !== 200) return { status: result.status, error: result.error || "Failed to update friend request" };
-      return { status: 200 };
+      await usersRepositoryInstance.changeFriendRequestStatus(friendRequestId, status);
     },
 
     async sendInvitation(senderId, email) {
       const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
-      if (!normalizedEmail) return { status: 400, error: "Email is required" };
+      if (!normalizedEmail) throw exceptions.badRequest("Email is required");
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-        return { status: 400, error: "Invalid email" };
+        throw exceptions.badRequest("Invalid email");
       }
 
-      const result = await usersRepositoryInstance.saveInvitation(Number(senderId), normalizedEmail);
-      if (result.status !== 200) return { status: result.status, error: result.error || "Failed to create invitation" };
-      return { status: 201, data: result.data };
+      return await usersRepositoryInstance.saveInvitation(Number(senderId), normalizedEmail);
     },
 
     async changeInvitationStatus(userId, invitationId, status) {
       if (!['accepted', 'rejected'].includes(status)) {
-        return { status: 400, error: "Status must be 'accepted' or 'rejected'" };
+        throw exceptions.badRequest("Status must be 'accepted' or 'rejected'");
       }
 
       const invitation = await usersRepositoryInstance.getInvitationById(invitationId);
-      if (invitation.status !== 200) return { status: invitation.status, error: invitation.error };
-      if (Number(invitation.data.sender_id) !== Number(userId)) {
-        return { status: 403, error: "Only the sender can update this invitation" };
+      if (!invitation) {
+        throw exceptions.notFound("Invitation not found");
       }
-      if (invitation.data.status !== 'pending') {
-        return { status: 409, error: "Invitation has already been answered" };
+      if (Number(invitation.sender_id) !== Number(userId)) {
+        throw exceptions.forbidden("Only the sender can update this invitation");
+      }
+      if (invitation.status !== 'pending') {
+        throw exceptions.conflict("Invitation has already been answered");
       }
 
-      const result = await usersRepositoryInstance.changeInvitationStatus(invitationId, status);
-      if (result.status !== 200) return { status: result.status, error: result.error || "Failed to update invitation" };
-      return { status: 200 };
+      await usersRepositoryInstance.changeInvitationStatus(invitationId, status);
     }
 };
 

@@ -1,5 +1,4 @@
-import {ApiError} from  '../utils/apiError.js'
-import {ApiResponse} from  '../utils/apiResponse.js'
+import exceptions from '../middleware/exceptions.middleware.js';
 import { requireAuthenticatedUser } from '../utils/auth-user.js';
 import votesService from "../services/votes.services.js";
 
@@ -7,7 +6,7 @@ const validateTokenUserMatch = (req, userIdFromParams) => {
   const { userId: tokenUserId } = requireAuthenticatedUser(req);
 
   if (Number(tokenUserId) !== Number(userIdFromParams)) {
-    throw new ApiError(403, 'Token user does not match requested user');
+    throw exceptions.forbidden('Token user does not match requested user');
   }
 
   return tokenUserId;
@@ -18,8 +17,7 @@ const getVotesByPlace = async (req, res, next) => {
     const { placeId } = req.params;
     const votes = await votesService.getVotesByPlace(placeId);
 
-    if (votes.status === 500) throw new ApiError(500, votes.error);
-    new ApiResponse(res).success("Votes retrieved successfully", votes.data);
+    res.success("Votes retrieved successfully", votes);
   } catch (err) {
     next(err);
   }
@@ -29,8 +27,7 @@ const getVotesByTrip = async (req, res, next) => {
   try {
     const { tripId } = req.params;
     const votes = await votesService.getVotesByTrip(tripId);
-    if (votes.status === 500) throw new ApiError(500, votes.error);
-    new ApiResponse(res).success("Votes retrieved successfully", votes.data);
+    res.success("Votes retrieved successfully", votes);
   } catch (err) {
     next(err);
   } 
@@ -42,18 +39,17 @@ const createVote = async (req, res, next) => {
     const voteData = req.body;
     
     if(userid === undefined || userid === null) {
-      throw new ApiError(400, "User ID is required");
+      throw exceptions.badRequest("User ID is required");
     }
 
     if (!voteData) {
-      throw new ApiError(400, "Vote data is required");
+      throw exceptions.badRequest("Vote data is required");
     }
 
     validateTokenUserMatch(req, userid);
 
     const newVote = await votesService.createVote(userid, voteData);
-    if (newVote.status === 500) throw new ApiError(500, newVote.error);
-    new ApiResponse(res).success("Vote created successfully", newVote.data);
+    res.success("Vote created successfully", newVote);
   } catch (err) {
     next(err);
   }
@@ -65,18 +61,17 @@ const updateVote = async (req, res, next) => {
     const voteData = req.body;
 
     if(userid === undefined || userid === null) {
-      throw new ApiError(400, "User ID is required");
+      throw exceptions.badRequest("User ID is required");
     }
 
     if (!voteData) {
-      throw new ApiError(400, "Vote data is required");
+      throw exceptions.badRequest("Vote data is required");
     }
 
     validateTokenUserMatch(req, userid);
 
     const updatedVote = await votesService.updateVote(userid, voteData);
-    if (updatedVote.status === 500) throw new ApiError(500, updatedVote.error);
-    new ApiResponse(res).success("Vote updated successfully", updatedVote.data);
+    res.success("Vote updated successfully", updatedVote);
   } catch (err) {
     next(err);
   }

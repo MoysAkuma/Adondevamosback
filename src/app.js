@@ -12,6 +12,7 @@ import votesRoutes from './routes/votes.routes.js';
 import rankingRoutes from './routes/ranking.routes.js';
 import locationsRoutes from './routes/locations.routes.js';
 import errorMiddleware from './middleware/error.middleware.js'
+import responseMiddleware from './middleware/response.middleware.js';
 import authRoutes from './routes/auth.routes.js';
 import { env } from './config/env.js';
 import setupSwagger from './config/swagger.setup.js';
@@ -68,6 +69,8 @@ setupSwagger(app);
 
 // Redis and session setup
 redisConfig(app);
+
+app.use(responseMiddleware);
 
 // Routes
 app.use('/v1', tripsRoutes);

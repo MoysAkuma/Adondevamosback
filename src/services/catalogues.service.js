@@ -1,6 +1,7 @@
 import cataloguesRepository from '../repositories/catalogues.repository.js';
 import { cataloguesClient } from '../config/supabase.js';
 import { CatalogueOptionModel } from '../models/catalogue-option.model.js';
+import exceptions from '../middleware/exceptions.middleware.js';
 
 const cataloguesRepo = new cataloguesRepository({ cataloguesClient });
 
@@ -40,21 +41,14 @@ const cataloguesService = {
     
     async getAllCatalogues() {
         const countries = await cataloguesRepo.getAllCountries();
-        if (countries.status !== 200) return countries;
         const states = await cataloguesRepo.getAllStates();
-        if (states.status !== 200) return states;
         const cities = await cataloguesRepo.getAllCities();
-        if (cities.status !== 200) return cities;
         const facilities = await cataloguesRepo.getAllFacilities();
-        if (facilities.status !== 200) return facilities;
         return {
-            status: 200,
-            data: {
-                countries: countries.data,
-                states: states.data,
-                cities: cities.data,
-                facilities: facilities.data
-            }
+            countries,
+            states,
+            cities,
+            facilities
         };
     },
     async getAllCountries() {
@@ -75,29 +69,31 @@ const cataloguesService = {
     },
     async updateCatalogueOption(option, id, data)
     {
+        let validatedId;
+        let validatedData;
         try {
-            const validatedId = CatalogueOptionModel.validateId(id);
-            const validatedData = CatalogueOptionModel.forUpdate(option, data);
-
-            return await executeCatalogueAction(
-                option,
-                'update',
-                validatedData,
-                validatedId
-            );
+            validatedId = CatalogueOptionModel.validateId(id);
+            validatedData = CatalogueOptionModel.forUpdate(option, data);
         } catch (error) {
-            return { status: 400, error: error.message };
+            throw exceptions.badRequest(error.message);
         }
+
+        return await executeCatalogueAction(
+            option,
+            'update',
+            validatedData,
+            validatedId
+        );
     },
     async createCatalogueOption(option, data)
     {
+        let validatedData;
         try {
-            const validatedData = CatalogueOptionModel.forCreate(option, data);
-            return await executeCatalogueAction(option, 'create', validatedData);
+            validatedData = CatalogueOptionModel.forCreate(option, data);
         } catch (error) {
-            return { status: 400, error: error.message };
+            throw exceptions.badRequest(error.message);
         }
-       
+        return await executeCatalogueAction(option, 'create', validatedData);
     }
 
 };

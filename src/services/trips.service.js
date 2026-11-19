@@ -1,9 +1,11 @@
+import sharp from 'sharp';
 import TripsRepository from '../repositories/trips.repository.js';
 import placesService from './places.service.js';
 import ubicationService from './ubication.service.js';
 import { clientTrips, userClient, votesClient, clientPlaces } from '../config/supabase.js';
 import { mapPlacesWithUbicationNames } from '../mappers/ubication.mapper.js';
 import { sendAddedToTripEmail, sendRemovedFromTripEmail } from '../config/email.config.js';
+import exceptions from '../middleware/exceptions.middleware.js';
 
 const tripsRepo = new TripsRepository(
   { 
@@ -32,29 +34,51 @@ const tripsService = {
   async uploadImages(tripId, images) {
     // Verify trip exists
     const tripExists = await tripsRepo.getTripByIdRaw(tripId);
-    if (tripExists.status !== 200 || !tripExists.data || tripExists.data.length === 0) {
-      return { status: 404, error: 'Trip not found' };
+    if (!tripExists) {
+      throw exceptions.notFound('Trip not found');
     }
 
-    const saveUploadedFiles =
-     await tripsRepo.uploadImagesToStorage(tripId, images);
-    if (saveUploadedFiles.status !== 200) {
-      return saveUploadedFiles;
+    const uploadedUrls = [];
+    for (let i = 0; i < images.length; i++) {
+      const image = images[i];
+      const timestamp = Date.now();
+      const extension = image.extension || 'jpg';
+      const contentType = image.mimetype || 'image/jpeg';
+      const fileName = `trips/${tripId}_${timestamp}_${i}.${extension}`;
+      const thumbnailFileName = `trips/thumbnails/${tripId}_${timestamp}_${i}.${extension}`;
+
+      const url = await tripsRepo.uploadFileToStorage(fileName, image.buffer, contentType);
+
+      //a failed thumbnail is logged but does not fail the upload
+      try {
+        const thumbnailBuffer = await sharp(image.buffer)
+          .resize(128, 128, { fit: 'cover', position: 'center' })
+          .toBuffer();
+        await tripsRepo.uploadFileToStorage(thumbnailFileName, thumbnailBuffer, contentType);
+      } catch (error) {
+        console.error(`Failed to upload thumbnail for ${fileName}:`, error.message);
+      }
+
+      uploadedUrls.push({
+        fileName,
+        url,
+        iscover: image.iscover || false,
+        orden: image.orden,
+        placeid: image.placeid || null,
+        captureddate: image.captureddate || null,
+        descripcion: image.descripcion || ''
+      });
     }
-    const saveImageUrls =
-     await tripsRepo.saveImageUrlsToTrip(tripId, saveUploadedFiles.data);
-    return saveImageUrls;
+
+    return await tripsRepo.saveImageUrlsToTrip(tripId, uploadedUrls);
   },
 
   async getTripById(tripId, 
     userid = null, 
     fields = null) {
     // base trip
-    const base = await tripsRepo.getTripByIdRaw(tripId);
-    if (base.status !== 200) return base;
-    if (!base.data || base.data.length === 0) return { status: 404, data: null };
-
-    const tripRow = base.data[0];
+    const tripRow = await tripsRepo.getTripByIdRaw(tripId);
+    if (!tripRow) throw exceptions.notFound('Trip not found');
     
     // Determine which fields to fetch based on request
     const needsOwner = !fields || fields.includes('owner');
@@ -66,36 +90,32 @@ const tripsService = {
     const needsGallery = !fields || fields.includes('gallery');
 
     // owner
-    let owner = { status: 200, data: [] };
+    let owner = null;
     if (needsOwner) {
       owner = await tripsRepo.getOwnerById(tripRow.ownerid);
-      if (owner.status !== 200) return owner;
-      if (!owner.data || owner.data.length === 0) return { status: 404, data: null };
+      if (!owner) throw exceptions.notFound('Owner not found');
     }
 
     // itinerary raw
-    let itinerary = { status: 200, data: [] };
+    let itinerary = [];
     if (needsItinerary) {
-      itinerary = await tripsRepo.getItineraryByTripId(tripId);
-      if (itinerary.status !== 200) return itinerary;
+      itinerary = await tripsRepo.getItineraryByTripId(tripId) || [];
 
       // place IDs
-      const placeIds = (itinerary.data || []).map(i => i.placeid);
-      let placesList = { status: 200, data: [] };
+      const placeIds = itinerary.map(i => i.placeid);
+      let placesList = [];
       if (placeIds.length > 0) {
         placesList = await placesService.searchPlacesByIDs(placeIds, 'id,name,countryid,stateid,cityid,latitude,longitude');
-        if (placesList.status !== 200) return placesList;
       }
 
       // ubication names
-      const ubicationNames = await ubicationService.getUbicationNamesByIDs(placesList.data);
-      if (ubicationNames.status !== 200) return ubicationNames;
+      const ubicationNames = await ubicationService.getUbicationNamesByIDs(placesList);
 
       // map itinerary with ubication names
-      const itineraryWithUbicationNames = mapPlacesWithUbicationNames(placesList.data, ubicationNames.data);
+      const itineraryWithUbicationNames = mapPlacesWithUbicationNames(placesList, ubicationNames);
       
       //combine itinerary data with place and ubication info
-      itinerary.data = (itinerary.data || []).map(item => {
+      itinerary = itinerary.map(item => {
         const placeInfo = itineraryWithUbicationNames.find(p => p.id === item.placeid);
         itineraryWithUbicationNames.forEach(place => {
           delete place.countryid;
@@ -112,36 +132,30 @@ const tripsService = {
       
       // get votes summary for itinerary items (all votes)
       const itineraryVotesSummary = await tripsRepo.getItineraryVotesSummaryByTripId(tripId);
-      if (itineraryVotesSummary.status !== 200) return itineraryVotesSummary;
       
       // get member votes summary for itinerary items
       // first get member list to get all member user IDs
       const membersList = await tripsRepo.getMembersListByTripId(tripId);
-      let itineraryMemberVotes = { status: 200, data: {} };
-      if (membersList.status === 200) {
-        const memberUserIds = [...new Set([
-          ...(membersList.data || []).map(m => m.userid),
-          tripRow.ownerid
-        ].filter(Boolean))];
+      let itineraryMemberVotes = {};
+      const memberUserIds = [...new Set([
+        ...(membersList || []).map(m => m.userid),
+        tripRow.ownerid
+      ].filter(Boolean))];
 
-        if (memberUserIds.length > 0) {
+      if (memberUserIds.length > 0) {
         itineraryMemberVotes = await tripsRepo.getItineraryVotesByMembersByTripId(tripId, memberUserIds);
-        if (itineraryMemberVotes.status !== 200) return itineraryMemberVotes;
-        }
       }
       
       // get user votes for itinerary items if user is provided
       let userItineraryVotes = new Set();
       if (userid) {
-        const userVotesResult = await tripsRepo.getUserItineraryVotesByTripIdAndUserId(tripId, userid);
-        if (userVotesResult.status !== 200) return userVotesResult;
-        userItineraryVotes = userVotesResult.data;
+        userItineraryVotes = await tripsRepo.getUserItineraryVotesByTripIdAndUserId(tripId, userid);
       }
       
       // add voting information to each itinerary item
-      itinerary.data = itinerary.data.map(item => {
-        const generalVotes = itineraryVotesSummary.data[item.place.id] || 0;
-        const memberVotes = itineraryMemberVotes.data[item.place.id] || 0;
+      itinerary = itinerary.map(item => {
+        const generalVotes = itineraryVotesSummary[item.place.id] || 0;
+        const memberVotes = itineraryMemberVotes[item.place.id] || 0;
         return {
           ...item,
           votes: {
@@ -155,23 +169,21 @@ const tripsService = {
     }
     
     // members
-    let membersList = { status: 200, data: [] };
+    let membersList = [];
     let membersEnriched = [];
     if (needsMembers) {
-      membersList = await tripsRepo.getMembersListByTripId(tripId);
-      if (membersList.status !== 200) return membersList;
+      membersList = await tripsRepo.getMembersListByTripId(tripId) || [];
 
       // member user details
-      const memberUserIds = (membersList.data || []).map(m => m.userid);
-      let usersInfo = { status: 200, data: [] };
+      const memberUserIds = membersList.map(m => m.userid);
+      let usersInfo = [];
       if (memberUserIds.length > 0) {
-        usersInfo = await tripsRepo.getUsersByIds(memberUserIds);
-        if (usersInfo.status !== 200) return usersInfo;
+        usersInfo = await tripsRepo.getUsersByIds(memberUserIds) || [];
       }
 
       // attach user info to members
-      const userMap = new Map(usersInfo.data.map(u => [u.id, u]));
-      membersEnriched = (membersList.data || []).map(m => ({
+      const userMap = new Map(usersInfo.map(u => [u.id, u]));
+      membersEnriched = membersList.map(m => ({
         id: m.id,
         hide: m.hide,
         userid: m.userid,
@@ -180,26 +192,24 @@ const tripsService = {
     }
     
     //get votes summary
-    let votesSummary = { status: 200, data: [{ total: 0 }] };
-    let userVote = { status: 200, data: { value: false } };
+    let votesSummary = [{ total: 0 }];
+    let userVote = { value: false };
     if (needsVotes) {
       if (needsStatics) {
         votesSummary = await tripsRepo.getVotesSummaryByTripId(tripId);
-        if (votesSummary.status !== 200) return votesSummary;
       }
       
       //validate if the user has voted
       if (needsUserVoted && userid) {
-        userVote = await tripsRepo.getUserVoteByTripIdAndUserId(tripId, userid);
-        if (userVote.status !== 200) return userVote;
+        const userVoteRows = await tripsRepo.getUserVoteByTripIdAndUserId(tripId, userid);
+        userVote = { value: userVoteRows.length > 0 };
       }
     }
 
     //get gallery images
-    let galleryImages = { status: 200, data: [] };
+    let galleryImages = [];
     if (needsGallery) {
-      galleryImages = await tripsRepo.getTripImages(tripId);
-      if (galleryImages.status !== 200) return galleryImages;
+      galleryImages = await tripsRepo.getTripImages(tripId) || [];
     }
     
     // Build return data with only requested fields
@@ -216,10 +226,10 @@ const tripsService = {
 
     // Add optional fields only if requested
     if (needsItinerary) {
-      returnData.itinerary = itinerary.data;
+      returnData.itinerary = itinerary;
     }
     if (needsOwner) {
-      returnData.owner = owner.data[0];
+      returnData.owner = owner;
     }
     if (needsMembers) {
       returnData.members = membersEnriched;
@@ -227,18 +237,18 @@ const tripsService = {
     if (needsStatics) {
       returnData.statics = {
         Votes: {
-          Total: votesSummary.data[0].total
+          Total: votesSummary[0].total
         }
       };
     }
     if (needsUserVoted) {
-      returnData.userVoted = userVote.data.value || false;
+      returnData.userVoted = userVote.value || false;
     }
     if (needsGallery) {
-      returnData.gallery = galleryImages.data;
+      returnData.gallery = galleryImages;
     }
 
-    return { status: 200, data: returnData };
+    return returnData;
   },
 
   async getItineraryByTripId(tripId) {
@@ -264,10 +274,6 @@ const tripsService = {
       limit
     );
 
-    if (trips.status !== 200) {
-      return trips;
-    }
-
     if (action !== 'additinerary') {
       return trips;
     }
@@ -280,7 +286,7 @@ const tripsService = {
     )];
 
     if (normalizedPlaceIds.length === 0) {
-      return { status: 400, message: 'placeid/placeids is required when action=additinerary' };
+      throw exceptions.badRequest('placeid/placeids is required when action=additinerary');
     }
 
     const tripIds = (trips.data || []).map(trip => trip.id);
@@ -291,12 +297,7 @@ const tripsService = {
       };
     }
 
-    const itinerary = await tripsRepo.searchItineraryByTripIDs(tripIds, 'tripid,placeid');
-    if (itinerary.status !== 200 && itinerary.status !== 404) {
-      return itinerary;
-    }
-
-    const itineraryRows = itinerary.status === 404 ? [] : (itinerary.data || []);
+    const itineraryRows = await tripsRepo.searchItineraryByTripIDs(tripIds, 'tripid,placeid') || [];
 
     const tripPlaceMap = new Map();
     for (const item of itineraryRows) {
@@ -333,13 +334,8 @@ const tripsService = {
     const foundedTrips = await tripsRepo.searchTrips(filters, 
       'id,name,description,initialdate,finaldate,isinternational,ownerid', userId, page, limit);
 
-    if (foundedTrips.status != 200) {
-      return foundedTrips;
-    }
-
     if (!Array.isArray(foundedTrips.data) || foundedTrips.data.length === 0) {
       return {
-        status: 200,
         data: [],
         pagination: foundedTrips.pagination
       };
@@ -348,21 +344,17 @@ const tripsService = {
     //get owners info
     const ownerIds = [...new Set(foundedTrips.data.map(trip => trip.ownerid).filter(Boolean))];
 
-    let ownersInfo = { status: 200, data: [] };
+    let ownersInfo = [];
     if (ownerIds.length > 0) {
-      ownersInfo = await tripsRepo.getUsersByIds(ownerIds, 'id,name,lastname,email,tag');
-      if (ownersInfo.status != 200) {
-        return { status: ownersInfo.status || 500, message: 'owners info error', error: ownersInfo.error };
-      }
+      ownersInfo = await tripsRepo.getUsersByIds(ownerIds, 'id,name,lastname,email,tag') || [];
     }
 
-    const ownerMap = new Map(ownersInfo.data.map(o => [o.id, o]));
+    const ownerMap = new Map(ownersInfo.map(o => [o.id, o]));
 
     //get one gallery image per trip (cover first)
-    const galleryResult = await tripsRepo.getGalleryImagesByTripIds(foundedTrips.data.map(trip => trip.id));
-    if (galleryResult.status != 200) return galleryResult;
+    const galleryImages = await tripsRepo.getGalleryImagesByTripIds(foundedTrips.data.map(trip => trip.id));
     const coverByTripId = new Map();
-    for (const image of galleryResult.data) {
+    for (const image of galleryImages) {
       if (!coverByTripId.has(image.tripid)) coverByTripId.set(image.tripid, image);
     }
 
@@ -377,35 +369,27 @@ const tripsService = {
     });
     
     return { 
-      status: 200, 
       data: tripsWithOwners,
       pagination: foundedTrips.pagination
     };
   },
 
   async getNewsTrips(limit = 5, userId = null, fields = null) {
-    const result = await tripsRepo.getNewsTrips(limit, 'id');
-    
-    if (result.status !== 200) {
-      return result;
-    }
-    
+    const newsTrips = await tripsRepo.getNewsTrips(limit, 'id');
+
     //get info of trips
-    let resultsToReturn = await Promise.all(
-      result.data.map(trip => this.getTripById(trip.id, userId, fields))
+    const resultsToReturn = await Promise.all(
+      newsTrips.map(trip => this.getTripById(trip.id, userId, fields))
     );
 
-    return { status: 200, data: resultsToReturn.map(r => r.data) }; 
+    return resultsToReturn;
   },
 
   async searchItineraryByTripIDs(tripIds, fields = 'tripid,initialdate,finaldate,placeid') {
     return await tripsRepo.searchItineraryByTripIDs(tripIds, fields);
   },
   async createItinerary(tripId, itineraryData) {
-    const existingItinerary = await tripsRepo.getItineraryByTripId(tripId);
-    if (existingItinerary.status !== 200) return existingItinerary;
-
-    const existingItems = existingItinerary.data || [];
+    const existingItems = await tripsRepo.getItineraryByTripId(tripId) || [];
     const existingKeys = new Set(
       existingItems.map(item => `${item.placeid}|${item.initialdate}|${item.finaldate}`)
     );
@@ -422,7 +406,7 @@ const tripsService = {
     }
 
     if (itemsToAdd.length === 0) {
-      return { status: 201, data: existingItems };
+      return existingItems;
     }
 
     if (existingItems.length === 0) {
@@ -432,22 +416,15 @@ const tripsService = {
     const insertedItems = [];
     for (const item of itemsToAdd) {
       const result = await tripsRepo.addItineraryPlace(tripId, item);
-      if (result.status !== 201) {
-        return result;
-      }
-      insertedItems.push(...(result.data || []));
+      insertedItems.push(...(result || []));
     }
 
-    return {
-      status: 201,
-      data: [...existingItems, ...insertedItems]
-    };
+    return [...existingItems, ...insertedItems];
   },
   async addItineraryPlace(tripId, itineraryItem) {
     const trip = await tripsRepo.getTripByIdRaw(tripId);
-    if (trip.status !== 200) return trip;
-    if (!trip.data || trip.data.length === 0) {
-      return { status: 404, error: 'Trip not found' };
+    if (!trip) {
+      throw exceptions.notFound('Trip not found');
     }
 
     // Repeated places are allowed by design in trip itineraries.
@@ -455,16 +432,14 @@ const tripsService = {
   },
   async updateItinerary(tripId, itineraryData) {
     //get existing itinerary
-    const existingItinerary = await tripsRepo.getItineraryByTripId(tripId);
-    
-    if (existingItinerary.status !== 200) return existingItinerary;
+    const existingItinerary = await tripsRepo.getItineraryByTripId(tripId) || [];
     
     //delete existing itinerary entries
-    for (const item of existingItinerary.data) {
+    for (const item of existingItinerary) {
       await tripsRepo.deleteItineraryItem(item.id);
     }
     if (itineraryData.length === 0) {
-      return { status: 201, data: [] };
+      return [];
     }
     return await tripsRepo.createItinerary(tripId, itineraryData);
   },
@@ -473,24 +448,24 @@ const tripsService = {
     const result = await tripsRepo.createMemberList(tripId, membersData);
     
     // Send emails to newly added members
-    if (result.status === 201 && membersData && membersData.length > 0) {
+    if (membersData && membersData.length > 0) {
       // Get trip and owner information
       const trip = await tripsRepo.getTripByIdRaw(tripId);
-      if (trip.status === 200 && trip.data && trip.data.length > 0) {
-        const tripInfo = trip.data[0];
+      if (trip) {
+        const tripInfo = trip;
         
         // Get owner information
         const owner = await tripsRepo.getOwnerById(tripInfo.ownerid);
-        if (owner.status === 200 && owner.data && owner.data.length > 0) {
-          const ownerInfo = owner.data[0];
+        if (owner) {
+          const ownerInfo = owner;
           
           // Get member user IDs
           const memberUserIds = membersData.map(m => m.userid);
           
           // Get user details
           const users = await tripsRepo.getUsersByIds(memberUserIds, 'id,name,lastname,email');
-          if (users.status === 200 && users.data) {
-            for (const user of users.data) {
+          if (users) {
+            for (const user of users) {
               if (user.email) {
                 try {
                   await sendAddedToTripEmail(
@@ -515,12 +490,10 @@ const tripsService = {
   },
   async updateMemberList(tripId, membersData) {
     //get existing members list
-    const existingMembers = 
-    await tripsRepo.getMembersListByTripIds([tripId]);
-    if (existingMembers.status !== 200) return existingMembers;
+    const existingMembers = await tripsRepo.getMembersListByTripIds([tripId]) || [];
     
     // Extract user IDs for comparison
-    const oldMemberIds = new Set((existingMembers.data || []).map(m => m.userid));
+    const oldMemberIds = new Set(existingMembers.map(m => m.userid));
     const newMemberIds = new Set((membersData || []).map(m => m.userid));
     
     // Find added and removed members
@@ -534,13 +507,13 @@ const tripsService = {
     if (addedMemberIds.length > 0 || removedMemberIds.length > 0) {
       // Get trip information
       const trip = await tripsRepo.getTripByIdRaw(tripId);
-      if (trip.status === 200 && trip.data && trip.data.length > 0) {
-        tripInfo = trip.data[0];
+      if (trip) {
+        tripInfo = trip;
         
         // Get owner information
         const owner = await tripsRepo.getOwnerById(tripInfo.ownerid);
-        if (owner.status === 200 && owner.data && owner.data.length > 0) {
-          ownerInfo = owner.data[0];
+        if (owner) {
+          ownerInfo = owner;
         }
       }
     }
@@ -548,8 +521,8 @@ const tripsService = {
     // Send emails to added members
     if (addedMemberIds.length > 0 && tripInfo && ownerInfo) {
       const addedUsers = await tripsRepo.getUsersByIds(addedMemberIds, 'id,name,lastname,email');
-      if (addedUsers.status === 200 && addedUsers.data) {
-        for (const user of addedUsers.data) {
+      if (addedUsers) {
+        for (const user of addedUsers) {
           if (user.email) {
             try {
               await sendAddedToTripEmail(
@@ -569,15 +542,15 @@ const tripsService = {
     }
     
     //delete existing members entries
-    for (const item of existingMembers.data) {
+    for (const item of existingMembers) {
       await tripsRepo.deleteMemberItem(item.id);
     }
     
     // Send emails to removed members
     if (removedMemberIds.length > 0 && tripInfo && ownerInfo) {
       const removedUsers = await tripsRepo.getUsersByIds(removedMemberIds, 'id,name,lastname,email');
-      if (removedUsers.status === 200 && removedUsers.data) {
-        for (const user of removedUsers.data) {
+      if (removedUsers) {
+        for (const user of removedUsers) {
           if (user.email) {
             try {
               await sendRemovedFromTripEmail(
@@ -597,7 +570,7 @@ const tripsService = {
     }
     
     if (membersData.length === 0) {
-      return { status: 201, data: [] };
+      return [];
     }
     return await tripsRepo.createMemberList(tripId, membersData);
   },
@@ -605,9 +578,8 @@ const tripsService = {
   async deleteImage(tripId, imageId) {
     // Verify trip exists
     const trip = await tripsRepo.getTripByIdRaw(tripId);
-    if (trip.status !== 200) return trip;
-    if (!trip.data || trip.data.length === 0) {
-      return { status: 404, error: 'Trip not found' };
+    if (!trip) {
+      throw exceptions.notFound('Trip not found');
     }
     
     return await tripsRepo.deleteImageFromGallery(imageId);
@@ -616,35 +588,50 @@ const tripsService = {
   async setCoverImage(tripId, imageId) {
     // Verify trip exists
     const trip = await tripsRepo.getTripByIdRaw(tripId);
-    if (trip.status !== 200) return trip;
-    if (!trip.data || trip.data.length === 0) {
-      return { status: 404, error: 'Trip not found' };
+    if (!trip) {
+      throw exceptions.notFound('Trip not found');
     }
-    
-    return await tripsRepo.setCoverImage(tripId, imageId);
+
+    const image = await tripsRepo.getGalleryImageForTrip(tripId, imageId);
+    if (!image) throw exceptions.notFound('Image not found');
+
+    await tripsRepo.resetGalleryCoversByTripId(tripId);
+    await tripsRepo.setGalleryImageCover(imageId, true);
+    await tripsRepo.updateTripCoverUrl(tripId, image.completeurl);
+
+    return { message: 'Cover image updated successfully', coverUrl: image.completeurl };
   },
 
   async updateImagesMetadata(tripId, imagesMetadata) {
     const trip = await tripsRepo.getTripByIdRaw(tripId);
-    if (trip.status !== 200) return trip;
-    if (!trip.data || trip.data.length === 0) {
-      return { status: 404, error: 'Trip not found' };
+    if (!trip) {
+      throw exceptions.notFound('Trip not found');
     }
 
-    return await tripsRepo.updateImagesMetadata(tripId, imagesMetadata);
+    const updatedImages = [];
+    for (const image of imagesMetadata) {
+      const imageId = Number(image.id);
+      if (!Number.isFinite(imageId) || imageId <= 0) {
+        throw exceptions.badRequest('Each image must have a valid id');
+      }
+
+      const row = await tripsRepo.updateGalleryImageMetadata(tripId, imageId, image);
+      if (!row) throw exceptions.notFound(`Image ${imageId} not found for this trip`);
+      updatedImages.push(row);
+    }
+
+    return updatedImages;
   },
   async saveComment(tripId, commentData) {
     const trip = await tripsRepo.getTripByIdRaw(tripId);
-    if (trip.status !== 200) return trip;
-    if (!trip.data || trip.data.length === 0) {
-      return { status: 404, error: 'Trip not found' };
+    if (!trip) {
+      throw exceptions.notFound('Trip not found');
     }
 
     if (commentData.answerd_to){
       const parentComment = await tripsRepo.getCommentById(commentData.answerd_to);
-      if (parentComment.status !== 200) return parentComment;
-      if (!parentComment.data || parentComment.data.length === 0) {
-        return { status: 404, error: 'Previus comment not found' };
+      if (!parentComment) {
+        throw exceptions.notFound('Previus comment not found');
       }
     }
 
@@ -652,17 +639,15 @@ const tripsService = {
   },
   async updateComment(commentId, commentData) {
     const comment = await tripsRepo.getCommentById(commentId);
-    if (comment.status !== 200) return comment;
-    if (!comment.data || comment.data.length === 0) {
-      return { status: 404, error: 'Comment not found' };
+    if (!comment) {
+      throw exceptions.notFound('Comment not found');
     }
     return await tripsRepo.updateComment(commentId, commentData);
   },
   async deleteComment(commentId) {
     const comment = await tripsRepo.getCommentById(commentId);
-    if (comment.status !== 200) return comment;
-    if (!comment.data || comment.data.length === 0) {
-      return { status: 404, error: 'Comment not found' };
+    if (!comment) {
+      throw exceptions.notFound('Comment not found');
     }
     return await tripsRepo.deleteComment(commentId);
   },

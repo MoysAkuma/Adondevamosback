@@ -1,6 +1,8 @@
-import sharp from 'sharp';
+import exceptions from '../middleware/exceptions.middleware.js';
 
-// Repository isolates all Supabase (DB) calls for trips domain.
+const STORAGE_BUCKET = 'adondevamosNoGallery';
+
+// Repository isolates all Supabase (DB and storage) calls for trips domain.
 class TripsRepository {
   constructor({ tripsClient, usersClient, votesClient, placesClient }) {
     this.tripsClient = tripsClient;
@@ -15,8 +17,8 @@ class TripsRepository {
       .insert(payload)
       .select()
       .single();
-    if (error) return { status: 500, error };
-    return { status: 201, data };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 
   async updateTrip(id, payload) {
@@ -27,8 +29,8 @@ class TripsRepository {
       .select()
       .single();
 
-    if (error) return { status: 500, error };
-    return { status: 200, data };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 
   async deleteTrip(id) {
@@ -36,8 +38,8 @@ class TripsRepository {
       .from('trips')
       .delete()
       .eq('id', id);
-    if (error) return { status: 500, error };
-    return { status: 200, data };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 
   async getTripByIdRaw(id, fields = 'id,name,cover_url,ownerid,description,initialdate,finaldate,isinternational,orden') {
@@ -48,7 +50,7 @@ class TripsRepository {
       .eq('id', id);
 
     if (!primary.error) {
-      return { status: 200, data: primary.data };
+      return primary.data?.[0] ?? null;
     }
 
     if (String(primary.error.message || '').includes('orden')) {
@@ -57,11 +59,11 @@ class TripsRepository {
         .select(fallbackFields)
         .eq('id', id);
 
-      if (fallback.error) return { status: 500, error: fallback.error };
-      return { status: 200, data: fallback.data };
+      if (fallback.error) throw exceptions.internal(fallback.error.message);
+      return fallback.data?.[0] ?? null;
     }
 
-    return { status: 500, error: primary.error };
+    throw exceptions.internal(primary.error.message);
   }
 
   async getOwnerById(id) {
@@ -69,8 +71,8 @@ class TripsRepository {
       .from('users')
       .select('id,name,lastname,email,tag')
       .eq('id', id);
-    if (error) return { status: 500, error };
-    return { status: 200, data };
+    if (error) throw exceptions.internal(error.message);
+    return data?.[0] ?? null;
   }
 
   async getItineraryByTripId(tripId, 
@@ -83,7 +85,7 @@ class TripsRepository {
       .order('orden', { ascending: true });
 
     if (!primary.error) {
-      return { status: 200, data: primary.data };
+      return primary.data;
     }
 
     if (String(primary.error.message || '').includes('orden')) {
@@ -92,11 +94,11 @@ class TripsRepository {
         .select(fallbackFields)
         .eq('tripid', tripId);
 
-      if (fallback.error) return { status: 500, error: fallback.error };
-      return { status: 200, data: fallback.data };
+      if (fallback.error) throw exceptions.internal(fallback.error.message);
+      return fallback.data;
     }
 
-    return { status: 500, error: primary.error };
+    throw exceptions.internal(primary.error.message);
   }
 
   async getMembersListByTripId(tripId) {
@@ -104,8 +106,8 @@ class TripsRepository {
       .from('trips_members')
       .select('id,userid,hide')
       .eq('tripid', tripId);
-    if (error) return { status: 500, error };
-    return { status: 200, data };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 
   async getUsersByIds(
@@ -117,111 +119,42 @@ class TripsRepository {
       .from('users')
       .select(fields)
       .in('id', ids);
-    if (error) return { status: 500, error };
-    return { status: 200, data };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 
-  async searchTrips(filters = {}, 
-    fields = 'id,name,ownerid,initialdate,finaldate,orden', 
-    userId = null,
-    page = 1,
-    limit = 10) {
+  async getTripIdsByFilters(filters = {}, userId = null) {
+    let tripIds = null;
 
-    const safePage = Number.isFinite(Number(page)) && Number(page) > 0 ? Number(page) : 1;
-    const safeLimit = Number.isFinite(Number(limit)) && Number(limit) > 0 ? Number(limit) : 10;
-
-    const buildPagination = (totalCount, currentPage, currentLimit) => {
-      const totalPages = totalCount === 0 ? 0 : Math.ceil(totalCount / currentLimit);
-      return {
-        page: currentPage,
-        limit: currentLimit,
-        totalCount,
-        totalPages,
-        hasNextPage: totalPages > 0 && currentPage < totalPages,
-        hasPreviousPage: currentPage > 1
-      };
-    };
-
-    const emptyPaginatedResult = {
-      status: 200,
-      data: [],
-      pagination: buildPagination(0, safePage, safeLimit)
-    };
-    
-    // Get total count first with same filters
-    let countQuery = this.tripsClient.from('trips').select('id', { count: 'exact', head: false });
-    let query = this.tripsClient.from('trips').select(fields);
-    
-    // Handle location filters from places through itinerary table
-    const hasLocationFilter = filters.countryid || filters.stateid || filters.cityid;
-    if (hasLocationFilter) {
-      // First, find places matching the location criteria from places schema
+    if (filters.countryid || filters.stateid || filters.cityid) {
       let placesQuery = this.placesClient.from('places').select('id');
-      
+
       if (filters.countryid) {
         placesQuery = placesQuery.eq('countryid', filters.countryid);
       }
-      
+
       if (filters.stateid) {
         placesQuery = placesQuery.eq('stateid', filters.stateid);
       }
-      
+
       if (filters.cityid) {
         placesQuery = placesQuery.eq('cityid', filters.cityid);
       }
-      
+
       const { data: placesData, error: placesError } = await placesQuery;
-      if (placesError) return { status: 500, error: placesError };
-      
-      if (!placesData || placesData.length === 0) {
-        return emptyPaginatedResult;
-      }
-      
-      const placeIds = placesData.map(place => place.id);
-      
-      // Then find itineraries containing those places
+      if (placesError) throw exceptions.internal(placesError.message);
+
+      const placeIds = (placesData || []).map(place => place.id);
+      if (placeIds.length === 0) return [];
+
       const { data: itineraryData, error: itineraryError } = await this.tripsClient
         .from('trips_itinerary')
         .select('tripid')
         .in('placeid', placeIds);
-      
-      if (itineraryError) return { status: 500, error: itineraryError };
-      
-      if (!itineraryData || itineraryData.length === 0) {
-        return emptyPaginatedResult;
-      }
-      
-      // Extract unique trip IDs from itinerary results
-      const tripIds = [...new Set(itineraryData.map(item => item.tripid))];
-      
-      // Filter trips by the found trip IDs
-      query = query.in('id', tripIds);
-      countQuery = countQuery.in('id', tripIds);
-    }
-    
-    if (filters.name) {
-      query = query.ilike('name', `%${filters.name}%`);
-      countQuery = countQuery.ilike('name', `%${filters.name}%`);
-    }
 
-    if (filters.initialdate) {
-      query = query.gte('initialdate', filters.initialdate);
-      countQuery = countQuery.gte('initialdate', filters.initialdate);
-    }
+      if (itineraryError) throw exceptions.internal(itineraryError.message);
 
-    if (filters.finaldate) {
-      query = query.lte('finaldate', filters.finaldate);
-      countQuery = countQuery.lte('finaldate', filters.finaldate);
-    }
-
-    if (filters.ownerid) {
-      query = query.eq('ownerid', filters.ownerid);
-      countQuery = countQuery.eq('ownerid', filters.ownerid);
-    }
-
-    if (filters.mytrips){
-      query = query.eq('ownerid', userId);
-      countQuery = countQuery.eq('ownerid', userId);
+      tripIds = [...new Set((itineraryData || []).map(item => item.tripid))];
     }
 
     if (filters.membertrips) {
@@ -230,39 +163,84 @@ class TripsRepository {
         .select('tripid')
         .eq('userid', userId);
 
-      if (memberTripsError) return { status: 500, error: memberTripsError };
+      if (memberTripsError) throw exceptions.internal(memberTripsError.message);
 
       const memberTripIds = [...new Set((memberTripsData || []).map(item => item.tripid))];
-      if (memberTripIds.length === 0) {
-        return emptyPaginatedResult;
-      }
-
-      query = query.in('id', memberTripIds);
-      countQuery = countQuery.in('id', memberTripIds);
+      tripIds = tripIds
+        ? tripIds.filter(id => memberTripIds.includes(id))
+        : memberTripIds;
     }
-    
-    // Get total count
-    const { count, error: countError } = await countQuery;
-    if (countError) return { status: 500, error: countError };
-    
-    const totalCount = count || 0;
-    const pagination = buildPagination(totalCount, safePage, safeLimit);
-    
-    // Apply pagination
-    const from = (safePage - 1) * safeLimit;
-    const to = from + safeLimit - 1;
-    query = query.range(from, to);
-    
-    query = query.order('createddate', { ascending: false });
-    
+
+    return tripIds;
+  }
+
+  applyTripFilters(query, filters = {}, userId = null, tripIds = null) {
+    if (tripIds) {
+      query = query.in('id', tripIds);
+    }
+
+    if (filters.name) {
+      query = query.ilike('name', `%${filters.name}%`);
+    }
+
+    if (filters.initialdate) {
+      query = query.gte('initialdate', filters.initialdate);
+    }
+
+    if (filters.finaldate) {
+      query = query.lte('finaldate', filters.finaldate);
+    }
+
+    if (filters.ownerid) {
+      query = query.eq('ownerid', filters.ownerid);
+    }
+
+    if (filters.mytrips) {
+      query = query.eq('ownerid', userId);
+    }
+
+    return query;
+  }
+
+  async countTrips(filters = {}, userId = null) {
+    const tripIds = await this.getTripIdsByFilters(filters, userId);
+    if (tripIds && tripIds.length === 0) return 0;
+
+    const countQuery = this.applyTripFilters(
+      this.tripsClient.from('trips').select('id', { count: 'exact', head: false }),
+      filters,
+      userId,
+      tripIds
+    );
+
+    const { count, error } = await countQuery;
+    if (error) throw exceptions.internal(error.message);
+    return count || 0;
+  }
+
+  async searchTrips(filters = {}, 
+    fields = 'id,name,ownerid,initialdate,finaldate,orden', 
+    userId = null,
+    page = 1,
+    limit = 10) {
+
+    const tripIds = await this.getTripIdsByFilters(filters, userId);
+    if (tripIds && tripIds.length === 0) return [];
+
+    let query = this.applyTripFilters(
+      this.tripsClient.from('trips').select(fields),
+      filters,
+      userId,
+      tripIds
+    );
+
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+    query = query.order('createddate', { ascending: false }).range(from, to);
+
     const { data, error } = await query;
-    if (error) return { status: 500, error };
-    
-    return { 
-      status: 200, 
-      data: data || [],
-      pagination
-    };
+    if (error) throw exceptions.internal(error.message);
+    return data || [];
   }
 
   async getNewsTrips(limit = 5, 
@@ -275,7 +253,7 @@ class TripsRepository {
       .limit(limit);
 
     if (!primary.error) {
-      return { status: 200, data: primary.data };
+      return primary.data;
     }
 
     if (String(primary.error.message || '').includes('orden')) {
@@ -285,11 +263,11 @@ class TripsRepository {
         .order('createddate', { ascending: false })
         .limit(limit);
 
-      if (fallback.error) return { status: 500, error: fallback.error };
-      return { status: 200, data: fallback.data };
+      if (fallback.error) throw exceptions.internal(fallback.error.message);
+      return fallback.data;
     }
 
-    return { status: 500, error: primary.error };
+    throw exceptions.internal(primary.error.message);
   }
 
   async searchItineraryByTripIDs(tripIds, 
@@ -302,7 +280,7 @@ class TripsRepository {
       .order('orden', { ascending: true });
 
     if (!primary.error) {
-      return { status: 200, data: primary.data };
+      return primary.data;
     }
 
     if (String(primary.error.message || '').includes('orden')) {
@@ -311,11 +289,11 @@ class TripsRepository {
         .select(fallbackFields)
         .in('tripid', tripIds);
 
-      if (fallback.error) return { status: 500, error: fallback.error };
-      return { status: 200, data: fallback.data };
+      if (fallback.error) throw exceptions.internal(fallback.error.message);
+      return fallback.data;
     }
 
-    return { status: 500, error: primary.error };
+    throw exceptions.internal(primary.error.message);
   }
   async getVotesSummaryByTripId(tripId) {
     const { data, error } = await 
@@ -324,9 +302,8 @@ class TripsRepository {
       .select('value')
       .eq('tripid', tripId)
       .eq('value', true);
-    if (error) return { status: 500, error };
-    const total = data ? data.length : 0;
-    return { status: 200, data: [{ total }] };
+    if (error) throw exceptions.internal(error.message);
+    return data || [];
   }
   async getUserVoteByTripIdAndUserId(tripId, userId) {
     const {data, error} = await 
@@ -337,11 +314,8 @@ class TripsRepository {
       .eq('userid', userId)
       .eq('value', true);
 
-    if (error) return { status: 500, error };
-    if (!data || data.length === 0) {
-      return { status: 200, data: { value: false } };
-    }
-    return { status: 200, data: { value: true } };
+    if (error) throw exceptions.internal(error.message);
+    return data || [];
   }
   async createItinerary(tripId, itineraryData) {
     const payload = itineraryData.map((item, index) => ({
@@ -357,24 +331,29 @@ class TripsRepository {
         payload
       )
       .select();
-    if (error) return { status: 500, error };
-    return { status: 201, data };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 
-  async addItineraryPlace(tripId, itineraryItem) {
-    const { data: currentItinerary } = await this.tripsClient
+  async getLastItineraryOrden(tripId) {
+    const { data, error } = await this.tripsClient
       .from('trips_itinerary')
       .select('orden')
       .eq('tripid', tripId)
       .order('orden', { ascending: false })
       .limit(1);
 
+    if (error) throw exceptions.internal(error.message);
+    return data?.[0]?.orden ?? null;
+  }
+
+  async addItineraryPlace(tripId, itineraryItem) {
     const payload = {
       initialdate: itineraryItem.initialdate,
       finaldate: itineraryItem.finaldate,
       placeid: itineraryItem.placeid,
       tripid: tripId,
-      orden: itineraryItem.orden ?? ((currentItinerary?.[0]?.orden ?? -1) + 1)
+      orden: itineraryItem.orden
     };
 
     const { data, error } = await this.tripsClient
@@ -382,8 +361,8 @@ class TripsRepository {
       .insert(payload)
       .select();
 
-    if (error) return { status: 500, error };
-    return { status: 201, data };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
   
   async deleteItineraryItem(id) {
@@ -391,8 +370,8 @@ class TripsRepository {
       .from('trips_itinerary')
       .delete()
       .eq('id', id);
-    if (error) return { status: 500, error };
-    return { status: 200, data };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
   async createMemberList(tripId, membersData) {
     const payload = membersData.map(item => ({
@@ -406,95 +385,55 @@ class TripsRepository {
           tripid: tripId }))
       )
       .select();
-    if (error) return { status: 500, error };
-    return { status: 201, data };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
   async deleteMemberItem(id) {
     const { data, error } = await this.tripsClient
       .from('trips_members')
       .delete()
       .eq('id', id);
-    if (error) return { status: 500, error };
-    return { status: 200, data };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
   async getMembersListByTripIds(tripIds) {
     const { data, error } = await this.tripsClient
       .from('trips_members')
       .select('id,tripid,userid,hide')
       .in('tripid', tripIds);
-    if (error) return { status: 500, error };
-    return { status: 200, data };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 
-  async uploadImagesToStorage(tripId, images) {
-    try {
-      const uploadedUrls = [];
-      const bucketName = 'adondevamosNoGallery';
-      const folder = 'trips';
-      const thumbnailFolder = 'trips/thumbnails';
+  async uploadFileToStorage(path, buffer, contentType) {
+    const { error } = await this.tripsClient.storage
+      .from(STORAGE_BUCKET)
+      .upload(path, buffer, {
+        contentType,
+        cacheControl: '3600',
+        upsert: false
+      });
 
-      for (let i = 0; i < images.length; i++) {
-        const image = images[i];
-        const timestamp = Date.now();
-        const fileName = `${folder}/${tripId}_${timestamp}_${i}.${image.extension || 'jpg'}`;
-        const thumbnailFileName = `${thumbnailFolder}/${tripId}_${timestamp}_${i}.${image.extension || 'jpg'}`;
-
-        // Upload original image to Supabase storage
-        const { data, error } = await this.tripsClient.storage
-          .from(bucketName)
-          .upload(fileName, image.buffer, {
-            contentType: image.mimetype || 'image/jpeg',
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (error) {
-          return { status: 500, error: error.message };
-        }
-
-        // Generate 128x128px thumbnail
-        const thumbnailBuffer = await sharp(image.buffer)
-          .resize(128, 128, {
-            fit: 'cover',
-            position: 'center'
-          })
-          .toBuffer();
-
-        // Upload thumbnail to Supabase storage
-        const { error: thumbnailError } = await this.tripsClient.storage
-          .from(bucketName)
-          .upload(thumbnailFileName, thumbnailBuffer, {
-            contentType: image.mimetype || 'image/jpeg',
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (thumbnailError) {
-          // Log error but don't fail the whole upload
-          console.error(`Failed to upload thumbnail for ${fileName}:`, thumbnailError.message);
-        }
-
-        // Get public URL
-        const { data: urlData } = this.tripsClient.storage
-          .from(bucketName)
-          .getPublicUrl(fileName);
-
-        uploadedUrls.push({
-          fileName: fileName,
-          url: urlData.publicUrl,
-          iscover: image.iscover || false,
-          orden: image.orden,
-          placeid: image.placeid || null,
-          captureddate: image.captureddate || null,
-          descripcion: image.descripcion || ''
-        });
-      }
-
-      return { status: 200, data: uploadedUrls };
-    } catch (error) {
-      return { status: 500, error: error.message };
-    }
+    if (error) throw exceptions.internal(error.message);
+    return this.getPublicUrl(path);
   }
+
+  getPublicUrl(path) {
+    const { data } = this.tripsClient.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(path);
+    return data.publicUrl;
+  }
+
+  async removeFromStorage(paths) {
+    const { data, error } = await this.tripsClient.storage
+      .from(STORAGE_BUCKET)
+      .remove(paths);
+
+    if (error) throw exceptions.internal(error.message);
+    return data;
+  }
+
   async saveImageUrlsToTrip(tripid, imageUrls) {
     // If there's a cover image in the new batch, reset all existing images first
     const coverImage = imageUrls.find(item => item.iscover);
@@ -525,7 +464,7 @@ class TripsRepository {
         }))
       )
       .select();
-    if (error) return { status: 500, error: error.message };
+    if (error) throw exceptions.internal(error.message);
     
     // If there's a cover image, update the trip's cover_url
     if (coverImage) {
@@ -540,10 +479,10 @@ class TripsRepository {
       }
     }
     
-    return { status: 200, data: data };
+    return data;
   }
   async getGalleryImagesByTripIds(tripIds) {
-    if (!tripIds || tripIds.length === 0) return { status: 200, data: [] };
+    if (!tripIds || tripIds.length === 0) return [];
 
     const { data, error } = await this.tripsClient
       .from('trips_gallery')
@@ -552,8 +491,8 @@ class TripsRepository {
       .order('iscover', { ascending: false })
       .order('id', { ascending: true });
 
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data: data || [] };
+    if (error) throw exceptions.internal(error.message);
+    return data || [];
   }
 
   async getTripImages(tripId) {
@@ -582,210 +521,124 @@ class TripsRepository {
       lastError = result.error;
     }
 
-    if (lastError) {
-      return { status: 500, error: lastError.message };
-    }
-    
-    // Add thumbnail URLs for each image
-    const bucketName = 'adondevamosNoGallery';
-    const orderedData = [...(data || [])].sort((left, right) => (left.orden ?? 0) - (right.orden ?? 0));
-    const galleryWithThumbnails = orderedData.map((item, index) => {
-      // Construct thumbnail path: trips/file.jpg -> trips/thumbnails/file.jpg
-      const thumbnailFilename = item.filename.replace('trips/', 'trips/thumbnails/');
-      const { data: thumbnailUrlData } = this.tripsClient.storage
-        .from(bucketName)
-        .getPublicUrl(thumbnailFilename);
-      
-      return {
-        ...item,
-        orden: item.orden ?? index + 1,
-        descripcion: item.descripcion || '',
-        placeid: item.placeid || null,
-        captureddate: item.captureddate || null,
-        thumbnailurl: thumbnailUrlData.publicUrl
-      };
-    });
-    
-    return { status: 200, data: galleryWithThumbnails };
+    if (lastError) throw exceptions.internal(lastError.message);
+    return data || [];
   }
   
-  async deleteImageFromGallery(imageId) {
-    // First get the image details to retrieve the filename and cover status
+  async getGalleryImageById(imageId) {
     const primary = await this.tripsClient
       .from('trips_gallery')
       .select('filename, tripid, iscover, orden')
       .eq('id', imageId)
-      .single();
-    let imageData = primary.data;
+      .maybeSingle();
 
-    if (primary.error) {
-      if (String(primary.error.message || '').includes('orden')) {
-        const fallback = await this.tripsClient
-          .from('trips_gallery')
-          .select('filename, tripid, iscover')
-          .eq('id', imageId)
-          .single();
+    if (!primary.error) return primary.data;
 
-        if (fallback.error) return { status: 500, error: fallback.error.message };
-        imageData = fallback.data;
-      } else {
-        return { status: 500, error: primary.error.message };
-      }
+    if (String(primary.error.message || '').includes('orden')) {
+      const fallback = await this.tripsClient
+        .from('trips_gallery')
+        .select('filename, tripid, iscover')
+        .eq('id', imageId)
+        .maybeSingle();
+
+      if (fallback.error) throw exceptions.internal(fallback.error.message);
+      return fallback.data;
     }
-    if (!imageData) return { status: 404, error: 'Image not found' };
-    
-    const { tripid, iscover } = imageData;
-    
-    // Delete from storage bucket
-    const bucketName = 'adondevamosNoGallery';
-    const { error: storageError } = await this.tripsClient.storage
-      .from(bucketName)
-      .remove([imageData.filename]);
-    
-    if (storageError) return { status: 500, error: storageError.message };
-    
-    // Delete thumbnail (construct thumbnail path from original filename)
-    // trips/tripId_timestamp_i.jpg -> trips/thumbnails/tripId_timestamp_i.jpg
-    const thumbnailFilename = imageData.filename.replace('trips/', 'trips/thumbnails/');
-    const { error: thumbnailError } = await this.tripsClient.storage
-      .from(bucketName)
-      .remove([thumbnailFilename]);
-    
-    if (thumbnailError) {
-      // Log error but don't fail the whole deletion
-      console.error(`Failed to delete thumbnail ${thumbnailFilename}:`, thumbnailError.message);
-    }
-    
-    // Delete from database
-    const { error: deleteError } = await this.tripsClient
+
+    throw exceptions.internal(primary.error.message);
+  }
+
+  async deleteImageFromGallery(imageId) {
+    const { data, error } = await this.tripsClient
       .from('trips_gallery')
       .delete()
       .eq('id', imageId);
-    
-    if (deleteError) return { status: 500, error: deleteError.message };
-    
-    // If the deleted image was the cover, clear the trip's cover_url
-    if (iscover) {
-      // Check if there are remaining images for this trip
-      const { data: remainingImages, error: remainingError } = await this.tripsClient
-        .from('trips_gallery')
-        .select('id, completeurl')
-        .eq('tripid', tripid)
-        .limit(1);
-      
-      if (!remainingError && remainingImages && remainingImages.length > 0) {
-        // Set the first remaining image as the new cover
-        const newCoverImage = remainingImages[0];
-        
-        await this.tripsClient
-          .from('trips_gallery')
-          .update({ iscover: true })
-          .eq('id', newCoverImage.id);
-        
-        await this.tripsClient
-          .from('trips')
-          .update({ cover_url: newCoverImage.completeurl })
-          .eq('id', tripid);
-      } else {
-        // No remaining images, clear the cover_url
-        await this.tripsClient
-          .from('trips')
-          .update({ cover_url: null })
-          .eq('id', tripid);
-      }
-    }
-    
-    return { status: 200, data: { message: 'Image deleted successfully', imageId, filename: imageData.filename } };
+
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 
-  async setCoverImage(tripId, imageId) {
-    // First, get the image URL
+  async getFirstGalleryImageByTripId(tripId) {
+    const { data, error } = await this.tripsClient
+      .from('trips_gallery')
+      .select('id, completeurl')
+      .eq('tripid', tripId)
+      .limit(1);
+
+    if (error) throw exceptions.internal(error.message);
+    return data?.[0] ?? null;
+  }
+
+  async setGalleryImageCover(imageId, iscover) {
+    const { data, error } = await this.tripsClient
+      .from('trips_gallery')
+      .update({ iscover })
+      .eq('id', imageId);
+
+    if (error) throw exceptions.internal(error.message);
+    return data;
+  }
+
+  async resetGalleryCoversByTripId(tripId) {
+    const { data, error } = await this.tripsClient
+      .from('trips_gallery')
+      .update({ iscover: false })
+      .eq('tripid', tripId);
+
+    if (error) throw exceptions.internal(error.message);
+    return data;
+  }
+
+  async updateTripCoverUrl(tripId, coverUrl) {
+    const { data, error } = await this.tripsClient
+      .from('trips')
+      .update({ cover_url: coverUrl })
+      .eq('id', tripId);
+
+    if (error) throw exceptions.internal(error.message);
+    return data;
+  }
+
+  async getGalleryImageForTrip(tripId, imageId) {
     const primary = await this.tripsClient
       .from('trips_gallery')
       .select('completeurl, orden')
       .eq('id', imageId)
       .eq('tripid', tripId)
-      .single();
+      .maybeSingle();
 
-    let imageData = primary.data;
-    if (primary.error) {
-      if (String(primary.error.message || '').includes('orden')) {
-        const fallback = await this.tripsClient
-          .from('trips_gallery')
-          .select('completeurl')
-          .eq('id', imageId)
-          .eq('tripid', tripId)
-          .single();
+    if (!primary.error) return primary.data;
 
-        if (fallback.error) return { status: 500, error: fallback.error.message };
-        imageData = fallback.data;
-      } else {
-        return { status: 500, error: primary.error.message };
-      }
+    if (String(primary.error.message || '').includes('orden')) {
+      const fallback = await this.tripsClient
+        .from('trips_gallery')
+        .select('completeurl')
+        .eq('id', imageId)
+        .eq('tripid', tripId)
+        .maybeSingle();
+
+      if (fallback.error) throw exceptions.internal(fallback.error.message);
+      return fallback.data;
     }
-    if (!imageData) return { status: 404, error: 'Image not found' };
-    
-    // Update all images for this trip to set iscover = false
-    const { error: resetError } = await this.tripsClient
-      .from('trips_gallery')
-      .update({ iscover: false })
-      .eq('tripid', tripId);
-    
-    if (resetError) return { status: 500, error: resetError.message };
-    
-    // Set the selected image as cover
-    const { error: setCoverError } = await this.tripsClient
-      .from('trips_gallery')
-      .update({ iscover: true })
-      .eq('id', imageId);
-    
-    if (setCoverError) return { status: 500, error: setCoverError.message };
-    
-    // Update the trip's cover_url
-    const { error: updateTripError } = await this.tripsClient
-      .from('trips')
-      .update({ cover_url: imageData.completeurl })
-      .eq('id', tripId);
-    
-    if (updateTripError) return { status: 500, error: updateTripError.message };
-    
-    return { status: 200, data: { message: 'Cover image updated successfully', coverUrl: imageData.completeurl } };
+
+    throw exceptions.internal(primary.error.message);
   }
 
-  async updateImagesMetadata(tripId, imagesMetadata) {
-    const updatedImages = [];
+  async updateGalleryImageMetadata(tripId, imageId, metadata) {
+    const { data, error } = await this.tripsClient
+      .from('trips_gallery')
+      .update({
+        orden: metadata.orden,
+        placeid: metadata.placeid ?? null,
+        captureddate: metadata.captureddate || null,
+        descripcion: metadata.descripcion || ''
+      })
+      .eq('tripid', tripId)
+      .eq('id', imageId)
+      .select('id,filename,completeurl,iscover,orden,placeid,descripcion,captureddate');
 
-    for (const image of imagesMetadata) {
-      const imageId = Number(image.id);
-
-      if (!Number.isFinite(imageId) || imageId <= 0) {
-        return { status: 400, error: 'Each image must have a valid id' };
-      }
-
-      const result = await this.tripsClient
-        .from('trips_gallery')
-        .update({
-          orden: image.orden,
-          placeid: image.placeid ?? null,
-          captureddate: image.captureddate || null,
-          descripcion: image.descripcion || ''
-        })
-        .eq('tripid', tripId)
-        .eq('id', imageId)
-        .select('id,filename,completeurl,iscover,orden,placeid,descripcion,captureddate');
-
-      if (result.error) {
-        return { status: 500, error: result.error.message };
-      }
-
-      if (!result.data || result.data.length === 0) {
-        return { status: 404, error: `Image ${imageId} not found for this trip` };
-      }
-
-      updatedImages.push(result.data[0]);
-    }
-
-    return { status: 200, data: updatedImages };
+    if (error) throw exceptions.internal(error.message);
+    return data?.[0] ?? null;
   }
   
   async getItineraryVotesSummaryByTripId(tripId) {
@@ -794,19 +647,9 @@ class TripsRepository {
       .select('placeid, tripid, value')
       .eq('tripid', tripId)
       .eq('value', true);
-      
-    if (error) return { status: 500, error };
-    
-    // Group votes by placeid and count them
-    const voteCounts = {};
-    data.forEach(vote => {
-      if (!voteCounts[vote.placeid]) {
-        voteCounts[vote.placeid] = 0;
-      }
-      voteCounts[vote.placeid]++;
-    });
-    
-    return { status: 200, data: voteCounts };
+
+    if (error) throw exceptions.internal(error.message);
+    return data || [];
   }
   
   async getUserItineraryVotesByTripIdAndUserId(tripId, userId) {
@@ -816,39 +659,33 @@ class TripsRepository {
       .eq('tripid', tripId)
       .eq('userid', userId)
       .eq('value', true);
-      
-    if (error) return { status: 500, error };
-    
-    // Convert to a set of placeid that user has voted for
-    const userVotes = new Set(data.map(vote => vote.placeid));
-    
-    return { status: 200, data: userVotes };
+
+    if (error) throw exceptions.internal(error.message);
+    return data || [];
   }
   
   async getItineraryVotesByMembersByTripId(tripId, memberUserIds) {
-    if (!memberUserIds || memberUserIds.length === 0) {
-      return { status: 200, data: {} };
-    }
-    
+    if (!memberUserIds || memberUserIds.length === 0) return [];
+
     const { data, error } = await this.votesClient
       .from('trips_itineraries')
       .select('placeid, tripid, userid, value')
       .eq('tripid', tripId)
       .eq('value', true)
       .in('userid', memberUserIds);
-      
-    if (error) return { status: 500, error };
-    
-    // Group votes by placeid and count only member votes
-    const memberVoteCounts = {};
-    data.forEach(vote => {
-      if (!memberVoteCounts[vote.placeid]) {
-        memberVoteCounts[vote.placeid] = 0;
-      }
-      memberVoteCounts[vote.placeid]++;
-    });
-    
-    return { status: 200, data: memberVoteCounts };
+
+    if (error) throw exceptions.internal(error.message);
+    return data || [];
+  }
+  async getCommentById(commentId) {
+    const { data, error } = await this.tripsClient
+      .from('trips_comments')
+      .select('*')
+      .eq('id', commentId)
+      .maybeSingle();
+
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
   async getCommentsByTripId(tripId) {
     const { data, error } = await this.tripsClient
@@ -856,13 +693,8 @@ class TripsRepository {
       .select('*')
       .eq('trip_id', tripId);
 
-    if (error) return { status: 500, error };
-
-    if (!data || data.length === 0) {
-      return { status: 404, error: `Comments for trip ${tripId} not found` };
-    }
-
-    return { status: 200, data };
+    if (error) throw exceptions.internal(error.message);
+    return data || [];
   }
   async saveComment(tripId, commentData) {
     const { data, error } = await this.tripsClient
@@ -870,9 +702,8 @@ class TripsRepository {
       .insert([{ trip_id: tripId, ...commentData }])
       .select('*');
 
-    if (error) return { status: 500, error };
-
-    return { status: 200, data };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
   async updateComment(commentId, commentData) {
     const updatedDate = new Date();
@@ -881,9 +712,8 @@ class TripsRepository {
       .update({ ...commentData, updateddate: updatedDate })
       .eq('id', commentId);
 
-    if (error) return { status: 500, error };
-
-    return { status: 200, data };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
   async deleteComment(commentId) {
     const { data, error } = await this.tripsClient
@@ -891,9 +721,8 @@ class TripsRepository {
       .delete()
       .eq('id', commentId);
 
-    if (error) return { status: 500, error };
-
-    return { status: 200, data };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
   
 }

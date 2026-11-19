@@ -1,4 +1,5 @@
 import { cataloguesClient } from "../config/supabase.js";
+import exceptions from "../middleware/exceptions.middleware.js";
 
 const ubicationService = {
   async getCountries() {
@@ -6,8 +7,8 @@ const ubicationService = {
       .from('countries')
       .select('id, name, code, flagurl')
       .order('name', { ascending: true });
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data: data };
+    if (error) throw exceptions.internal(error.message);
+    return data;
     },
     /**
      * Get PlaceList with countryid, stateid and cityid in each, return a list of names
@@ -31,7 +32,7 @@ async getUbicationNamesByIDs( placeList ) {
         .from('countries')
         .select('id, name, acronym')
         .in('id', uniqueValuesIds.countries);
-        if (countryError) return { status: 500, error: countryError.message };
+        if (countryError) throw exceptions.internal(countryError.message);
         result.countries = countries;
     }
     if (stateIds.length > 0) {
@@ -39,7 +40,7 @@ async getUbicationNamesByIDs( placeList ) {
         .from('states')
         .select('id, name')
         .in('id', uniqueValuesIds.states);
-        if (stateError) return { status: 500, error: stateError.message };
+        if (stateError) throw exceptions.internal(stateError.message);
         result.states = states;
     }
     if (cityIds.length > 0) {
@@ -47,10 +48,10 @@ async getUbicationNamesByIDs( placeList ) {
         .from('cities')
         .select('id, name')
         .in('id', uniqueValuesIds.cities);
-        if (cityError) return { status: 500, error: cityError.message };
+        if (cityError) throw exceptions.internal(cityError.message);
         result.cities = cities;
     }
-    return { status: 200, data: result };
+    return result;
   }
 
 };

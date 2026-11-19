@@ -1,3 +1,5 @@
+import exceptions from '../middleware/exceptions.middleware.js';
+
 class PasswordResetsRepository {
   constructor({ userClient }) {
     this.userClient = userClient;
@@ -8,8 +10,8 @@ class PasswordResetsRepository {
    * @param {number} userid - User ID
    * @param {string} email - User email
    * @param {string} token - Reset token
-   * @param {Date} expiredAt - Token expiration date
-   * @returns {Promise<{status: number, data?: any, error?: string}>}
+   * @param {string} expiredAt - Token expiration (ISO string)
+   * @returns {Promise<object|null>} Created row
    */
   async createResetToken(userid, email, token, expiredAt) {
     const { data, error } = await this.userClient
@@ -22,30 +24,30 @@ class PasswordResetsRepository {
       })
       .select();
 
-    if (error) return { status: 500, error: error.message };
-    return { status: 201, data: data };
+    if (error) throw exceptions.internal(error.message);
+    return data?.[0] ?? null;
   }
 
   /**
    * Find a password reset token
    * @param {string} token - Reset token
-   * @returns {Promise<{status: number, data?: any, error?: string}>}
+   * @returns {Promise<object|null>} Matching row or null
    */
   async findResetToken(token) {
     const { data, error } = await this.userClient
       .from('password_resets')
       .select('*')
       .eq('token', token)
-      .single();
+      .maybeSingle();
 
-    if (error) return { status: 404, error: 'Token not found' };
-    return { status: 200, data: data };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 
   /**
    * Delete a password reset token
    * @param {string} token - Reset token
-   * @returns {Promise<{status: number, data?: any, error?: string}>}
+   * @returns {Promise<object[]>} Deleted rows
    */
   async deleteResetToken(token) {
     const { data, error } = await this.userClient
@@ -53,14 +55,14 @@ class PasswordResetsRepository {
       .delete()
       .eq('token', token);
 
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data: data };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 
   /**
    * Delete all password reset tokens for a user
    * @param {number} userid - User ID
-   * @returns {Promise<{status: number, data?: any, error?: string}>}
+   * @returns {Promise<object[]>} Deleted rows
    */
   async deleteUserResetTokens(userid) {
     const { data, error } = await this.userClient
@@ -68,23 +70,23 @@ class PasswordResetsRepository {
       .delete()
       .eq('userid', userid);
 
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data: data };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 
   /**
    * Clean expired tokens (optional maintenance)
-   * @returns {Promise<{status: number, data?: any, error?: string}>}
+   * @param {string} expiredBefore - Delete tokens expiring before this date (ISO string)
+   * @returns {Promise<object[]>} Deleted rows
    */
-  async cleanExpiredTokens() {
-    const now = new Date().toISOString();
+  async cleanExpiredTokens(expiredBefore) {
     const { data, error } = await this.userClient
       .from('password_resets')
       .delete()
-      .lt('expired_at', now);
+      .lt('expired_at', expiredBefore);
 
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data: data };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 }
 

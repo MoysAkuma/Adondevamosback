@@ -1,5 +1,6 @@
 import cataloguesRepository from '../repositories/catalogues.repository.js';
 import { cataloguesClient, clientPlaces, clientTrips } from '../config/supabase.js';
+import exceptions from '../middleware/exceptions.middleware.js';
 const cataloguesRepo = new cataloguesRepository({ cataloguesClient });
 
 const locationService = {
@@ -12,9 +13,9 @@ const locationService = {
           throw new Error(`Invalid location type: ${type}`);
         }
 
-        const result = await cataloguesRepo.findOne({ tableName, id });
-        if (result.status !== 200) {
-          return result;
+        const location = await cataloguesRepo.findOne({ tableName, id });
+        if (!location) {
+          return null;
         }
 
         const { data: places, error: placesError } = await clientPlaces
@@ -25,7 +26,7 @@ const locationService = {
           .order('id', { ascending: true });
 
         if (placesError) {
-          return { status: 500, error: placesError.message };
+          throw exceptions.internal(placesError.message);
         }
 
         const placeIds = (places || []).map((place) => place.id);
@@ -39,7 +40,7 @@ const locationService = {
             .in('placeid', placeIds);
 
           if (itineraryError) {
-            return { status: 500, error: itineraryError.message };
+            throw exceptions.internal(itineraryError.message);
           }
 
           const tripIds = [...new Set((itineraryRows || []).map((row) => row.tripid))];
@@ -52,7 +53,7 @@ const locationService = {
               .order('initialdate', { ascending: true });
 
             if (tripsError) {
-              return { status: 500, error: tripsError.message };
+              throw exceptions.internal(tripsError.message);
             }
 
             trips = (tripsData || []).map((trip) => ({
@@ -68,15 +69,12 @@ const locationService = {
         }));
 
         return {
-          status: 200,
-          data: {
-            ...result.data,
-            places: placesWithCover,
-            trips
-          }
+          ...location,
+          places: placesWithCover,
+          trips
         };
     } catch (error) {
-      throw new Error(`Error getting location by type and id: ${error.message}`);
+      throw exceptions.internal(`Error getting location by type and id: ${error.message}`);
     }
   },
 };

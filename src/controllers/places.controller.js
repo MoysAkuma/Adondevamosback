@@ -1,5 +1,4 @@
-import {ApiError} from  '../utils/apiError.js'
-import {ApiResponse} from  '../utils/apiResponse.js'
+import exceptions from '../middleware/exceptions.middleware.js';
 import placesService from '../services/places.service.js';
 import { getAuthenticatedUser } from '../utils/auth-user.js';
 import { createPlaceSchema, updatePlaceSchema } from '../schemas/places/place.schema.js';
@@ -14,16 +13,12 @@ const getPlaceByID = async (req, res, next) => {
     const { userId } = getAuthenticatedUser(req);
 
     const place = await placesService.getPlaceById(PlaceID, userId);
-    
-    if (place.status != 200) throw new ApiError(place.status, place.message);
-    
-    if (!place.data) throw new ApiError(404, 'Place not found');
-    
-    return new ApiResponse(res).success(
+
+    return res.success(
       'Reading process sucess', 
-      place.data ? place.data : {});
+      place ? place : {});
   } catch (err) {
-    next(err instanceof ApiError ? err : new ApiError(err.status || 500, err.message));
+    next(err);
   }
 };
 
@@ -38,17 +33,16 @@ const searchPlaces = async (req, res, next) => {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.max(1, parseInt(req.query.limit, 10) || 10);
 
-    const foundedPlaces = await placesService.searchPlaces(filters, undefined, page, limit);
-    if (!foundedPlaces.data) throw new ApiError(foundedPlaces.status, foundedPlaces.message || 'No results to show');
+    const { data, pagination } = await placesService.searchPlaces(filters, undefined, page, limit);
     
-    return new ApiResponse(res).success(
+    return res.success(
       'Reading process sucess', 
-      foundedPlaces.data ? foundedPlaces.data : {},
+      data ? data : {},
       200,
-      foundedPlaces.pagination);
+      pagination);
 
   } catch (err) {
-    next(err instanceof ApiError ? err : new ApiError(err.status || 500, err.message));
+    next(err);
   }
 };
 
@@ -59,13 +53,11 @@ const searchPlacesByField = async (req, res, next) => {
     
     const foundedPlaces = await placesService.searchPlacesByField(field, name);
 
-    if (foundedPlaces.status != 200) throw new ApiError(foundedPlaces.status, foundedPlaces.message);
-
-    return new ApiResponse(res).success(
+    return res.success(
       'Reading process sucess', 
-      foundedPlaces.data ? foundedPlaces.data : {});
+      foundedPlaces ? foundedPlaces : {});
   } catch (err) {
-    next(err instanceof ApiError ? err : new ApiError(err.status || 500, err.message));
+    next(err);
   }
 };
 
@@ -75,7 +67,7 @@ const uploadImages = async (req, res, next) => {
     
     const images = req.body.images.map((img, index) => {
       if (!img.data) {
-        throw new ApiError(400, `Image data is required for image at index ${index}`);
+        throw exceptions.badRequest(`Image data is required for image at index ${index}`);
       }
 
       // Handle base64 data
@@ -96,17 +88,14 @@ const uploadImages = async (req, res, next) => {
     });
 
     if (!images || images.length === 0) {
-      throw new ApiError(400, 'No images provided for upload');
+      throw exceptions.badRequest('No images provided for upload');
     }
 
     const uploadResult = await placesService.uploadImages(PlaceID, images);
 
-    if (uploadResult.status !== 200) {
-      throw new ApiError(uploadResult.status, uploadResult.error || 'Image upload failed');
-    }
-    return new ApiResponse(res).success(
+    return res.success(
       'Images uploaded successfully',
-      uploadResult.data
+      uploadResult
     );
   } catch (error) {
     next(error);
@@ -118,17 +107,14 @@ const createPlace = async (req, res, next) => {
     const validation = createPlaceSchema.safeParse(req.body);
     if (!validation.success) {
       const errorMessages = validation.error.errors.map(e => e.message).join(', ');
-      throw new ApiError(400, errorMessages);
+      throw exceptions.badRequest(errorMessages);
     }
     const placeData = validation.data;
     const createResult = await placesService.createPlace(placeData);
 
-    if (createResult.status !== 201) {
-      throw new ApiError(createResult.status, createResult.error || 'Place creation failed');
-    }
-    return new ApiResponse(res).success(
+    return res.success(
       'Place created successfully',
-      createResult.data,
+      createResult,
       201
     );
   } catch (error) {
@@ -142,17 +128,14 @@ const updatePlace = async (req, res, next) => {
     const validation = updatePlaceSchema.safeParse(req.body);
     if (!validation.success) {
       const errorMessages = validation.error.errors.map(e => e.message).join(', ');
-      throw new ApiError(400, errorMessages);
+      throw exceptions.badRequest(errorMessages);
     }
     const placeData = validation.data;
 
     const updateResult = await placesService.updatePlace(PlaceID, placeData);
-    if (updateResult.status !== 200) {
-      throw new ApiError(updateResult.status, updateResult.error || 'Place update failed');
-    }
-    return new ApiResponse(res).success(
+    return res.success(
       'Place updated successfully',
-      updateResult.data
+      updateResult
     );
   } catch (error) {
     next(error);
@@ -164,15 +147,12 @@ const updateFacilities = async (req, res, next) => {
     const { PlaceID } = req.params;
     const { Facilities } = req.body;
     if (!Array.isArray(Facilities)) {
-      throw new ApiError(400, 'Facilities data must be an array');
+      throw exceptions.badRequest('Facilities data must be an array');
     }
     const updateResult = await placesService.updateFacilities(PlaceID, Facilities);
-    if (updateResult.status !== 200) {
-      throw new ApiError(updateResult.status, updateResult.error || 'Facilities update failed');
-    }
-    return new ApiResponse(res).success(
+    return res.success(
       'Facilities updated successfully',
-      updateResult.data
+      updateResult
     );
   } catch (error) {
     next(error);
@@ -184,15 +164,12 @@ const addFacilities = async (req, res, next) => {
     const { PlaceID } = req.params;
     const {Facilities} = req.body;
     if (!Array.isArray(Facilities)) {
-      throw new ApiError(400, 'Facilities data must be an array');
+      throw exceptions.badRequest('Facilities data must be an array');
     }
     const addResult = await placesService.addFacilities(PlaceID, Facilities);
-    if (addResult.status !== 200) {
-      throw new ApiError(addResult.status, addResult.error || 'Add facility failed');
-    }
-    return new ApiResponse(res).success(
+    return res.success(
       'Facility added successfully',
-      addResult.data
+      addResult
     );
   } catch (error) {
     next(error);
@@ -205,14 +182,11 @@ const getNewPlaces = async (req, res, next) => {
     const { limit } = req.params;
     //get news places
     const places = await placesService.getNewPlaces(limit);
-    if(places.status != 200){
-      throw new ApiError(places.status, places.message )
-    }
-    return new ApiResponse(res).success(
+    return res.success(
       'Reading news places sucess', 
-      places.data);
+      places);
   } catch(err){
-    next(err instanceof ApiError ? err : new ApiError(err.status || 500, err.message));
+    next(err);
   }
 };
 
@@ -221,18 +195,14 @@ const deleteImage = async (req, res, next) => {
     const { PlaceID, ImageID } = req.params;
     
     if (!ImageID) {
-      throw new ApiError(400, 'Image ID is required');
+      throw exceptions.badRequest('Image ID is required');
     }
     
     const deleteResult = await placesService.deleteImage(PlaceID, ImageID);
     
-    if (deleteResult.status !== 200) {
-      throw new ApiError(deleteResult.status, deleteResult.error || 'Image deletion failed');
-    }
-    
-    return new ApiResponse(res).success(
+    return res.success(
       'Image deleted successfully',
-      deleteResult.data
+      deleteResult
     );
   } catch (error) {
     next(error);
@@ -244,18 +214,14 @@ const setCoverImage = async (req, res, next) => {
     const { PlaceID, ImageID } = req.params;
     
     if (!ImageID) {
-      throw new ApiError(400, 'Image ID is required');
+      throw exceptions.badRequest('Image ID is required');
     }
     
     const result = await placesService.setCoverImage(PlaceID, ImageID);
     
-    if (result.status !== 200) {
-      throw new ApiError(result.status, result.error || 'Failed to set cover image');
-    }
-    
-    return new ApiResponse(res).success(
+    return res.success(
       'Cover image set successfully',
-      result.data
+      result
     );
   } catch (error) {
     next(error);
@@ -267,13 +233,13 @@ const updateImagesMetadata = async (req, res, next) => {
     const { PlaceID } = req.params;
 
     if (!req.body.images || !Array.isArray(req.body.images)) {
-      throw new ApiError(400, 'Images array is required in request body');
+      throw exceptions.badRequest('Images array is required in request body');
     }
 
     const metadata = req.body.images.map((img, index) => {
       const parsedImageId = Number(img.id);
       if (!Number.isFinite(parsedImageId) || parsedImageId <= 0) {
-        throw new ApiError(400, `Invalid image id at index ${index}`);
+        throw exceptions.badRequest(`Invalid image id at index ${index}`);
       }
 
       const parsedCapturedDate =
@@ -282,7 +248,7 @@ const updateImagesMetadata = async (req, res, next) => {
           : String(img.captureddate).trim();
 
       if (parsedCapturedDate !== null && Number.isNaN(Date.parse(parsedCapturedDate))) {
-        throw new ApiError(400, `Invalid captureddate for image at index ${index}`);
+        throw exceptions.badRequest(`Invalid captureddate for image at index ${index}`);
       }
 
       const parsedOrder =
@@ -291,7 +257,7 @@ const updateImagesMetadata = async (req, res, next) => {
           : Number(img.orden);
 
       if (!Number.isFinite(parsedOrder) || parsedOrder <= 0) {
-        throw new ApiError(400, `Invalid orden for image at index ${index}`);
+        throw exceptions.badRequest(`Invalid orden for image at index ${index}`);
       }
 
       return {
@@ -304,13 +270,9 @@ const updateImagesMetadata = async (req, res, next) => {
 
     const result = await placesService.updateImagesMetadata(PlaceID, metadata);
 
-    if (result.status !== 200) {
-      throw new ApiError(result.status, result.error || 'Failed to update image metadata');
-    }
-
-    return new ApiResponse(res).success(
+    return res.success(
       'Image metadata updated successfully',
-      result.data
+      result
     );
   } catch (error) {
     next(error);

@@ -7,7 +7,7 @@ import jwt from 'jsonwebtoken';
 import usersRepository from '../repositories/users.repository.js';
 import sessionService from './session.service.js';
 import { userClient } from '../config/supabase.js';
-import { ApiError } from '../utils/apiError.js';
+import exceptions from '../middleware/exceptions.middleware.js';
 import { env } from '../config/env.js';
 import { comparePassword } from '../utils/password.js';
 
@@ -35,7 +35,7 @@ const generateToken = (payload) => {
     );
     return token;
   } catch (error) {
-    throw new ApiError(500, 'Error generating token', error);
+    throw exceptions.internal('Error generating token');
   }
 };
 
@@ -49,7 +49,7 @@ const verifyToken = (token) => {
     const decoded = jwt.verify(token, env.JWT_SECRET);
     return decoded;
   } catch (error) {
-    throw new ApiError(401, 'Invalid or expired token');
+    throw exceptions.unauthorized('Invalid or expired token');
   }
 };
 
@@ -69,61 +69,48 @@ const login = async (id, password, req) => {
     const checkisEmail = isEmail(id);
     
     // Search user with password verification and get profile photo
-    const data = checkisEmail
+    const user = checkisEmail
       ? await userRepo.searchByEmail(id, "id, name, tag, lastname, password, profile_photo_tn")
       : await userRepo.searchByTag(id, "id, name, tag, lastname, password, profile_photo_tn");
 
-    // Validate user found and password verified
-    if (data.status === 404) {
-      throw new ApiError(404, 'User not found');
-    }
-    
-    if (data.status === 401) {
-      throw new ApiError(401, 'Invalid credentials');
-    }
-    
-    if (data.status !== 200) {
-      throw new ApiError(500, "Service error");
-    }
-    
-    if (!data.data || data.data.id == null) {
-      throw new ApiError(404, 'User not found');
+    if (!user || user.id == null) {
+      throw exceptions.notFound('User not found');
     }
     
     // Verify password using bcrypt
-    const isPasswordValid = await comparePassword(password, data.data.password);
+    const isPasswordValid = await comparePassword(password, user.password);
     if (!isPasswordValid) {
-      throw new ApiError(401, 'Invalid credentials');
+      throw exceptions.unauthorized('Invalid credentials');
     }
     
     // Check if user is admin
-    const isAdmin = (await userRepo.checkAdminRole(data.data.id)).data.isAdmin;
+    const adminRows = await userRepo.checkAdminRole(user.id);
+    const isAdmin = adminRows.length > 0;
     
     // Generate JWT token
     const token = generateToken({
-      id: data.data.id,
-      tag: data.data.tag,
+      id: user.id,
+      tag: user.tag,
       isAdmin: !!isAdmin,
       role: isAdmin ? 'admin' : 'user'
     });
     
     // Create session (optional - you can remove this if you want JWT-only auth)
     await sessionService.createSession(req, {
-      id: data.data.id,
+      id: user.id,
       isAdmin: !!isAdmin
     });
     
     return {
       user: {
-        id: data.data.id,
-        tag: data.data.tag,
+        id: user.id,
+        tag: user.tag,
         role: isAdmin ? 'admin' : 'user',
-        name: data.data.name,
-        lastname: data.data.lastname,
-        thumbnail: data.data.profile_photo_tn || null
+        name: user.name,
+        lastname: user.lastname,
+        thumbnail: user.profile_photo_tn || null
       },
-      token,
-      status: data.status
+      token
     };
   } catch (error) {
     throw error;
@@ -140,7 +127,7 @@ const logout = async (req, res) => {
   try {
     await sessionService.destroySession(req, res);
   } catch (error) {
-    throw new ApiError(500, 'Error logging out', error);
+    throw exceptions.internal('Error logging out');
   }
 };
 
@@ -159,19 +146,18 @@ const checkAuth = async (req) => {
       : (req.user?.id ?? req.user?.userId ?? req.user?.userid ?? null);
 
     if (!authenticatedUserId) {
-      throw new ApiError(401, 'User not authenticated');
+      throw exceptions.unauthorized('User not authenticated');
     }
 
     // Verify user still exists in database
-    const data = await userRepo.getUserById(authenticatedUserId);
-    
-    if (data.status !== 200) {
-      throw new ApiError(401, 'Invalid session');
+    const userRows = await userRepo.getUserById(authenticatedUserId);
+    if (!userRows || userRows.length === 0) {
+      throw exceptions.unauthorized('Invalid session');
     }
 
-    const userRecord = Array.isArray(data.data) ? data.data[0] : data.data;
-    const adminRole = await userRepo.checkAdminRole(authenticatedUserId);
-    const isAdmin = adminRole?.status === 200 ? !!adminRole.data?.isAdmin : !!sessionData.isAdmin;
+    const userRecord = userRows[0];
+    const adminRows = await userRepo.checkAdminRole(authenticatedUserId);
+    const isAdmin = adminRows.length > 0;
     
     return {
       isAuthenticated: true,
@@ -194,24 +180,27 @@ const checkAuth = async (req) => {
  */
 const validateCredentials = async (id, password) => {
   if (!id || !password) {
-    throw new ApiError(400, 'ID and password are required');
+    throw exceptions.badRequest('ID and password are required');
   }
   
   const userRepo = new usersRepository({ userClient: userClient });
   const checkisEmail = isEmail(id);
   
-  const data = checkisEmail
+  const user = checkisEmail
     ? await userRepo.searchByEmail(id, "id, name, tag, lastname, password")
     : await userRepo.searchByTag(id, "id, name, tag, lastname, password");
-  
-  if (data.status === 200) {
-    const isPasswordValid = await comparePassword(password, data.data.password);
-    if (!isPasswordValid) {
-      return { status: 401, error: 'Invalid credentials' };
-    }
+
+  if (!user) {
+    throw exceptions.notFound('User not found');
   }
-  
-  return data;
+
+  const isPasswordValid = await comparePassword(password, user.password);
+  if (!isPasswordValid) {
+    throw exceptions.unauthorized('Invalid credentials');
+  }
+
+  const { password: _, ...userWithoutPassword } = user;
+  return userWithoutPassword;
 };
 
 const authService = {

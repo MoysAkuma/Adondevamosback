@@ -42,19 +42,19 @@ describe('ubication.service', () => {
 
     const result = await ubicationService.getCountries();
 
-    expect(result.status).toBe(200);
-    expect(result.data[0].name).toBe('Costa Rica');
+    expect(result[0].name).toBe('Costa Rica');
   });
 
-  test('getCountries returns 500 when query fails', async () => {
+  test('getCountries throws internal when query fails', async () => {
     orderResponses.countries = {
       data: null,
       error: { message: 'db error' }
     };
 
-    const result = await ubicationService.getCountries();
-
-    expect(result).toEqual({ status: 500, error: 'db error' });
+    await expect(ubicationService.getCountries()).rejects.toMatchObject({
+      statusCode: 500,
+      message: 'db error'
+    });
   });
 
   test('getUbicationNamesByIDs returns all grouped names', async () => {
@@ -65,17 +65,16 @@ describe('ubication.service', () => {
     const places = [{ countryid: 1, stateid: 2, cityid: 3 }, { countryid: 1, stateid: 2, cityid: 3 }];
     const result = await ubicationService.getUbicationNamesByIDs(places);
 
-    expect(result.status).toBe(200);
-    expect(result.data.countries.length).toBe(1);
-    expect(result.data.states.length).toBe(1);
-    expect(result.data.cities.length).toBe(1);
+    expect(result.countries.length).toBe(1);
+    expect(result.states.length).toBe(1);
+    expect(result.cities.length).toBe(1);
   });
 
-  test('getUbicationNamesByIDs returns 500 when countries query fails', async () => {
+  test('getUbicationNamesByIDs throws internal when countries query fails', async () => {
     inResponses.countries = { data: null, error: { message: 'countries failed' } };
 
-    const result = await ubicationService.getUbicationNamesByIDs([{ countryid: 1, stateid: 2, cityid: 3 }]);
-
-    expect(result).toEqual({ status: 500, error: 'countries failed' });
+    await expect(
+      ubicationService.getUbicationNamesByIDs([{ countryid: 1, stateid: 2, cityid: 3 }])
+    ).rejects.toMatchObject({ statusCode: 500, message: 'countries failed' });
   });
 });

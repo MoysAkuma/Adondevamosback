@@ -1,5 +1,4 @@
-import { ApiError } from '../utils/apiError.js';
-import { ApiResponse } from '../utils/apiResponse.js';
+import exceptions from '../middleware/exceptions.middleware.js';
 import { locationService } from '../services/locations.services.js';
 import { getAuthenticatedUser } from '../utils/auth-user.js';
 
@@ -13,10 +12,10 @@ const getLocation = async (req, res, next) => {
     // Aquí iría la lógica para obtener la ubicación según el tipo y el id
     const location = await locationService.getLocationByTypeAndId(userId, type, id);
     if (!location) {
-      throw new ApiError(404, 'Ubicación no encontrada');
+      throw exceptions.notFound('Ubicación no encontrada');
     }
-   return new ApiResponse(res).success("Query result", 
-    location.data);
+   return res.success("Query result", 
+    location);
   } catch (error) {
     next(error);
   }

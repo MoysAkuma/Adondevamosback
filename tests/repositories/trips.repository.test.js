@@ -14,7 +14,8 @@ describe('TripsRepository', () => {
     eq: jest.fn().mockReturnThis(),
     in: jest.fn().mockReturnThis(),
     order: jest.fn().mockReturnThis(),
-    limit: jest.fn().mockReturnThis()
+    limit: jest.fn().mockReturnThis(),
+    then: (resolve, reject) => Promise.resolve(response).then(resolve, reject)
   });
 
   beforeEach(() => {
@@ -36,36 +37,29 @@ describe('TripsRepository', () => {
   test('createTrip success', async () => {
     global.currentResponse = { data: { id: 1, name: 'Trip' }, error: null };
     const res = await repo.createTrip({ name: 'Trip' });
-    expect(res.status).toBe(201);
-    expect(res.data.id).toBe(1);
+    expect(res.id).toBe(1);
   });
 
   test('createTrip error', async () => {
     global.currentResponse = { data: null, error: { message: 'fail' } };
-    const res = await repo.createTrip({ name: 'Trip' });
-    expect(res.status).toBe(500);
-    expect(res.error.message).toBe('fail');
+    await expect(repo.createTrip({ name: 'Trip' })).rejects.toMatchObject({ statusCode: 500, message: 'fail' });
   });
 
   test('getTripByIdRaw success', async () => {
     global.currentResponse = { data: [{ id: 9 }], error: null };
     const res = await repo.getTripByIdRaw(9);
-    expect(res.status).toBe(200);
-    expect(res.data[0].id).toBe(9);
+    expect(res.id).toBe(9);
   });
 
   test('getOwnerById error', async () => {
     global.currentResponse = { data: null, error: { message: 'owner error' } };
-    const res = await repo.getOwnerById(3);
-    expect(res.status).toBe(500);
-    expect(res.error.message).toBe('owner error');
+    await expect(repo.getOwnerById(3)).rejects.toMatchObject({ statusCode: 500, message: 'owner error' });
   });
 
   test('getMembersListByTripId success', async () => {
     global.currentResponse = { data: [{ id: 1, userid: 5 }], error: null };
     const res = await repo.getMembersListByTripId(10);
-    expect(res.status).toBe(200);
-    expect(res.data.length).toBe(1);
+    expect(res.length).toBe(1);
   });
 });
 

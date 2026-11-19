@@ -1,5 +1,4 @@
-import {ApiError} from  '../utils/apiError.js'
-import {ApiResponse} from  '../utils/apiResponse.js'
+import exceptions from '../middleware/exceptions.middleware.js';
 import { getAuthenticatedUser, requireAuthenticatedUser } from '../utils/auth-user.js';
 import tripsService from '../services/trips.service.js';
 import TripModel from '../models/trip.model.js';
@@ -13,11 +12,8 @@ const validateTripAdminOrCreator = async (req, tripId) => {
 
   const trip = await tripsService.getTripById(tripId, userId);
 
-  if (trip.status == 500) throw new ApiError(500, trip.message);
-  if (!trip.data) throw new ApiError(404, 'Trip not found');
-
-  if (Number(trip.data.owner?.id) !== Number(userId)) {
-    throw new ApiError(403, 'Only admin or trip creator can perform this action');
+  if (Number(trip.owner?.id) !== Number(userId)) {
+    throw exceptions.forbidden('Only admin or trip creator can perform this action');
   }
 
   return userId;
@@ -32,22 +28,18 @@ const validateTripMemberOrCreator = async (req, tripId) => {
 
   const trip = await tripsService.getTripById(tripId, userId);
 
-  if (trip.status == 500) throw new ApiError(500, trip.message);
-  if (!trip.data) throw new ApiError(404, 'Trip not found');
-
   // Check if user is the trip owner
-  if (Number(trip.data.owner?.id) === Number(userId)) {
+  if (Number(trip.owner?.id) === Number(userId)) {
     return userId;
   }
 
   // Check if user is a member of the trip
   const members = await tripsService.getMembersListByTripId(tripId);
-  if (members.status !== 200) throw new ApiError(500, members.message);
 
-  const isMember = members.data.some(member => Number(member.userid) === Number(userId));
+  const isMember = members.some(member => Number(member.userid) === Number(userId));
   
   if (!isMember) {
-    throw new ApiError(403, 'Only trip creator or members can perform this action');
+    throw exceptions.forbidden('Only trip creator or members can perform this action');
   }
 
   return userId;
@@ -70,10 +62,7 @@ const createTrip = async (req, res, next) => {
       ownerid : userId
     });
     
-    if (data.status != 201) throw new ApiError(500, data.message);
-      new ApiResponse(res).success('Creation process sucess', 
-        data.data, 
-        data.status);
+    res.success('Creation process sucess', data, 201);
   } catch(err){
     next(err);
   } 
@@ -91,13 +80,9 @@ const getTripbyID = async (req, res, next) => {
     const { userId } = getAuthenticatedUser(req);
     const trip = await tripsService.getTripById(TripID, userId, requestedFields);
     
-    if (trip.status == 500) throw new ApiError(500, trip.message);
-    
-    if (!trip.data) throw new ApiError(404, 'Trip not found');
-    
-    new ApiResponse(res).success(
+    res.success(
       'Reading process sucess', 
-      trip.data);
+      trip);
   } catch (err) {
     next(err);
   }
@@ -113,7 +98,7 @@ const updateTripbyID = async (req, res, next) => {
     // Validate request body
     const validatedData = TripModel.forUpdate(req.body);
 
-    const editedtrip = await tripsService.updateTrip(TripID, {
+    await tripsService.updateTrip(TripID, {
         name : validatedData.name, 
         description : validatedData.description, 
         initialdate : validatedData.initialdate,
@@ -122,9 +107,7 @@ const updateTripbyID = async (req, res, next) => {
         lastupdateddate : new Date().toISOString()
     });
 
-    if (editedtrip.status == 500) throw new ApiError(500, editedtrip.message);
-    
-    new ApiResponse(res).success(
+    res.success(
       'Updating Data sucess');
 
   } catch (err) {
@@ -141,10 +124,9 @@ const deleteTripbyID = async (req, res, next) => {
 
     const resp = await tripsService.deleteTrip(TripID);
 
-    if (error) throw new ApiError(500,error.message);
-    new ApiResponse(res).success(
+    res.success(
       'Deletin process sucess', 
-      resp.data);
+      resp);
   } catch (err) {
     next(err);
   }
@@ -160,26 +142,22 @@ const getTripsByOwner = async (req, res, next) => {
     const placeIds = placeIdsParam ? String(placeIdsParam).split(',').map(value => value.trim()).filter(Boolean) : [];
 
     if (action === 'additinerary' && placeIds.length === 0) {
-      throw new ApiError(400, 'placeid/placeids is required when action=additinerary');
+      throw exceptions.badRequest('placeid/placeids is required when action=additinerary');
     }
 
-    const trips = await tripsService.getTripsByOwner(UserId, page, limit, {
+    const { data, pagination } = await tripsService.getTripsByOwner(UserId, page, limit, {
       action,
       placeIds
     });
 
-    if (trips.status !== 200) {
-      throw new ApiError(trips.status, trips.message || 'No trips found for this user');
-    }
-
-    return new ApiResponse(res).success(
+    return res.success(
       'Reading trips by owner success',
-      trips.data,
+      data,
       200,
-      trips.pagination
+      pagination
     );
   } catch (err) {
-    next(err instanceof ApiError ? err : new ApiError(err.status || 500, err.message));
+    next(err);
   }
 };
 
@@ -188,18 +166,15 @@ const getAllTrips = async (req, res, next) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   try{
-    const trips = await tripsService.getAll({}, null, page, limit);
+    const { data, pagination } = await tripsService.getAll({}, null, page, limit);
 
-    if(trips.status != 200){
-      throw new ApiError(trips.status, trips.message);
-    }
-    return new ApiResponse(res).success(
+    return res.success(
       'Reading all trips sucess', 
-      trips.data,
+      data,
       200,
-      trips.pagination);
+      pagination);
   } catch(err){
-    next(err instanceof ApiError ? err : new ApiError(err.status || 500, err.message));
+    next(err);
   }   
 };
 
@@ -217,15 +192,12 @@ const getNewTrips = async (req, res, next) => {
 
     //get news trips
     const trips = await tripsService.getNewsTrips(parsedLimit, userId, requestedFields);
-    if(trips.status != 200){
-      throw new ApiError(trips.status, "new trips error");
-    }
 
-    return new ApiResponse(res).success(
+    return res.success(
       'Reading news trips sucess', 
-      trips.data);
+      trips);
   } catch(err){
-    next(err instanceof ApiError ? err : new ApiError(err.status || 500, err.message));
+    next(err);
   } 
 };
 
@@ -240,19 +212,15 @@ const searchTrips = async (req, res, next) => {
     const limit = Math.max(1, parseInt(req.query.limit, 10) || 10);
     
     //call search
-    const foundedTrips = await tripsService.searchTrips(filters, userId, page, limit);
-    if (foundedTrips.status !== 200) throw new ApiError(
-      foundedTrips.status || 500,
-      foundedTrips.message || 'Failed to search trips'
-    );
+    const { data, pagination } = await tripsService.searchTrips(filters, userId, page, limit);
     
-    return new ApiResponse(res).success(
+    return res.success(
       'Search trips sucess', 
-      foundedTrips.data || [],
+      data || [],
       200,
-      foundedTrips.pagination);
+      pagination);
   } catch(err){
-    next(err instanceof ApiError ? err : new ApiError(err.status || 500, err.message));
+    next(err);
   }
 };
 
@@ -265,10 +233,9 @@ const createItinerary = async (req, res, next) => {
     //GetrqBody
     const { Itinerary } = req.body;
     const data = await tripsService.createItinerary(TripID, Itinerary);
-    if (data.status != 201) throw new ApiError(500, "Failed to create itinerary");
-      new ApiResponse(res).success('Itinerary creation process sucess', 
-        data.data, 
-        data.status);
+    res.success('Itinerary creation process sucess', 
+      data, 
+      201);
   } catch(err){
     next(err);
   }
@@ -285,8 +252,7 @@ const updateItinerary = async (req, res, next) => {
     const { Itinerary } = req.body;
     const data = await tripsService.updateItinerary(TripID, Itinerary);
     
-    if (data.status != 201) throw new ApiError(data.status, "Failed to update itinerary");
-      new ApiResponse(res).success('Itinerary update process sucess', data.data, data.status);
+    res.success('Itinerary update process sucess', data, 201);
   }
   catch(err){
     next(err);
@@ -308,14 +274,10 @@ const addItineraryPlace = async (req, res, next) => {
       orden: validatedData.orden
     });
 
-    if (data.status !== 201) {
-      throw new ApiError(data.status, 'Failed to add place to itinerary');
-    }
-
-    return new ApiResponse(res).success(
+    return res.success(
       'Itinerary place added process success',
-      data.data,
-      data.status
+      data,
+      201
     );
   } catch (err) {
     next(err);
@@ -333,8 +295,7 @@ const createMemberList = async (req, res, next) => {
     const { Members } = req.body;
 
     const data = await tripsService.createMemberList(TripID, Members);
-    if (data.status != 201) throw new ApiError(500, "Failed to create member list");
-      new ApiResponse(res).success('Member list creation process sucess', data.data, data.status);
+    res.success('Member list creation process sucess', data, 201);
   } catch(err){
     next(err);
   }
@@ -350,10 +311,8 @@ const updateMemberList = async (req, res, next) => {
     //GetrqBody
     const { Members } = req.body;
     
-    const data = await tripsService.updateMemberList(TripID, Members);
-    if (data.status != 201) throw new ApiError(500, 
-      "Failed to update member list");
-      new ApiResponse(res).success('Member list update process sucess');
+    await tripsService.updateMemberList(TripID, Members);
+    res.success('Member list update process sucess');
   }
   catch(err){
     next(err);
@@ -368,13 +327,13 @@ const uploadImages = async (req, res, next) => {
     
     // Validate request has images
     if (!req.body.images || !Array.isArray(req.body.images)) {
-      throw new ApiError(400, 'Images array is required in request body');
+      throw exceptions.badRequest('Images array is required in request body');
     }
 
     // Convert base64 images to buffer format
     const images = req.body.images.map((img, index) => {
       if (!img.data) {
-        throw new ApiError(400, `Image data is required for image at index ${index}`);
+        throw exceptions.badRequest(`Image data is required for image at index ${index}`);
       }
 
       const parsedPlaceId =
@@ -383,7 +342,7 @@ const uploadImages = async (req, res, next) => {
           : Number(img.placeid);
 
       if (parsedPlaceId !== null && Number.isNaN(parsedPlaceId)) {
-        throw new ApiError(400, `Invalid placeid for image at index ${index}`);
+        throw exceptions.badRequest(`Invalid placeid for image at index ${index}`);
       }
 
       const parsedCapturedDate =
@@ -392,7 +351,7 @@ const uploadImages = async (req, res, next) => {
           : String(img.captureddate).trim();
 
       if (parsedCapturedDate !== null && Number.isNaN(Date.parse(parsedCapturedDate))) {
-        throw new ApiError(400, `Invalid captureddate for image at index ${index}`);
+        throw exceptions.badRequest(`Invalid captureddate for image at index ${index}`);
       }
 
       const parsedOrder =
@@ -401,7 +360,7 @@ const uploadImages = async (req, res, next) => {
           : Number(img.orden);
 
       if (!Number.isFinite(parsedOrder) || parsedOrder <= 0) {
-        throw new ApiError(400, `Invalid orden for image at index ${index}`);
+        throw exceptions.badRequest(`Invalid orden for image at index ${index}`);
       }
 
       // Handle base64 data
@@ -426,15 +385,11 @@ const uploadImages = async (req, res, next) => {
       };
     });
 
-    const result = await tripsService.uploadImages(TripID, images);
+    const data = await tripsService.uploadImages(TripID, images);
 
-    if (result.status !== 200) {
-      throw new ApiError(result.status, result.error);
-    }
-
-    new ApiResponse(res).success(
+    res.success(
       'Images uploaded successfully',
-      result.data,
+      data,
       201
     );
   } catch (err) {
@@ -449,13 +404,13 @@ const updateImagesMetadata = async (req, res, next) => {
     await validateTripMemberOrCreator(req, TripID);
 
     if (!req.body.images || !Array.isArray(req.body.images)) {
-      throw new ApiError(400, 'Images array is required in request body');
+      throw exceptions.badRequest('Images array is required in request body');
     }
 
     const metadata = req.body.images.map((img, index) => {
       const parsedImageId = Number(img.id);
       if (!Number.isFinite(parsedImageId) || parsedImageId <= 0) {
-        throw new ApiError(400, `Invalid image id at index ${index}`);
+        throw exceptions.badRequest(`Invalid image id at index ${index}`);
       }
 
       const parsedPlaceId =
@@ -464,7 +419,7 @@ const updateImagesMetadata = async (req, res, next) => {
           : Number(img.placeid);
 
       if (parsedPlaceId !== null && Number.isNaN(parsedPlaceId)) {
-        throw new ApiError(400, `Invalid placeid for image at index ${index}`);
+        throw exceptions.badRequest(`Invalid placeid for image at index ${index}`);
       }
 
       const parsedCapturedDate =
@@ -473,7 +428,7 @@ const updateImagesMetadata = async (req, res, next) => {
           : String(img.captureddate).trim();
 
       if (parsedCapturedDate !== null && Number.isNaN(Date.parse(parsedCapturedDate))) {
-        throw new ApiError(400, `Invalid captureddate for image at index ${index}`);
+        throw exceptions.badRequest(`Invalid captureddate for image at index ${index}`);
       }
 
       const parsedOrder =
@@ -482,7 +437,7 @@ const updateImagesMetadata = async (req, res, next) => {
           : Number(img.orden);
 
       if (!Number.isFinite(parsedOrder) || parsedOrder <= 0) {
-        throw new ApiError(400, `Invalid orden for image at index ${index}`);
+        throw exceptions.badRequest(`Invalid orden for image at index ${index}`);
       }
 
       return {
@@ -494,14 +449,11 @@ const updateImagesMetadata = async (req, res, next) => {
       };
     });
 
-    const result = await tripsService.updateImagesMetadata(TripID, metadata);
-    if (result.status !== 200) {
-      throw new ApiError(result.status, result.error || 'Failed to update image metadata');
-    }
+    const data = await tripsService.updateImagesMetadata(TripID, metadata);
 
-    return new ApiResponse(res).success(
+    return res.success(
       'Image metadata updated successfully',
-      result.data
+      data
     );
   } catch (error) {
     next(error);
@@ -515,15 +467,11 @@ const deleteImage = async (req, res, next) => {
 
     await validateTripMemberOrCreator(req, TripID);
     
-    const deleteResult = await tripsService.deleteImage(TripID, ImageID);
+    const data = await tripsService.deleteImage(TripID, ImageID);
     
-    if (deleteResult.status !== 200) {
-      throw new ApiError(deleteResult.status, deleteResult.error || 'Image deletion failed');
-    }
-    
-    return new ApiResponse(res).success(
+    return res.success(
       'Image deleted successfully',
-      deleteResult.data
+      data
     );
   } catch (error) {
     next(error);
@@ -537,15 +485,11 @@ const setCoverImage = async (req, res, next) => {
 
     await validateTripMemberOrCreator(req, TripID);
     
-    const result = await tripsService.setCoverImage(TripID, ImageID);
+    const data = await tripsService.setCoverImage(TripID, ImageID);
     
-    if (result.status !== 200) {
-      throw new ApiError(result.status, result.error || 'Failed to set cover image');
-    }
-    
-    return new ApiResponse(res).success(
+    return res.success(
       'Cover image set successfully',
-      result.data
+      data
     );
   } catch (error) {
     next(error);
@@ -560,13 +504,9 @@ const createComment = async (req, res, next) => {
 
     await validateTripMemberOrCreator(req, TripID);
 
-    const result = await tripsService.createComment(TripID, commentData);
+    await tripsService.saveComment(TripID, commentData);
 
-    if (result.status !== 200) {
-      throw new ApiError(result.status, result.error || 'Failed to create comment');
-    }
-
-    return new ApiResponse(res).successNoData(201);
+    return res.successNoData(201);
   } catch (error) {
     next(error);
   }
@@ -580,13 +520,9 @@ const updateComment = async (req, res, next) => {
 
     await validateTripMemberOrCreator(req, CommentID);
 
-    const result = await tripsService.updateComment(CommentID, commentData);
+    await tripsService.updateComment(CommentID, commentData);
 
-    if (result.status !== 200) {
-      throw new ApiError(result.status, result.error || 'Failed to update comment');
-    }
-
-    return new ApiResponse(res).successNoData(200);
+    return res.successNoData(200);
   } catch (error) {
     next(error);
   }
@@ -598,13 +534,9 @@ const deleteComment = async (req, res, next) => {
 
     await validateTripMemberOrCreator(req, CommentID);
 
-    const result = await tripsService.deleteComment(CommentID);
+    await tripsService.deleteComment(CommentID);
 
-    if (result.status !== 200) {
-      throw new ApiError(result.status, result.error || 'Failed to delete comment');
-    }
-
-    return new ApiResponse(res).successNoData(200);
+    return res.successNoData(200);
   } catch (error) {
     next(error);
   }
@@ -614,15 +546,11 @@ const getCommentsByTripId = async (req, res, next) => {
   try {
     const TripID = TripModel.validateId(req.params.TripID);
 
-    const result = await tripsService.getCommentsByTripId(TripID);
+    const data = await tripsService.getCommentsByTripId(TripID);
 
-    if (result.status !== 200) {
-      throw new ApiError(result.status, result.error || 'Failed to get comments for trip');
-    }
-
-    return new ApiResponse(res).success(
+    return res.success(
       'Comments retrieved successfully',
-      result.data
+      data
     );
   } catch (error) {
     next(error);

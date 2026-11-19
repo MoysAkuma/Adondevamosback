@@ -74,13 +74,13 @@ const createCommentSchema = z.object({
     userid: z.coerce.number().int().positive({
         message: 'User ID must be a positive integer'
     }),
-    answer_to: uuids().optional()
+    answer_to: uuid().optional()
 });
 
 const updateCommentSchema = z.object({
     title: stringField().min(3, 'Title must be at least 3 characters').max(100, 'Title must be at most 100 characters').optional(),
     body: stringField().min(1, 'Content must be at least 1 character').max(500, 'Content must be at most 500 characters').optional(),
-    answer_to: uuids().optional()
+    answer_to: uuid().optional()
 });
 
 const getFirstErrorMessage = (error, fallback = 'Validation error') => {

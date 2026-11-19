@@ -1,5 +1,7 @@
+import sharp from 'sharp';
 import PlacesRepository from '../repositories/places.repository.js';
 import { mapPlacesWithUbicationNames } from '../mappers/ubication.mapper.js';
+import exceptions from '../middleware/exceptions.middleware.js';
 import ubicationService from './ubication.service.js';
 import { clientPlaces, cataloguesClient, votesClient } from '../config/supabase.js'; // adjust to your actual supabase client export
 
@@ -10,24 +12,23 @@ const placesRepo = new PlacesRepository(
     votesClient: votesClient 
   });
 
+const ensurePlaceExists = async (placeId) => {
+  const places = await placesRepo.getPlaceByIdRaw(placeId, 'id');
+  if (places.length === 0) throw exceptions.notFound("Place not found");
+};
+
 const placesService = {
-  // Helper method to enrich place data with full details
+  // Helper method to enrich place data with full details; returns null when the place does not exist
   async _enrichPlaceWithFullDetails(placeId, userid = null) {
-    const base = await placesRepo.getPlaceByIdRaw(placeId);
-    if (base.status !== 200) return base;
-    
-    if (!base.data || base.data.length === 0) return { status: 404, data: null };
-    
+    const places = await placesRepo.getPlaceByIdRaw(placeId);
+    if (places.length === 0) return null;
+
     //get ubication names
-    const ubicationNames = await ubicationService.getUbicationNamesByIDs(base.data);
-    
-    if (ubicationNames.status !== 200) return ubicationNames;
-    const placeWithUbicationNames = mapPlacesWithUbicationNames(base.data, ubicationNames.data);
-    
+    const ubicationNames = await ubicationService.getUbicationNamesByIDs(places);
+    const placeWithUbicationNames = mapPlacesWithUbicationNames(places, ubicationNames);
+
     //get facilities
     const facilities = await placesRepo.getFacilitiesByPlaceId(placeId);
-    
-    if (facilities.status !== 200) return facilities;
 
     //unset countryid, stateid, cityid from placeWithUbicationNames
     placeWithUbicationNames.forEach(place => {
@@ -36,31 +37,28 @@ const placesService = {
       delete place.cityid;
     });
 
-    placeWithUbicationNames[0].facilities = facilities.data;
-    
+    placeWithUbicationNames[0].facilities = facilities;
+
     //get votes
-    const votes = await placesRepo.getVotesByPlaceIdSummary(placeId);
-    if (votes.status !== 200) return votes;
+    const votesTotal = await placesRepo.getVotesByPlaceIdSummary(placeId);
     placeWithUbicationNames[0].statics = {
-        Votes: {
-          Total: votes.data[0].total
-        }
-      };
+      Votes: {
+        Total: votesTotal
+      }
+    };
+
     //validate if user has voted place
-    let userVote = { status: 200, data: { value: false } };
+    let userVote = false;
     if (userid) {
-      userVote = await placesRepo.getUserVoteByPlaceIdAndUserId(placeId, userid);
-      if (userVote.status !== 200) return userVote;
+      const userVotes = await placesRepo.getUserVoteByPlaceIdAndUserId(placeId, userid);
+      userVote = userVotes.length > 0;
     }
-    
-    placeWithUbicationNames[0].userVote = userVote.data.value;
+    placeWithUbicationNames[0].userVote = userVote;
 
     //get gallery
-    const gallery = await placesRepo.getGalleryByPlaceId(placeId);
-    if (gallery.status !== 200) return gallery;
-    placeWithUbicationNames[0].gallery = gallery.data;
+    placeWithUbicationNames[0].gallery = await placesRepo.getGalleryByPlaceId(placeId);
 
-    return { status: 200, data: { ...placeWithUbicationNames[0], id: placeId } };
+    return { ...placeWithUbicationNames[0], id: placeId };
   },
 
   async createPlace(rq) {
@@ -76,7 +74,9 @@ const placesService = {
   },
 
   async getPlaceById(id, userid = null) {
-    return await this._enrichPlaceWithFullDetails(id, userid);
+    const place = await this._enrichPlaceWithFullDetails(id, userid);
+    if (!place) throw exceptions.notFound("Place not found");
+    return place;
   },
 
   async searchPlacesByIDs(ids, fields = 'id,name,countryid,stateid,cityid') {
@@ -84,15 +84,30 @@ const placesService = {
   },
 
   async searchPlaces(filters = {}, fields = 'id,name,countryid,stateid,cityid,address,description,latitude,longitude', page = 1, limit = 10) {
-    const base = await placesRepo.searchPlaces(filters, fields, page, limit);
-    
-    if (base.status !== 200) return base;
-    if (!base.data || base.data.length === 0) return { status: 200, data: [], pagination: base.pagination };
+    const safePage = Number.isFinite(Number(page)) && Number(page) > 0 ? Number(page) : 1;
+    const safeLimit = Number.isFinite(Number(limit)) && Number(limit) > 0 ? Number(limit) : 10;
+
+    const totalCount = await placesRepo.countPlaces(filters);
+    const totalPages = totalCount === 0 ? 0 : Math.ceil(totalCount / safeLimit);
+    const pagination = {
+      page: safePage,
+      limit: safeLimit,
+      totalCount,
+      totalPages,
+      hasNextPage: totalPages > 0 && safePage < totalPages,
+      hasPreviousPage: safePage > 1
+    };
+
+    if (totalCount === 0) return { data: [], pagination };
+
+    const from = (safePage - 1) * safeLimit;
+    const to = from + safeLimit - 1;
+    const places = await placesRepo.searchPlaces(filters, fields, from, to);
+    if (places.length === 0) return { data: [], pagination };
     
     //get ubication names
-    const ubicationNames = await ubicationService.getUbicationNamesByIDs(base.data);
-    if (ubicationNames.status !== 200) return ubicationNames;
-    const placesWithUbicationNames = mapPlacesWithUbicationNames(base.data, ubicationNames.data);
+    const ubicationNames = await ubicationService.getUbicationNamesByIDs(places);
+    const placesWithUbicationNames = mapPlacesWithUbicationNames(places, ubicationNames);
 
     //unset countryid, stateid, cityid from placesWithUbicationNames
     placesWithUbicationNames.forEach(place => {
@@ -101,10 +116,9 @@ const placesService = {
       delete place.cityid;
     });
     //get one gallery image per place (cover first)
-    const galleryResult = await placesRepo.getGalleryImagesByPlaceIds(placesWithUbicationNames.map(place => place.id));
-    if (galleryResult.status !== 200) return galleryResult;
+    const galleryImages = await placesRepo.getGalleryImagesByPlaceIds(placesWithUbicationNames.map(place => place.id));
     const coverByPlaceId = new Map();
-    for (const image of galleryResult.data) {
+    for (const image of galleryImages) {
       if (!coverByPlaceId.has(image.placeid)) coverByPlaceId.set(image.placeid, image);
     }
     placesWithUbicationNames.forEach(place => {
@@ -112,113 +126,138 @@ const placesService = {
       place.gallery = image ? [{ id: image.id, completeurl: image.completeurl, iscover: image.iscover }] : [];
     });
 
-    return { status: 200, data: placesWithUbicationNames, pagination: base.pagination };
+    return { data: placesWithUbicationNames, pagination };
   },
   async searchPlacesByField(field, name, 
     fields = 'id,name,countryid,stateid,cityid') {
     
-    const base = await placesRepo.searchPlacesByField(field, name, fields);
-    
-    if (base.status !== 200) return base;
-    if (!base.data || base.data.length === 0) return { status: 404, message: "No results to show" };
+    const places = await placesRepo.searchPlacesByField(field, name, fields);
+    if (places.length === 0) throw exceptions.notFound("No results to show");
     //get ubication names
-    const ubicationNames = 
-    await ubicationService.getUbicationNamesByIDs(base.data);
-    if (ubicationNames.status !== 200) return ubicationNames;
-    const placesWithUbicationNames = mapPlacesWithUbicationNames(base.data, ubicationNames.data);
+    const ubicationNames = await ubicationService.getUbicationNamesByIDs(places);
+    const placesWithUbicationNames = mapPlacesWithUbicationNames(places, ubicationNames);
     //unset countryid, stateid, cityid from placesWithUbicationNames
     placesWithUbicationNames.forEach(place => {
       delete place.countryid;
       delete place.stateid;
       delete place.cityid;
     });
-    return { status: 200, data: placesWithUbicationNames };
+    return placesWithUbicationNames;
   },
   async uploadImages(placeId, images) {
     //verify place exists
-    const place = await placesRepo.getPlaceByIdRaw(placeId, 'id');
-    if (place.status !== 200) return place;
+    await ensurePlaceExists(placeId);
 
-    //save images in bucket
-    const saveUploadedFiles = 
-     await placesRepo.uploadImagesToStorage(placeId, images);
-    if (saveUploadedFiles.status !== 200) {
-      return saveUploadedFiles;
+    const uploadedUrls = [];
+    for (let i = 0; i < images.length; i++) {
+      const image = images[i];
+      const timestamp = Date.now();
+      const extension = image.extension || 'jpg';
+      const contentType = image.mimetype || 'image/jpeg';
+      const fileName = `places/${placeId}_${timestamp}_${i}.${extension}`;
+      const thumbnailFileName = `places/thumbnails/${placeId}_${timestamp}_${i}.${extension}`;
+
+      await placesRepo.uploadGalleryFile(fileName, image.buffer, contentType);
+
+      //a failed thumbnail is logged but does not fail the upload
+      try {
+        const thumbnailBuffer = await sharp(image.buffer)
+          .resize(128, 128, { fit: 'cover', position: 'center' })
+          .toBuffer();
+        await placesRepo.uploadGalleryFile(thumbnailFileName, thumbnailBuffer, contentType);
+      } catch (error) {
+        console.error(`Failed to upload thumbnail for ${fileName}:`, error.message);
+      }
+
+      uploadedUrls.push({
+        fileName,
+        url: placesRepo.getGalleryPublicUrl(fileName),
+        iscover: image.iscover || false
+      });
     }
 
     //save image urls in place record
-    return await placesRepo.saveImageUrlsToPlace(placeId, saveUploadedFiles.data);
+    return await placesRepo.saveImageUrlsToPlace(placeId, uploadedUrls);
   },
   async updateFacilities(placeId, facilitiesData) {
     //verify place exists
-    const place = await placesRepo.getPlaceByIdRaw(placeId, 'id');
-    if (place.status !== 200) return place;
-    if (!place.data || place.data.length === 0) {
-      return { status: 404, error: 'Place not found' };
-    }
+    await ensurePlaceExists(placeId);
     return await placesRepo.updateFacilities(placeId, facilitiesData);
   },
   async addFacilities(placeId, facilitiesData) {
     //verify place exists
-    const place = await placesRepo.getPlaceByIdRaw(placeId, 'id');
-    if (place.status !== 200) return place;
-    if (!place.data || place.data.length === 0) {
-      return { status: 404, error: 'Place not found' };
-    }
+    await ensurePlaceExists(placeId);
     const createdFacilities = await placesRepo.addFacilities(placeId, facilitiesData);
-    if (createdFacilities.status !== 200) {
-      return createdFacilities;
-    }
-    return { status: 200, data: createdFacilities.data.map(facility => ({ id: facility.id })) };
+    return createdFacilities.map(facility => ({ id: facility.id }));
   }, 
   async getNewPlaces(limit = 10, userid = null) {
-    const result = await placesRepo.getNewPlaces(limit);
-    if (result.status !== 200) return result;
-    if (!result.data || result.data.length === 0) return { status: 200, data: [] };
+    const places = await placesRepo.getNewPlaces(limit);
+    if (places.length === 0) return [];
     
     // Enrich each place with full details
     const enrichedPlaces = await Promise.all(
-      result.data.map(place => this._enrichPlaceWithFullDetails(place.id, userid))
+      places.map(place => this._enrichPlaceWithFullDetails(place.id, userid))
     );
     
-    // Filter out any errors and extract data
-    const successfulPlaces = enrichedPlaces
-      .filter(p => p.status === 200)
-      .map(p => p.data);
-    
-    return { status: 200, data: successfulPlaces };
+    // Drop places that disappeared between listing and enrichment
+    return enrichedPlaces.filter(Boolean);
   },
   
   async deleteImage(placeId, imageId) {
-    // Verify place exists
-    const place = await placesRepo.getPlaceByIdRaw(placeId, 'id');
-    if (place.status !== 200) return place;
-    if (!place.data || place.data.length === 0) {
-      return { status: 404, error: 'Place not found' };
+    await ensurePlaceExists(placeId);
+
+    const image = await placesRepo.getGalleryImage(imageId, null, 'id, filename, placeid, completeurl');
+    if (!image) throw exceptions.notFound("Image not found");
+
+    await placesRepo.removeGalleryFiles([image.filename]);
+
+    //a failed thumbnail removal is logged but does not fail the deletion
+    const thumbnailFilename = image.filename.replace('places/', 'places/thumbnails/');
+    try {
+      await placesRepo.removeGalleryFiles([thumbnailFilename]);
+    } catch (error) {
+      console.error(`Failed to delete thumbnail ${thumbnailFilename}:`, error.message);
     }
-    
-    return await placesRepo.deleteImageFromGallery(imageId);
+
+    await placesRepo.deleteGalleryImage(imageId);
+
+    return { message: 'Image deleted successfully', imageId, filename: image.filename };
   },
 
   async setCoverImage(placeId, imageId) {
-    // Verify place exists
-    const place = await placesRepo.getPlaceByIdRaw(placeId, 'id');
-    if (place.status !== 200) return place;
-    if (!place.data || place.data.length === 0) {
-      return { status: 404, error: 'Place not found' };
-    }
-    
-    return await placesRepo.setCoverImage(placeId, imageId);
+    await ensurePlaceExists(placeId);
+
+    const image = await placesRepo.getGalleryImage(imageId, placeId, 'completeurl');
+    if (!image) throw exceptions.notFound("Image not found");
+
+    await placesRepo.resetGalleryCovers(placeId);
+    await placesRepo.setGalleryImageCover(imageId);
+    await placesRepo.updatePlaceCoverUrl(placeId, image.completeurl);
+
+    return { message: 'Cover image updated successfully', coverUrl: image.completeurl };
   },
 
   async updateImagesMetadata(placeId, imagesMetadata) {
-    const place = await placesRepo.getPlaceByIdRaw(placeId, 'id');
-    if (place.status !== 200) return place;
-    if (!place.data || place.data.length === 0) {
-      return { status: 404, error: 'Place not found' };
+    await ensurePlaceExists(placeId);
+
+    const updatedImages = [];
+    for (const image of imagesMetadata) {
+      const row = await placesRepo.updateGalleryImageMetadata(placeId, image);
+      if (!row) throw exceptions.notFound(`Image ${image.id} not found for this place`);
+
+      updatedImages.push({
+        id: row.id,
+        filename: row.filename,
+        completeurl: row.completeurl,
+        iscover: row.iscover,
+        orden: row.orden,
+        placeid: row.placeid,
+        descripcion: row.description,
+        captureddate: row.capturedate
+      });
     }
 
-    return await placesRepo.updateImagesMetadata(placeId, imagesMetadata);
+    return updatedImages;
   }
 };
 

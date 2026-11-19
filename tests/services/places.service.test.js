@@ -10,15 +10,22 @@ const repoMethods = {
   updatePlace: jest.fn(),
   deletePlace: jest.fn(),
   searchPlacesByIDs: jest.fn(),
+  countPlaces: jest.fn(),
   searchPlaces: jest.fn(),
+  getGalleryImagesByPlaceIds: jest.fn(),
   searchPlacesByField: jest.fn(),
-  uploadImagesToStorage: jest.fn(),
+  uploadGalleryFile: jest.fn(),
+  getGalleryPublicUrl: jest.fn(),
   saveImageUrlsToPlace: jest.fn(),
   updateFacilities: jest.fn(),
   addFacilities: jest.fn(),
   getNewPlaces: jest.fn(),
-  deleteImageFromGallery: jest.fn(),
-  setCoverImage: jest.fn()
+  getGalleryImage: jest.fn(),
+  removeGalleryFiles: jest.fn(),
+  deleteGalleryImage: jest.fn(),
+  resetGalleryCovers: jest.fn(),
+  setGalleryImageCover: jest.fn(),
+  updatePlaceCoverUrl: jest.fn()
 };
 
 const mockPlacesRepoConstructor = jest.fn(() => repoMethods);
@@ -53,68 +60,51 @@ describe('places.service', () => {
   });
 
   test('createPlace delegates to repository', async () => {
-    repoMethods.createPlace.mockResolvedValue({ status: 201, data: { id: 1 } });
+    repoMethods.createPlace.mockResolvedValue({ id: 1 });
 
     const result = await placesService.createPlace({ name: 'Place A' });
 
     expect(repoMethods.createPlace).toHaveBeenCalledWith({ name: 'Place A' });
-    expect(result.status).toBe(201);
+    expect(result).toEqual({ id: 1 });
   });
 
   test('updatePlace delegates to repository', async () => {
-    repoMethods.updatePlace.mockResolvedValue({ status: 200, data: { id: 2 } });
+    repoMethods.updatePlace.mockResolvedValue({ id: 2 });
 
     const result = await placesService.updatePlace(2, { name: 'New Name' });
 
     expect(repoMethods.updatePlace).toHaveBeenCalledWith(2, { name: 'New Name' });
-    expect(result.status).toBe(200);
+    expect(result).toEqual({ id: 2 });
   });
 
   test('deletePlace delegates to repository', async () => {
-    repoMethods.deletePlace.mockResolvedValue({ status: 200, data: {} });
+    repoMethods.deletePlace.mockResolvedValue([]);
 
     const result = await placesService.deletePlace(3);
 
     expect(repoMethods.deletePlace).toHaveBeenCalledWith(3);
-    expect(result.status).toBe(200);
+    expect(result).toEqual([]);
   });
 
-  test('getPlaceById returns 404 when base place has no data', async () => {
-    repoMethods.getPlaceByIdRaw.mockResolvedValue({ status: 200, data: [] });
+  test('getPlaceById throws notFound when base place has no data', async () => {
+    repoMethods.getPlaceByIdRaw.mockResolvedValue([]);
 
-    const result = await placesService.getPlaceById(100);
-
-    expect(result).toEqual({ status: 404, data: null });
+    await expect(placesService.getPlaceById(100)).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Place not found'
+    });
   });
 
   test('getPlaceById returns fully enriched place when all dependencies succeed', async () => {
-    repoMethods.getPlaceByIdRaw.mockResolvedValue({
-      status: 200,
-      data: [{ id: 10, name: 'Park', countryid: 1, stateid: 2, cityid: 3 }]
-    });
-    mockGetUbicationNamesByIDs.mockResolvedValue({
-      status: 200,
-      data: { countries: [], states: [], cities: [] }
-    });
+    repoMethods.getPlaceByIdRaw.mockResolvedValue([{ id: 10, name: 'Park', countryid: 1, stateid: 2, cityid: 3 }]);
+    mockGetUbicationNamesByIDs.mockResolvedValue({ countries: [], states: [], cities: [] });
     mockMapPlacesWithUbicationNames.mockReturnValue([
       { id: 10, name: 'Park', countryid: 1, stateid: 2, cityid: 3, Country: null, State: null, City: null }
     ]);
-    repoMethods.getFacilitiesByPlaceId.mockResolvedValue({
-      status: 200,
-      data: [{ name: 'Wifi', code: 'WIFI' }]
-    });
-    repoMethods.getVotesByPlaceIdSummary.mockResolvedValue({
-      status: 200,
-      data: [{ total: 7 }]
-    });
-    repoMethods.getUserVoteByPlaceIdAndUserId.mockResolvedValue({
-      status: 200,
-      data: { value: true }
-    });
-    repoMethods.getGalleryByPlaceId.mockResolvedValue({
-      status: 200,
-      data: [{ id: 1, url: 'https://cdn/image.webp' }]
-    });
+    repoMethods.getFacilitiesByPlaceId.mockResolvedValue([{ name: 'Wifi', code: 'WIFI' }]);
+    repoMethods.getVotesByPlaceIdSummary.mockResolvedValue(7);
+    repoMethods.getUserVoteByPlaceIdAndUserId.mockResolvedValue([{ id: 1, value: true }]);
+    repoMethods.getGalleryByPlaceId.mockResolvedValue([{ id: 1, url: 'https://cdn/image.webp' }]);
 
     const result = await placesService.getPlaceById(10, 99);
 
@@ -122,26 +112,23 @@ describe('places.service', () => {
       { id: 10, name: 'Park', countryid: 1, stateid: 2, cityid: 3 }
     ]);
     expect(repoMethods.getUserVoteByPlaceIdAndUserId).toHaveBeenCalledWith(10, 99);
-    expect(result.status).toBe(200);
-    expect(result.data.id).toBe(10);
-    expect(result.data.facilities).toEqual([{ name: 'Wifi', code: 'WIFI' }]);
-    expect(result.data.statics).toEqual({ Votes: { Total: 7 } });
-    expect(result.data.userVote).toBe(true);
-    expect(result.data.gallery).toEqual([{ id: 1, url: 'https://cdn/image.webp' }]);
-    expect(result.data.countryid).toBeUndefined();
-    expect(result.data.stateid).toBeUndefined();
-    expect(result.data.cityid).toBeUndefined();
+    expect(result.id).toBe(10);
+    expect(result.facilities).toEqual([{ name: 'Wifi', code: 'WIFI' }]);
+    expect(result.statics).toEqual({ Votes: { Total: 7 } });
+    expect(result.userVote).toBe(true);
+    expect(result.gallery).toEqual([{ id: 1, url: 'https://cdn/image.webp' }]);
+    expect(result.countryid).toBeUndefined();
+    expect(result.stateid).toBeUndefined();
+    expect(result.cityid).toBeUndefined();
   });
 
   test('searchPlaces returns mapped list without ids used for ubication', async () => {
-    repoMethods.searchPlaces.mockResolvedValue({
-      status: 200,
-      data: [{ id: 1, name: 'Beach', countryid: 1, stateid: 2, cityid: 3, address: 'X' }]
-    });
-    mockGetUbicationNamesByIDs.mockResolvedValue({
-      status: 200,
-      data: { countries: [], states: [], cities: [] }
-    });
+    repoMethods.countPlaces.mockResolvedValue(1);
+    repoMethods.searchPlaces.mockResolvedValue([
+      { id: 1, name: 'Beach', countryid: 1, stateid: 2, cityid: 3, address: 'X' }
+    ]);
+    repoMethods.getGalleryImagesByPlaceIds.mockResolvedValue([]);
+    mockGetUbicationNamesByIDs.mockResolvedValue({ countries: [], states: [], cities: [] });
     mockMapPlacesWithUbicationNames.mockReturnValue([
       { id: 1, name: 'Beach', countryid: 1, stateid: 2, cityid: 3, address: 'X', Country: null, State: null, City: null }
     ]);
@@ -149,29 +136,27 @@ describe('places.service', () => {
     const result = await placesService.searchPlaces({ name: 'Bea' });
 
     expect(repoMethods.searchPlaces).toHaveBeenCalled();
-    expect(result.status).toBe(200);
     expect(result.data[0].countryid).toBeUndefined();
     expect(result.data[0].stateid).toBeUndefined();
     expect(result.data[0].cityid).toBeUndefined();
+    expect(result.pagination.totalCount).toBe(1);
   });
 
-  test('searchPlaces returns 404 when repository yields empty data', async () => {
-    repoMethods.searchPlaces.mockResolvedValue({ status: 200, data: [] });
+  test('searchPlaces returns empty data and pagination when no places match', async () => {
+    repoMethods.countPlaces.mockResolvedValue(0);
 
     const result = await placesService.searchPlaces({});
 
-    expect(result).toEqual({ status: 404, message: 'No results to show' });
+    expect(result.data).toEqual([]);
+    expect(result.pagination).toMatchObject({ totalCount: 0, totalPages: 0, hasNextPage: false });
+    expect(repoMethods.searchPlaces).not.toHaveBeenCalled();
   });
 
   test('searchPlacesByField enriches mapped places', async () => {
-    repoMethods.searchPlacesByField.mockResolvedValue({
-      status: 200,
-      data: [{ id: 6, name: 'River', countryid: 1, stateid: 2, cityid: 3 }]
-    });
-    mockGetUbicationNamesByIDs.mockResolvedValue({
-      status: 200,
-      data: { countries: [], states: [], cities: [] }
-    });
+    repoMethods.searchPlacesByField.mockResolvedValue([
+      { id: 6, name: 'River', countryid: 1, stateid: 2, cityid: 3 }
+    ]);
+    mockGetUbicationNamesByIDs.mockResolvedValue({ countries: [], states: [], cities: [] });
     mockMapPlacesWithUbicationNames.mockReturnValue([
       { id: 6, name: 'River', countryid: 1, stateid: 2, cityid: 3, Country: null, State: null, City: null }
     ]);
@@ -179,88 +164,89 @@ describe('places.service', () => {
     const result = await placesService.searchPlacesByField('name', 'riv');
 
     expect(repoMethods.searchPlacesByField).toHaveBeenCalledWith('name', 'riv', 'id,name,countryid,stateid,cityid');
-    expect(result.status).toBe(200);
-    expect(result.data[0].countryid).toBeUndefined();
+    expect(result[0].countryid).toBeUndefined();
   });
 
   test('uploadImages validates place exists before saving images', async () => {
-    repoMethods.getPlaceByIdRaw.mockResolvedValue({ status: 200, data: [{ id: 11 }] });
-    repoMethods.uploadImagesToStorage.mockResolvedValue({
-      status: 200,
-      data: [{ image_url: 'x.webp' }]
-    });
-    repoMethods.saveImageUrlsToPlace.mockResolvedValue({ status: 200, data: { ok: true } });
+    repoMethods.getPlaceByIdRaw.mockResolvedValue([{ id: 11 }]);
+    repoMethods.uploadGalleryFile.mockResolvedValue(undefined);
+    repoMethods.getGalleryPublicUrl.mockReturnValue('https://cdn/places/11.jpg');
+    repoMethods.saveImageUrlsToPlace.mockResolvedValue([{ id: 1 }]);
 
-    const result = await placesService.uploadImages(11, [{ originalname: 'x.webp' }]);
+    const result = await placesService.uploadImages(11, [{ buffer: Buffer.from('img'), extension: 'jpg' }]);
 
-    expect(repoMethods.uploadImagesToStorage).toHaveBeenCalledWith(11, [{ originalname: 'x.webp' }]);
-    expect(repoMethods.saveImageUrlsToPlace).toHaveBeenCalledWith(11, [{ image_url: 'x.webp' }]);
-    expect(result.status).toBe(200);
+    expect(repoMethods.uploadGalleryFile).toHaveBeenCalledWith(expect.stringMatching(/^places\/11_\d+_0\.jpg$/), expect.anything(), 'image/jpeg');
+    expect(repoMethods.saveImageUrlsToPlace).toHaveBeenCalledWith(11, [
+      expect.objectContaining({ url: 'https://cdn/places/11.jpg', iscover: false })
+    ]);
+    expect(result).toEqual([{ id: 1 }]);
   });
 
-  test('updateFacilities returns 404 when place does not exist', async () => {
-    repoMethods.getPlaceByIdRaw.mockResolvedValue({ status: 200, data: [] });
+  test('updateFacilities throws notFound when place does not exist', async () => {
+    repoMethods.getPlaceByIdRaw.mockResolvedValue([]);
 
-    const result = await placesService.updateFacilities(90, [{ facilityid: 1, value: true }]);
-
-    expect(result).toEqual({ status: 404, error: 'Place not found' });
+    await expect(placesService.updateFacilities(90, [{ facilityid: 1, value: true }])).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Place not found'
+    });
   });
 
   test('addFacilities maps created facilities to id-only response', async () => {
-    repoMethods.getPlaceByIdRaw.mockResolvedValue({ status: 200, data: [{ id: 20 }] });
-    repoMethods.addFacilities.mockResolvedValue({
-      status: 200,
-      data: [{ id: 1, placeid: 20, facilityid: 3 }, { id: 2, placeid: 20, facilityid: 4 }]
-    });
+    repoMethods.getPlaceByIdRaw.mockResolvedValue([{ id: 20 }]);
+    repoMethods.addFacilities.mockResolvedValue([
+      { id: 1, placeid: 20, facilityid: 3 },
+      { id: 2, placeid: 20, facilityid: 4 }
+    ]);
 
     const result = await placesService.addFacilities(20, [{ facilityid: 3 }, { facilityid: 4 }]);
 
-    expect(result).toEqual({ status: 200, data: [{ id: 1 }, { id: 2 }] });
+    expect(result).toEqual([{ id: 1 }, { id: 2 }]);
   });
 
   test('getNewPlaces enriches every place and returns only successful ones', async () => {
-    repoMethods.getNewPlaces.mockResolvedValue({
-      status: 200,
-      data: [{ id: 1 }, { id: 2 }]
-    });
+    repoMethods.getNewPlaces.mockResolvedValue([{ id: 1 }, { id: 2 }]);
 
     repoMethods.getPlaceByIdRaw
-      .mockResolvedValueOnce({ status: 200, data: [{ id: 1, name: 'A', countryid: 1, stateid: 1, cityid: 1 }] })
-      .mockResolvedValueOnce({ status: 200, data: [{ id: 2, name: 'B', countryid: 1, stateid: 1, cityid: 1 }] });
+      .mockResolvedValueOnce([{ id: 1, name: 'A', countryid: 1, stateid: 1, cityid: 1 }])
+      .mockResolvedValueOnce([{ id: 2, name: 'B', countryid: 1, stateid: 1, cityid: 1 }]);
 
-    mockGetUbicationNamesByIDs.mockResolvedValue({ status: 200, data: { countries: [], states: [], cities: [] } });
+    mockGetUbicationNamesByIDs.mockResolvedValue({ countries: [], states: [], cities: [] });
 
     mockMapPlacesWithUbicationNames
       .mockReturnValueOnce([{ id: 1, name: 'A', countryid: 1, stateid: 1, cityid: 1 }])
       .mockReturnValueOnce([{ id: 2, name: 'B', countryid: 1, stateid: 1, cityid: 1 }]);
 
-    repoMethods.getFacilitiesByPlaceId.mockResolvedValue({ status: 200, data: [] });
-    repoMethods.getVotesByPlaceIdSummary.mockResolvedValue({ status: 200, data: [{ total: 0 }] });
-    repoMethods.getGalleryByPlaceId.mockResolvedValue({ status: 200, data: [] });
+    repoMethods.getFacilitiesByPlaceId.mockResolvedValue([]);
+    repoMethods.getVotesByPlaceIdSummary.mockResolvedValue(0);
+    repoMethods.getGalleryByPlaceId.mockResolvedValue([]);
 
     const result = await placesService.getNewPlaces(2, null);
 
-    expect(result.status).toBe(200);
-    expect(result.data.length).toBe(2);
-    expect(result.data[0].id).toBe(1);
-    expect(result.data[1].id).toBe(2);
+    expect(result.length).toBe(2);
+    expect(result[0].id).toBe(1);
+    expect(result[1].id).toBe(2);
   });
 
-  test('deleteImage returns 404 when place does not exist', async () => {
-    repoMethods.getPlaceByIdRaw.mockResolvedValue({ status: 200, data: [] });
+  test('deleteImage throws notFound when place does not exist', async () => {
+    repoMethods.getPlaceByIdRaw.mockResolvedValue([]);
 
-    const result = await placesService.deleteImage(33, 5);
-
-    expect(result).toEqual({ status: 404, error: 'Place not found' });
+    await expect(placesService.deleteImage(33, 5)).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Place not found'
+    });
   });
 
-  test('setCoverImage delegates to repository when place exists', async () => {
-    repoMethods.getPlaceByIdRaw.mockResolvedValue({ status: 200, data: [{ id: 77 }] });
-    repoMethods.setCoverImage.mockResolvedValue({ status: 200, data: 'ok' });
+  test('setCoverImage updates cover when place and image exist', async () => {
+    repoMethods.getPlaceByIdRaw.mockResolvedValue([{ id: 77 }]);
+    repoMethods.getGalleryImage.mockResolvedValue({ completeurl: 'https://cdn/cover.webp' });
+    repoMethods.resetGalleryCovers.mockResolvedValue(undefined);
+    repoMethods.setGalleryImageCover.mockResolvedValue(undefined);
+    repoMethods.updatePlaceCoverUrl.mockResolvedValue(undefined);
 
     const result = await placesService.setCoverImage(77, 1001);
 
-    expect(repoMethods.setCoverImage).toHaveBeenCalledWith(77, 1001);
-    expect(result).toEqual({ status: 200, data: 'ok' });
+    expect(repoMethods.setGalleryImageCover).toHaveBeenCalledWith(1001);
+    expect(repoMethods.updatePlaceCoverUrl).toHaveBeenCalledWith(77, 'https://cdn/cover.webp');
+    expect(result).toEqual({ message: 'Cover image updated successfully', coverUrl: 'https://cdn/cover.webp' });
   });
 });

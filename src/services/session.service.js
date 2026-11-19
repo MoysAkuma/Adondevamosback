@@ -3,6 +3,8 @@
  * Handles all session-related operations
  */
 
+import exceptions from '../middleware/exceptions.middleware.js';
+
 /**
  * Creates a new session for a user
  * @param {Object} req - Express request object
@@ -12,7 +14,7 @@
 const createSession = (req, userData) => {
   return new Promise((resolve, reject) => {
     if (!req.session) {
-      return reject(new Error("Session middleware is not configured"));
+      return reject(exceptions.internal("Session middleware is not configured"));
     }
 
     req.session.userId = userData.id;
@@ -21,7 +23,7 @@ const createSession = (req, userData) => {
 
     req.session.save((err) => {
       if (err) {
-        return reject(new Error("Session save error: " + err.message));
+        return reject(exceptions.internal("Session save error: " + err.message));
       }
       
       resolve({
@@ -42,12 +44,12 @@ const createSession = (req, userData) => {
 const destroySession = (req, res) => {
   return new Promise((resolve, reject) => {
     if (!req.session) {
-      return reject(new Error("No session found"));
+      return reject(exceptions.internal("No session found"));
     }
 
     req.session.destroy((err) => {
       if (err) {
-        return reject(new Error("Error destroying session: " + err.message));
+        return reject(exceptions.internal("Error destroying session: " + err.message));
       }
       
       res.clearCookie("sessionId");
@@ -103,14 +105,14 @@ const getSessionData = (req) => {
 const updateSession = (req, updates) => {
   return new Promise((resolve, reject) => {
     if (!req.session) {
-      return reject(new Error("Session middleware is not configured"));
+      return reject(exceptions.internal("Session middleware is not configured"));
     }
 
     Object.assign(req.session, updates);
 
     req.session.save((err) => {
       if (err) {
-        return reject(new Error("Session update error: " + err.message));
+        return reject(exceptions.internal("Session update error: " + err.message));
       }
       
       resolve(req.session);

@@ -1,5 +1,4 @@
-import {ApiResponse} from  '../utils/apiResponse.js'
-import {ApiError} from  '../utils/apiError.js'
+import exceptions from '../middleware/exceptions.middleware.js'
 import usersService from '../services/users.service.js'
 
 
@@ -9,12 +8,10 @@ const getUserByID = async (req, res, next) => {
         const { UserID } = req.params;
         const user = await usersService.getUserById(UserID, 
             "name, lastname, email, tag, description, countryid, stateid, cityid, enabled, hide, profile_photo, profile_photo_tn");
-        
-        if (user.status != 200 ) throw new ApiError(500, "Failed");
 
-        new ApiResponse(res).success(
+        res.success(
         'Reading process sucess', 
-        user.data[0]);
+        user[0]);
     }
     catch(error){
         next(error);
@@ -25,10 +22,8 @@ const recoverPassword = async (req, res, next) => {
     try{
         const { email } = req.body;
         const recoverPassword = await usersService.recoverPassword(email);
-        
-        if (recoverPassword.status != 200) throw new ApiError(recoverPassword.status, recoverPassword.error || "Failed to recover password");
 
-        new ApiResponse(res).success('Password recovery email sent successfully', recoverPassword.data);
+        res.success('Password recovery email sent successfully', recoverPassword);
     }
     catch(error){
         next(error);
@@ -40,20 +35,16 @@ const resetPassword = async (req, res, next) => {
         const { token, newPassword } = req.body;
         
         if (!token || !newPassword) {
-            throw new ApiError(400, "Token and new password are required");
+            throw exceptions.badRequest("Token and new password are required");
         }
 
         if (newPassword.length < 6) {
-            throw new ApiError(400, "Password must be at least 6 characters long");
+            throw exceptions.badRequest("Password must be at least 6 characters long");
         }
 
         const result = await usersService.resetPassword(token, newPassword);
-        
-        if (result.status !== 200) {
-            throw new ApiError(result.status, result.error || "Failed to reset password");
-        }
 
-        new ApiResponse(res).success('Password reset successfully', result.data);
+        res.success('Password reset successfully', result);
     } catch (error) {
         next(error);
     }
@@ -64,16 +55,12 @@ const verifyResetToken = async (req, res, next) => {
         const { token } = req.query;
         
         if (!token) {
-            throw new ApiError(400, "Reset token is required");
+            throw exceptions.badRequest("Reset token is required");
         }
 
         const result = await usersService.verifyResetToken(token);
-        
-        if (result.status !== 200) {
-            throw new ApiError(result.status, result.error || "Invalid or expired token");
-        }
 
-        new ApiResponse(res).success('Token is valid', result.data);
+        res.success('Token is valid', result);
     } catch (error) {
         next(error);
     }
@@ -84,10 +71,9 @@ const verify = async (req, res, next) => {
         //Get field to search
         const { field, value } = req.params;
     
-        const verifyData = await usersService.getUserByField(field, value);
-        if (verifyData.status != 200 ) throw new ApiError(verifyData.status, "Failed to verify user");
+        await usersService.getUserByField(field, value);
 
-        new ApiResponse(res).success('Verification process sucess', {});
+        res.success('Verification process sucess', {});
     }   
     catch(error){
         next(error);
@@ -102,10 +88,10 @@ const createUser = async (req, res, next) => {
             countryid, stateid, cityid } = req.body;
         //validate name, email, tag, password
         if (!name || !email || !tag || !password) {
-            throw new ApiError(400, "Name, email, tag and password are required");
+            throw exceptions.badRequest("Name, email, tag and password are required");
         }
         
-        const data = await usersService.createUser(
+        await usersService.createUser(
             {
                 name : name.trim(),
                 secondname : secondname,
@@ -121,9 +107,8 @@ const createUser = async (req, res, next) => {
                 hide : false
             }
         );
-        if (data.status != 201) throw new ApiError(data.status, "Failed to create user");
 
-        new ApiResponse(res).success(201);
+        res.success(201);
     } catch(error){
         next(error);
     }
@@ -139,7 +124,7 @@ const editUser = async (req, res, next) => {
 
         //validate name, email, tag, password
         if (!name || !lastname || !countryid || !stateid || !cityid) {
-            throw new ApiError(400, "Name, last name, country, state, and city are required");
+            throw exceptions.badRequest("Name, last name, country, state, and city are required");
         }
         
         const data = await usersService.updateUser(
@@ -154,9 +139,8 @@ const editUser = async (req, res, next) => {
                 cityid : cityid
             }
         );
-        if (data.status != 200) throw new ApiError(data.status, "Failed to edit user");
 
-        new ApiResponse(res).success('Editing process success', data.data, data.status);
+        res.success('Editing process success', data);
     } catch(error){
         next(error);
     }
@@ -167,12 +151,11 @@ const searchUsersByField = async (req, res, next) => {
         //Get field to search
         const { field, value } = req.params;
         if ( !field || !value ) {
-            throw new ApiError(400, "Field and value are required for search");
+            throw exceptions.badRequest("Field and value are required for search");
         }
         const searchData = await usersService.getUserByField(field, value,
             "id, tag, name, lastname, email");
-        if (searchData.status != 200 ) throw new ApiError(searchData.status, "Failed to search users");
-        new ApiResponse(res).success('Search process sucess', searchData.data);
+        res.success('Search process sucess', searchData);
     }
     catch(error){
         next(error);
@@ -189,27 +172,26 @@ const changeUserField = async (req, res, next) => {
         const { value } = req.body;
 
         if (!field || !value) {
-            throw new ApiError(400, "Field and value are required");
+            throw exceptions.badRequest("Field and value are required");
         }
 
         if (field === 'password'){
             const { current, value: newPassword } = req.body;
             if (!current || !newPassword) {
-                throw new ApiError(400, "Current and new password are required");
+                throw exceptions.badRequest("Current and new password are required");
             }
             if (current === newPassword) {
-                throw new ApiError(400, "New password must be different from current password");
+                throw exceptions.badRequest("New password must be different from current password");
             }
         }
 
-        const data = await usersService.changeUserField(
+        await usersService.changeUserField(
             UserID,
             field,
             value,
             (field === 'password') ? { current: req.body.current } : {}   
         );
-        if (data.status != 200) throw new ApiError(data.status, "Failed to change user field");
-        new ApiResponse(res).successNoData(data.status);
+        res.successNoData(200);
     } catch(error){
         next(error);
     }
@@ -220,12 +202,8 @@ const getProfileData = async (req, res, next) => {
         const { UserID } = req.params;
         
         const profileData = await usersService.getProfileData(UserID);
-        
-        if (profileData.status != 200) {
-            throw new ApiError(profileData.status, profileData.error || "Failed to get profile data");
-        }
 
-        new ApiResponse(res).success('Profile data retrieved successfully', profileData.data);
+        res.success('Profile data retrieved successfully', profileData);
     } catch (error) {
         next(error);
     }
@@ -236,16 +214,12 @@ const confirmEmail = async (req, res, next) => {
         const { token } = req.query;
         
         if (!token) {
-            throw new ApiError(400, "Confirmation token is required");
+            throw exceptions.badRequest("Confirmation token is required");
         }
 
         const result = await usersService.confirmEmail(token);
-        
-        if (result.status !== 200) {
-            throw new ApiError(result.status, result.error || "Failed to confirm email");
-        }
 
-        new ApiResponse(res).success('Email confirmed successfully', result.data);
+        res.success('Email confirmed successfully', result);
     } catch (error) {
         next(error);
     }
@@ -257,7 +231,7 @@ const uploadProfilePhoto = async (req, res, next) => {
 
         // Check if user is uploading their own photo or is admin
         if (req.user.userid !== parseInt(UserID) && req.user.role !== 'admin') {
-            throw new ApiError(403, 'You can only upload your own profile photo');
+            throw exceptions.forbidden('You can only upload your own profile photo');
         }
 
         let imageData;
@@ -287,21 +261,17 @@ const uploadProfilePhoto = async (req, res, next) => {
             extension = req.body.extension || 'jpg';
         }
         else {
-            throw new ApiError(400, 'No image data provided. Send either a file or JSON with base64 data');
+            throw exceptions.badRequest('No image data provided. Send either a file or JSON with base64 data');
         }
 
         const result = await usersService.uploadProfilePhoto(UserID, imageData, mimetype, extension);
-        
-        if (result.status !== 200) {
-            throw new ApiError(result.status, result.error || "Failed to upload profile photo");
-        }
-        
-        new ApiResponse(res).success(
-            result.data.message,
+
+        res.success(
+            result.message,
             {
-                userId: result.data.userId,
-                profilePhoto: result.data.profilePhoto,
-                profilePhotoThumbnail: result.data.profilePhotoThumbnail
+                userId: result.userId,
+                profilePhoto: result.profilePhoto,
+                profilePhotoThumbnail: result.profilePhotoThumbnail
             }
         );
     } catch (error) {
@@ -311,7 +281,7 @@ const uploadProfilePhoto = async (req, res, next) => {
 
 const assertSameUser = (req, UserID) => {
     if (Number(req.user.userid) !== Number(UserID)) {
-        throw new ApiError(403, 'You can only manage your own friend requests and invitations');
+        throw exceptions.forbidden('You can only manage your own friend requests and invitations');
     }
 };
 
@@ -321,12 +291,11 @@ const sendFriendRequest = async (req, res, next) => {
         const { addressedId } = req.body;
         assertSameUser(req, UserID);
 
-        if (!addressedId) throw new ApiError(400, "addressedId is required");
+        if (!addressedId) throw exceptions.badRequest("addressedId is required");
 
         const result = await usersService.sendFriendRequest(UserID, addressedId);
-        if (result.status !== 201) throw new ApiError(result.status, result.error || "Failed to send friend request");
 
-        new ApiResponse(res).success('Friend request sent successfully', result.data, 201);
+        res.success('Friend request sent successfully', result, 201);
     } catch (error) {
         next(error);
     }
@@ -338,12 +307,11 @@ const changeFriendRequestStatus = async (req, res, next) => {
         const { status } = req.body;
         assertSameUser(req, UserID);
 
-        if (!status) throw new ApiError(400, "status is required");
+        if (!status) throw exceptions.badRequest("status is required");
 
-        const result = await usersService.changeFriendRequestStatus(UserID, FriendRequestID, status);
-        if (result.status !== 200) throw new ApiError(result.status, result.error || "Failed to update friend request");
+        await usersService.changeFriendRequestStatus(UserID, FriendRequestID, status);
 
-        new ApiResponse(res).successNoData(200);
+        res.successNoData(200);
     } catch (error) {
         next(error);
     }
@@ -355,12 +323,11 @@ const sendInvitation = async (req, res, next) => {
         const { email } = req.body;
         assertSameUser(req, UserID);
 
-        if (!email) throw new ApiError(400, "email is required");
+        if (!email) throw exceptions.badRequest("email is required");
 
         const result = await usersService.sendInvitation(UserID, email);
-        if (result.status !== 201) throw new ApiError(result.status, result.error || "Failed to send invitation");
 
-        new ApiResponse(res).success('Invitation sent successfully', result.data, 201);
+        res.success('Invitation sent successfully', result, 201);
     } catch (error) {
         next(error);
     }
@@ -372,12 +339,11 @@ const changeInvitationStatus = async (req, res, next) => {
         const { status } = req.body;
         assertSameUser(req, UserID);
 
-        if (!status) throw new ApiError(400, "status is required");
+        if (!status) throw exceptions.badRequest("status is required");
 
-        const result = await usersService.changeInvitationStatus(UserID, InvitationID, status);
-        if (result.status !== 200) throw new ApiError(result.status, result.error || "Failed to update invitation");
+        await usersService.changeInvitationStatus(UserID, InvitationID, status);
 
-        new ApiResponse(res).successNoData(200);
+        res.successNoData(200);
     } catch (error) {
         next(error);
     }

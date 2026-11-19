@@ -113,53 +113,44 @@ describe('auth.service', () => {
   });
 
   test('validateCredentials uses email query and returns data when password is valid', async () => {
-    mockRepo.searchByEmail.mockResolvedValue({
-      status: 200,
-      data: { id: 2, password: 'hash' }
-    });
+    mockRepo.searchByEmail.mockResolvedValue({ id: 2, password: 'hash' });
     mockComparePassword.mockResolvedValue(true);
 
     const result = await authService.validateCredentials('mail@example.com', 'secret');
 
     expect(mockRepo.searchByEmail).toHaveBeenCalledWith('mail@example.com', 'id, name, tag, lastname, password');
-    expect(result.status).toBe(200);
-    expect(result.data.id).toBe(2);
+    expect(result).toEqual({ id: 2 });
   });
 
-  test('validateCredentials uses tag query and returns 401 when password is invalid', async () => {
-    mockRepo.searchByTag.mockResolvedValue({
-      status: 200,
-      data: { id: 3, password: 'hash' }
-    });
+  test('validateCredentials uses tag query and throws 401 when password is invalid', async () => {
+    mockRepo.searchByTag.mockResolvedValue({ id: 3, password: 'hash' });
     mockComparePassword.mockResolvedValue(false);
 
-    const result = await authService.validateCredentials('moysakuma', 'bad-secret');
+    await expect(authService.validateCredentials('moysakuma', 'bad-secret')).rejects.toMatchObject({
+      statusCode: 401,
+      message: 'Invalid credentials'
+    });
 
     expect(mockRepo.searchByTag).toHaveBeenCalledWith('moysakuma', 'id, name, tag, lastname, password');
-    expect(result).toEqual({ status: 401, error: 'Invalid credentials' });
   });
 
   test('login creates session and returns user and token on success', async () => {
     mockRepo.searchByEmail.mockResolvedValue({
-      status: 200,
-      data: {
-        id: 55,
-        tag: 'ada',
-        name: 'Ada',
-        lastname: 'Lovelace',
-        password: 'hash',
-        profile_photo_tn: 'thumb.webp'
-      }
+      id: 55,
+      tag: 'ada',
+      name: 'Ada',
+      lastname: 'Lovelace',
+      password: 'hash',
+      profile_photo_tn: 'thumb.webp'
     });
     mockComparePassword.mockResolvedValue(true);
-    mockRepo.checkAdminRole.mockResolvedValue({ status: 200, data: { isAdmin: true } });
+    mockRepo.checkAdminRole.mockResolvedValue([{ id: 55 }]);
     mockSign.mockReturnValue('jwt-token');
     mockCreateSession.mockResolvedValue({ userId: 55, isAdmin: true });
 
     const req = { session: {} };
     const result = await authService.login('ada@example.com', 'secret', req);
 
-    expect(result.status).toBe(200);
     expect(result.token).toBe('jwt-token');
     expect(result.user).toEqual({
       id: 55,
@@ -172,16 +163,19 @@ describe('auth.service', () => {
     expect(mockCreateSession).toHaveBeenCalledWith(req, { id: 55, isAdmin: true });
   });
 
-  test('login throws ApiError when user is not found', async () => {
-    mockRepo.searchByTag.mockResolvedValue({ status: 404, error: 'User not found' });
+  test('login throws notFound when user is not found', async () => {
+    mockRepo.searchByTag.mockResolvedValue(null);
 
-    await expect(authService.login('unknownUser', 'secret', { session: {} })).rejects.toThrow('User not found');
+    await expect(authService.login('unknownUser', 'secret', { session: {} })).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'User not found'
+    });
   });
 
   test('checkAuth returns authenticated payload with admin role', async () => {
     mockValidateSession.mockReturnValue({ isValid: true, userId: 9, isAdmin: false });
-    mockRepo.getUserById.mockResolvedValue({ status: 200, data: [{ id: 9, tag: 'traveler' }] });
-    mockRepo.checkAdminRole.mockResolvedValue({ status: 200, data: { isAdmin: true } });
+    mockRepo.getUserById.mockResolvedValue([{ id: 9, tag: 'traveler' }]);
+    mockRepo.checkAdminRole.mockResolvedValue([{ id: 9 }]);
 
     const result = await authService.checkAuth({ session: { userId: 9 } });
 

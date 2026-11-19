@@ -1,73 +1,77 @@
-import sharp from 'sharp';
+import exceptions from '../middleware/exceptions.middleware.js';
 
 class usersRepository {
-    constructor({ userClient }) {
-        this.userClient = userClient;
-    }
+  constructor({ userClient }) {
+    this.userClient = userClient;
+  }
+
   async getUserById(userId, fields = "name, lastname, email, tag") {
     const { data, error } = await this.userClient
       .from('users')
       .select(fields)
       .eq('id', userId);
-      
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data: data };
-  } 
+
+    if (error) throw exceptions.internal(error.message);
+    return data;
+  }
 
   async getUserByEmail(email) {
     const { data, error } = await this.userClient
-        .from('users')
-        .select("id, name, tag, password, profile_photo")
-        .ilike('email', email);
-    if (error) return { status: 500, error: error.message };
-    if (data.lenght === 0) return { status: 404, error: "User not found" };
-    return { status: 200, data: data };
+      .from('users')
+      .select("id, name, tag, password, profile_photo")
+      .ilike('email', email);
+
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
-  
-  async getPasswordByEmail(email) { 
+
+  async getPasswordByEmail(email) {
     const { data, error } = await this.userClient
-        .from('users')
-        .select("password")
-        .ilike('email', email);
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data: data };
+      .from('users')
+      .select("password")
+      .ilike('email', email);
+
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
-  async getUsersByField(field, value, 
+
+  async getUsersByField(field, value,
     fields = "id, name, lastname, email, tag, description, countryid, stateid, cityid, enabled, hide") {
     const normalizedField = field.toLowerCase();
-    
-    const { data, error } = await this.userClient
-        .from('users')
-        .select(fields)
-        .eq(normalizedField, value);
-    
-    if (error) return { status: 500, error: error.message };
-    if (data.length === 0) return { status: 404, error: "Users not found" };
 
-    return { status: 200, data : data };
+    const { data, error } = await this.userClient
+      .from('users')
+      .select(fields)
+      .eq(normalizedField, value);
+
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
+
   async createUser(CreateUserRq) {
     const { data, error } = await this.userClient
       .from('users')
       .insert(
         {
-            name: CreateUserRq.name,
-            tag : CreateUserRq.tag, 
-            lastname : CreateUserRq.lastname, 
-            secondname: CreateUserRq.secondname,
-            password : CreateUserRq.password, 
-            countryid: CreateUserRq.countryid,
-            stateid : CreateUserRq.stateid,
-            cityid : CreateUserRq.cityid,
-            description : CreateUserRq.description,
-            email : CreateUserRq.email,         
-            enabled : true,
-            hide : false
+          name: CreateUserRq.name,
+          tag: CreateUserRq.tag,
+          lastname: CreateUserRq.lastname,
+          secondname: CreateUserRq.secondname,
+          password: CreateUserRq.password,
+          countryid: CreateUserRq.countryid,
+          stateid: CreateUserRq.stateid,
+          cityid: CreateUserRq.cityid,
+          description: CreateUserRq.description,
+          email: CreateUserRq.email,
+          enabled: true,
+          hide: false
         })
       .select();
-    if (error) return { status: 500, error: error.message };
-    return { status: 201, data: data };
+
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
+
   async updateUser(userId, UpdateUserRq) {
     // Build update object with only provided fields
     const updateData = {};
@@ -78,161 +82,162 @@ class usersRepository {
     if (UpdateUserRq.stateid !== undefined) updateData.stateid = UpdateUserRq.stateid;
     if (UpdateUserRq.cityid !== undefined) updateData.cityid = UpdateUserRq.cityid;
     if (UpdateUserRq.description !== undefined) updateData.description = UpdateUserRq.description;
-    
 
     if (UpdateUserRq.tag !== undefined) updateData.tag = UpdateUserRq.tag;
     if (UpdateUserRq.password !== undefined) updateData.password = UpdateUserRq.password;
     if (UpdateUserRq.email !== undefined) updateData.email = UpdateUserRq.email;
-    
+
     const { data, error } = await this.userClient
       .from('users')
       .update(updateData)
       .eq('id', userId)
       .select();
-    
-    if (error) return { status: 500, error: error.message };
-    if (!data || data.length === 0) return { status: 404, error: "User not found or not updated" };
-    return { status: 200, data: data };
+
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
+
   async searchUsersByField(field, value) {
     const normalizedField = field.toLowerCase();
     const normalizedValue = `%${value.toLowerCase()}%`;
     const { data, error } = await this.userClient
-        .from('users')
-        .select("id, name, lastname, email, tag, description, countryid, stateid, cityid, enabled, hide")
-        .ilike(normalizedField, normalizedValue)
-        .limit(5);
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data : data };
+      .from('users')
+      .select("id, name, lastname, email, tag, description, countryid, stateid, cityid, enabled, hide")
+      .ilike(normalizedField, normalizedValue)
+      .limit(5);
+
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 
   async getUserByTag(tagid) {
     const { data, error } = await this.userClient
-        .from('users')
-        .select("id, email, name, lastname, tagid, password")
-        .eq('tagid', tagid);
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data: data };
+      .from('users')
+      .select("id, email, name, lastname, tagid, password")
+      .eq('tagid', tagid);
+
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 
   async checkAdminRole(userId) {
     const { data, error } = await this.userClient
-        .from('admins')
-        .select()
-        .eq('userid', userId)
-        .eq('enabled', true);
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data: { isAdmin: data.length > 0 } };
+      .from('admins')
+      .select()
+      .eq('userid', userId)
+      .eq('enabled', true);
+
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 
   async searchByEmailAndPassword(email, password) {
     const { data, error } = await this.userClient
-        .from('users')
-        .select("id,name, tag, lastname")
-        .ilike('email', email)
-        .eq('password', password)
-        .limit(1);
-    if (error) return { status: 500, error: error.message };
-    if (!data || data.length === 0) return { status: 404, error: "User not found" };
-    return { status: 200, data: data[0] };
+      .from('users')
+      .select("id,name, tag, lastname")
+      .ilike('email', email)
+      .eq('password', password)
+      .limit(1);
+
+    if (error) throw exceptions.internal(error.message);
+    return data?.[0] ?? null;
   }
 
   async searchByTagAndPassword(tag, password) {
     const { data, error } = await this.userClient
-        .from('users')
-        .select("id, name, tag, lastname")
-        .eq('tag', tag)
-        .eq('password', password)
-        .limit(1);
-    if (error) return { status: 500, error: error.message };
-    if (!data || data.length === 0) return { status: 404, error: "User not found" };
-    return { status: 200, data: data[0] };
+      .from('users')
+      .select("id, name, tag, lastname")
+      .eq('tag', tag)
+      .eq('password', password)
+      .limit(1);
+
+    if (error) throw exceptions.internal(error.message);
+    return data?.[0] ?? null;
   }
 
   async searchByText(text) {
     const { data, error } = await this.userClient
-        .from('users')
-        .select("id, name, email, tag, email")
-        .or(`tag.ilike.%${text}%, email.ilike.%${text}%`)
-        .limit(5);
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data : data };
+      .from('users')
+      .select("id, name, email, tag, email")
+      .or(`tag.ilike.%${text}%, email.ilike.%${text}%`)
+      .limit(5);
+
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 
   async checkEmailExists(email) {
     const { data, error } = await this.userClient
-        .from('users')
-        .select("id")
-        .ilike('email', email);
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data : data.length > 0 };
+      .from('users')
+      .select("id")
+      .ilike('email', email);
+
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 
   async checkTagExists(tag) {
     const { data, error } = await this.userClient
-        .from('users')
-        .select("id")
-        .eq('tag', tag);
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data : data.length > 0 };
+      .from('users')
+      .select("id")
+      .eq('tag', tag);
+
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 
-  async searchByEmail(email, 
+  async searchByEmail(email,
     fields = "id, name, tag, lastname, password") {
     const { data, error } = await this.userClient
-        .from('users')
-        .select(fields)
-        .ilike('email', email)
-        .limit(1);
-    
-    if (error) return { status: 500, error: error.message };
-    if (!data || data.length === 0) return { status: 404, error: "User not found" };
-    return { status: 200, data : data[0] };
+      .from('users')
+      .select(fields)
+      .ilike('email', email)
+      .limit(1);
+
+    if (error) throw exceptions.internal(error.message);
+    return data?.[0] ?? null;
   }
 
-  async searchByTag(tag, 
+  async searchByTag(tag,
     fields = "id, name, tag, lastname, password") {
     const { data, error } = await this.userClient
-        .from('users')
-        .select(fields)
-        .eq('tag', tag)
-        .limit(1);
-    if (error) return { status: 500, error: error.message };
-    if (!data || data.length === 0) return { status: 404, error: "User not found" };
-    return { status: 200, data : data[0] };
+      .from('users')
+      .select(fields)
+      .eq('tag', tag)
+      .limit(1);
+
+    if (error) throw exceptions.internal(error.message);
+    return data?.[0] ?? null;
   }
 
   async searchOwnerInfo(userid, fields = "id, name, tag, email") {
     //avoid duplicate user ids
     const uniqueuserids = [...new Set(userid)];
-    
+
     //get user list
     const { data, error } = await this.userClient
-        .from('users')
-        .select(fields)
-        .in('id', uniqueuserids);
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data : data || {} };
+      .from('users')
+      .select(fields)
+      .in('id', uniqueuserids);
+
+    if (error) throw exceptions.internal(error.message);
+    return data ?? [];
   }
 
-  async createEmailConfirmation(userId, email, expirationHours = 24) {
-    // Calculate expiration timestamp (24 hours from now by default)
-    const expirationDate = new Date();
-    expirationDate.setHours(expirationDate.getHours() + expirationHours);
-    
+  async createEmailConfirmation(userId, email, expiration) {
     const { data, error } = await this.userClient
       .from('confirmations')
       .insert({
         userid: userId,
         email: email,
-        expiration: expirationDate.toISOString(),
+        expiration: expiration,
         confirmed: false
       })
       .select('token, expiration')
       .single();
-    
-    if (error) return { status: 500, error: error.message };
-    return { status: 201, data: data };
+
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 
   async verifyEmailConfirmationToken(token) {
@@ -240,12 +245,10 @@ class usersRepository {
       .from('confirmations')
       .select('userid, expiration, confirmed')
       .eq('token', token)
-      .single();
-    
-    if (error) return { status: 404, error: 'Invalid confirmation token' };
-    if (!data) return { status: 404, error: 'Confirmation token not found' };
-    
-    return { status: 200, data: data };
+      .maybeSingle();
+
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 
   async confirmEmail(token) {
@@ -255,88 +258,52 @@ class usersRepository {
       .eq('token', token)
       .select()
       .single();
-    
-    if (error) return { status: 500, error: error.message };
-    return { status: 200, data: data };
+
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 
-  async uploadProfilePhotoToStorage(userId, imageBuffer, mimetype, extension) {
-    try {
-      const bucketName = 'adondevamosNoGallery';
-      const avatarFolder = 'users/avatar';
-      const thumbnailFolder = 'users/thumbnails';
-      const timestamp = Date.now();
-      
-      // Generate file names
-      const avatarFileName = `${avatarFolder}/${userId}_${timestamp}.webp`;
-      const thumbnailFileName = `${thumbnailFolder}/${userId}_${timestamp}.webp`;
+  /**
+   * Uploads already-processed images to storage and returns their public URLs.
+   * A thumbnail upload failure is logged but does not fail the operation.
+   */
+  async uploadProfilePhotoToStorage(avatarFileName, avatarBuffer, thumbnailFileName, thumbnailBuffer) {
+    const bucketName = 'adondevamosNoGallery';
 
-      // Resize and convert to webp - 400x400 for avatar
-      const avatarBuffer = await sharp(imageBuffer)
-        .resize(400, 400, {
-          fit: 'cover',
-          position: 'center'
-        })
-        .webp({ quality: 90 })
-        .toBuffer();
+    const { error: avatarError } = await this.userClient.storage
+      .from(bucketName)
+      .upload(avatarFileName, avatarBuffer, {
+        contentType: 'image/webp',
+        cacheControl: '3600',
+        upsert: false
+      });
 
-      // Upload avatar (400x400) to Supabase storage
-      const { data: avatarData, error: avatarError } = await this.userClient.storage
-        .from(bucketName)
-        .upload(avatarFileName, avatarBuffer, {
-          contentType: 'image/webp',
-          cacheControl: '3600',
-          upsert: false
-        });
+    if (avatarError) throw exceptions.internal(avatarError.message);
 
-      if (avatarError) {
-        return { status: 500, error: avatarError.message };
-      }
+    const { error: thumbnailError } = await this.userClient.storage
+      .from(bucketName)
+      .upload(thumbnailFileName, thumbnailBuffer, {
+        contentType: 'image/webp',
+        cacheControl: '3600',
+        upsert: false
+      });
 
-      // Resize and convert to webp - 150x150 for thumbnail
-      const thumbnailBuffer = await sharp(imageBuffer)
-        .resize(150, 150, {
-          fit: 'cover',
-          position: 'center'
-        })
-        .webp({ quality: 85 })
-        .toBuffer();
-
-      // Upload thumbnail (150x150) to Supabase storage
-      const { error: thumbnailError } = await this.userClient.storage
-        .from(bucketName)
-        .upload(thumbnailFileName, thumbnailBuffer, {
-          contentType: 'image/webp',
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (thumbnailError) {
-        // Log error but don't fail the whole upload
-        console.error(`Failed to upload thumbnail for user ${userId}:`, thumbnailError.message);
-      }
-
-      // Get public URLs
-      const { data: avatarUrlData } = this.userClient.storage
-        .from(bucketName)
-        .getPublicUrl(avatarFileName);
-
-      const { data: thumbnailUrlData } = this.userClient.storage
-        .from(bucketName)
-        .getPublicUrl(thumbnailFileName);
-
-      return {
-        status: 200,
-        data: {
-          avatarUrl: avatarUrlData.publicUrl,
-          thumbnailUrl: thumbnailUrlData.publicUrl,
-          avatarFileName: avatarFileName,
-          thumbnailFileName: thumbnailFileName
-        }
-      };
-    } catch (error) {
-      return { status: 500, error: error.message };
+    if (thumbnailError) {
+      console.error(`Failed to upload thumbnail ${thumbnailFileName}:`, thumbnailError.message);
     }
+
+    const { data: avatarUrlData } = this.userClient.storage
+      .from(bucketName)
+      .getPublicUrl(avatarFileName);
+
+    const { data: thumbnailUrlData } = this.userClient.storage
+      .from(bucketName)
+      .getPublicUrl(thumbnailFileName);
+
+    return {
+      avatarUrl: avatarUrlData.publicUrl,
+      thumbnailUrl: thumbnailUrlData.publicUrl
+    };
   }
 
   async updateProfilePhotoUrls(userId, avatarUrl, thumbnailUrl) {
@@ -348,11 +315,11 @@ class usersRepository {
       })
       .eq('id', userId)
       .select('id, profile_photo, profile_photo_tn');
-    
-    if (error) return { status: 500, error: error.message };
-    if (!data || data.length === 0) return { status: 404, error: "User not found or not updated" };
-    return { status: 200, data: data[0] };
+
+    if (error) throw exceptions.internal(error.message);
+    return data?.[0] ?? null;
   }
+
   async getFriendRequestById(friendRequestId) {
     const { data, error } = await this.userClient
       .from('friends')
@@ -360,10 +327,10 @@ class usersRepository {
       .eq('id', friendRequestId)
       .maybeSingle();
 
-    if (error) return { status: 500, error: error.message };
-    if (!data) return { status: 404, error: "Friend request not found" };
-    return { status: 200, data: data };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
+
   async saveFriendRequest(senderId, addressedId) {
     const { data, error } = await this.userClient
       .from('friends')
@@ -374,14 +341,11 @@ class usersRepository {
       })
       .select('id, sender_id, addressed_id, status');
 
-    if (error) return { status: 500, error: error.message };
-    if (!data || data.length === 0) return { status: 404, error: "Friend request not created" };
-    return { status: 200, data: data[0] };
+    if (error) throw exceptions.internal(error.message);
+    return data?.[0] ?? null;
   }
+
   async changeFriendRequestStatus(friendRequestId, status) {
-    if (!['pending', 'accepted', 'rejected'].includes(status)) {
-      return { status: 400, error: "Invalid status" };
-    }
     const { data, error } = await this.userClient
       .from('friends')
       .update({
@@ -390,10 +354,10 @@ class usersRepository {
       .eq('id', friendRequestId)
       .select('id');
 
-    if (error) return { status: 500, error: error.message };
-    if (!data || data.length === 0) return { status: 404, error: "Friend request not found or not updated" };
-    return { status: 200 };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
+
   async getInvitationById(invitationId) {
     const { data, error } = await this.userClient
       .from('invitations')
@@ -401,10 +365,10 @@ class usersRepository {
       .eq('id', invitationId)
       .maybeSingle();
 
-    if (error) return { status: 500, error: error.message };
-    if (!data) return { status: 404, error: "Invitation not found" };
-    return { status: 200, data: data };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
+
   async saveInvitation(senderId, email) {
     const { data, error } = await this.userClient
       .from('invitations')
@@ -415,14 +379,11 @@ class usersRepository {
       })
       .select('id, sender_id, email, status');
 
-    if (error) return { status: 500, error: error.message };
-    if (!data || data.length === 0) return { status: 404, error: "Invitation not created" };
-    return { status: 200, data: data[0] };
+    if (error) throw exceptions.internal(error.message);
+    return data?.[0] ?? null;
   }
+
   async changeInvitationStatus(invitationId, status) {
-    if (!['pending', 'accepted', 'rejected'].includes(status)) {
-      return { status: 400, error: "Invalid status" };
-    }
     const { data, error } = await this.userClient
       .from('invitations')
       .update({
@@ -431,9 +392,8 @@ class usersRepository {
       .eq('id', invitationId)
       .select('id');
 
-    if (error) return { status: 500, error: error.message };
-    if (!data || data.length === 0) return { status: 404, error: "Invitation not found or not updated" };
-    return { status: 200 };
+    if (error) throw exceptions.internal(error.message);
+    return data;
   }
 };
 
